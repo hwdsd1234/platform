@@ -730,9 +730,8 @@
   }
 
   // ---------- inventory ----------
-  // Fruit you've gathered (in Fruit Groves), up to INV_MAX of each. Tab opens it on the map
-  // or in a level (which waits while it's open). Using a fruit in a level gives you its
-  // power at once; on the map it gets you ready for your next level. Powers last until you
+  // Fruit you've gathered (in Fruit Groves), up to INV_MAX of each. Tab opens it, on the map
+  // only (not in a level): using a fruit gets you ready for your next level. Powers last until you
   // die, and carry on from level to level (carry: { shield, boost, dbl }). Not in Hardcore.
   const INV_MAX = 9, FRUIT_ICON = { a: '🍎', o: '🍊', b: '🍌', m: '🍉' };
   let inventory = { a: 0, o: 0, b: 0, m: 0, ...store.get('inventory', {}) }, carry = store.get('powers', null), invFrom = null;
@@ -742,7 +741,8 @@
   }
   const powersText = p => [p.shield ? `🍎 shield${p.shield > 1 ? ' ×2' : ''}` : '', p.boost ? '🍊 jump boost' : '', p.dbl ? '🍌 double jump' : '', p.fast ? '🍉 speed' : ''].filter(Boolean).join(' · ') || 'none';
   function showInventory() {
-    if (screen !== 'map' && screen !== 'play' && screen !== 'inv') return;
+    if (screen === 'play') return flash('Your items are on the map, not in a level');
+    if (screen !== 'map' && screen !== 'inv') return;
     if (screen === 'inv') return closeInventory();
     invFrom = screen; screen = 'inv';
     $('inv').hidden = false;
@@ -753,13 +753,13 @@
     screen = invFrom || 'map'; invFrom = null;
   }
   function renderInventory() {
-    const inLevel = invFrom === 'play', now = inLevel ? W.player : (carry || {});
+    const now = carry || {};
     $('inv').innerHTML = `<div class="inv-card">
       <header><h2>Inventory</h2><button class="mini" id="inv-close">Close · Tab</button></header>
       <ul class="inv-items">${Object.entries(LF.FRUITS).map(([t, f]) => `<li>
         <span class="inv-icon">${FRUIT_ICON[t]}</span><div><b>${f.name} ×${inventory[t] || 0}</b><small>${esc(f.note)}</small></div>
         <button class="mini go-mini" data-use="${t}" ${(inventory[t] || 0) > 0 && !hardcore ? '' : 'disabled'}>Use</button></li>`).join('')}</ul>
-      <p class="lede">${hardcore ? 'Hardcore is on: no fruit.' : inLevel ? `Your powers now: ${powersText(now)}` : `Ready for your next level: ${powersText(now)}`}</p>
+      <p class="lede">${hardcore ? 'Hardcore is on: no fruit.' : `Ready for your next level: ${powersText(now)}`}</p>
       <p class="inv-note">Gather fruit in the fruit houses on the map (each one’s grove grows back an hour after you’ve been in, even while you’re away; fruit in a level only grows back while you play it). Powers last until you die and carry on from level to level. Ammo left over when you clear a level carries on too, until you die${hardcore ? '' : ` (you have ${store.get('ammo', 0)})`}.</p>
     </div>`;
     $('inv-close').addEventListener('click', closeInventory);
@@ -767,12 +767,10 @@
   }
   function useItem(t) {
     if (hardcore || !(inventory[t] > 0)) return;
-    if (invFrom === 'play' && W.stripped && t !== 'a') return flash('Only apples work in a boss arena');
-    if (invFrom === 'play' && W.def.sky && t !== 'a') return flash('Only apples work in the Sky Roads');
-    const target = invFrom === 'play' ? W.player : { shield: 0, boost: 0, dbl: 0, fast: 0, airJumps: 0, ...(carry || {}) };
+    const target = { shield: 0, boost: 0, dbl: 0, fast: 0, airJumps: 0, ...(carry || {}) };
     if (!LF.applyFruit(target, t)) return flash('You already have that power');
     inventory[t]--; store.set('inventory', inventory);
-    if (invFrom !== 'play') saveCarry(target);
+    saveCarry(target);
     flash(`${FRUIT_ICON[t]} ${LF.FRUITS[t].power}`); SFX.fruit && SFX.fruit();
     renderInventory();
   }
@@ -792,7 +790,7 @@
         <li>Keys open the locked-door blocks you touch, one block at a time; you keep the key</li>
         <li>Water is safe: you sink slowly and can jump as often as you like</li>
         <li>Fruit: 🍎 shield (a second apple doubles it) · 🍊 jump boost · 🍌 double jump · 🍉 speed · powers last until you die; powers and leftover ammo carry on to the next level · in the Sky Roads only apples work: the wind holds your other powers and gives them back when you leave</li>
-        <li>Stepping into a tower's boss arena, you lose every fruit power but your apple shield, and the only fruit in there is apples (from your inventory too, only apples work)</li>
+        <li>Stepping into a tower's boss arena, you lose every fruit power but your apple shield, and the only fruit in there is apples</li>
         <li>Towers have no guns: the boss falls to 3 stomps, but each stomp throws it into a 10-second fury: it glows red and rampages round the arena, leaping (with a slam where it lands) or darting about dropping bombs, and throwing rings of embers, rocks from the ceiling and fire round your feet; then it's worn out and stands dazed for a moment: stomp it then · its last fury (one stomp left) adds its own signature move · the Last Dark takes 5 stomps and you can't stomp it again until it calms down · your ammo waits for you outside</li>
         <li>Neo: when a slab sits right over your ledge, flush with its edge, run off the edge, jump at once and steer straight back in to land on top (miss, and you just drop back)</li>
         <li>Wheels turn their platforms round and round: ride one to the top · in the Sky Roads there's no floor at all, just the long drop</li>
@@ -876,7 +874,6 @@
       <div class="menu">
         <button class="go" data-act="resume">Resume</button>
         <button class="alt" data-act="giveUp">Give up · R</button>
-        ${playCtx.kind === 'story' ? '<button class="alt" data-act="itemsFromPause">Items · Tab</button>' : ''}
         ${playCtx.kind === 'test' ? '<button class="alt" data-act="backToEditor">Back to editor</button>' : ''}
         ${playCtx.kind === 'random' ? '<button class="alt" data-act="editRandom">Open in editor</button>' : ''}
         ${playCtx.kind !== 'test' && playCtx.kind !== 'story' ? '<button class="alt" data-act="copyToEditor">Copy to editor</button>' : ''}
@@ -901,7 +898,7 @@
       store.set('inventory', inventory);
       mapHouse = null;
       card(`<p class="eyebrow">Fruit Grove · time’s up</p><h2>${got.length ? 'A good haul' : 'Nothing this time'}</h2>
-        <p class="lede">${got.length ? 'Into your inventory: ' + got.map(([t, n]) => `${FRUIT_ICON[t]} ×${n}`).join(' · ') : 'The fruit got away.'} Press <kbd>Tab</kbd> any time to use it.</p>
+        <p class="lede">${got.length ? 'Into your inventory: ' + got.map(([t, n]) => `${FRUIT_ICON[t]} ×${n}`).join(' · ') : 'The fruit got away.'} Press <kbd>Tab</kbd> on the map to use it (not in a level).</p>
         <div class="menu"><button class="go" data-act="menu">Back to the map</button></div>`);
       return;
     }
@@ -1120,7 +1117,6 @@
     // Into a fruit house's Fruit Grove (once an hour per house).
     house: d => { const i = +d.i; if (houseOpen(i)) play(fruitGrove(i), { kind: 'house', i }); },
     items: () => showInventory(),
-    itemsFromPause: () => { screen = 'play'; setVisible({ hud: true, touch: true }); showInventory(); },
     // From the clear screen: off to the cannon you've just reached.
     toCannon: () => ACTIONS.cannon(mapCannon),
     // Play the Cannon Yard for a cannon.
