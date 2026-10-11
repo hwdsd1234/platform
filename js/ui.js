@@ -768,6 +768,7 @@
   function useItem(t) {
     if (hardcore || !(inventory[t] > 0)) return;
     if (invFrom === 'play' && W.stripped && t !== 'a') return flash('Only apples work in a boss arena');
+    if (invFrom === 'play' && W.def.sky && t !== 'a') return flash('Only apples work in the Sky Roads');
     const target = invFrom === 'play' ? W.player : { shield: 0, boost: 0, dbl: 0, fast: 0, airJumps: 0, ...(carry || {}) };
     if (!LF.applyFruit(target, t)) return flash('You already have that power');
     inventory[t]--; store.set('inventory', inventory);
@@ -790,7 +791,7 @@
         <li><kbd>E</kbd> fire: tap for one shot, hold for autofire; shots splash 1 block · <kbd>X</kbd> explosive round (2 ammo, 3-block blast) · <kbd>A</kbd> kill shot (3 ammo): kills whatever it hits in one go, golems and carts too (a boss takes it as one hit) · every shot counts as one hit (a grenade one per blast, up to three), so golems take 3 and TNT carts 5 (stomps count too); a TNT blast kills everything near it but you · <kbd>Q</kbd> bouncing grenade (3 ammo) · hold any of them to keep firing · hold <kbd>Shift</kbd> for a big shot: 2× size and blast, 2× ammo · ammo crates are hidden through each level; big crates hold 10, huge ones 25; enemies drop 1–5 ammo when killed, more for tougher ones (TNT carts drop none)</li>
         <li>Keys open the locked-door blocks you touch, one block at a time; you keep the key</li>
         <li>Water is safe: you sink slowly and can jump as often as you like</li>
-        <li>Fruit: 🍎 shield (a second apple doubles it) · 🍊 jump boost · 🍌 double jump · 🍉 speed · powers last until you die; powers and leftover ammo carry on to the next level</li>
+        <li>Fruit: 🍎 shield (a second apple doubles it) · 🍊 jump boost · 🍌 double jump · 🍉 speed · powers last until you die; powers and leftover ammo carry on to the next level · in the Sky Roads only apples work: the wind holds your other powers and gives them back when you leave</li>
         <li>Stepping into a tower's boss arena, you lose every fruit power but your apple shield, and the only fruit in there is apples (from your inventory too, only apples work)</li>
         <li>Towers have no guns: the boss falls to 3 stomps, but each stomp throws it into a 10-second fury: it glows red and rampages round the arena, leaping (with a slam where it lands) or darting about dropping bombs, and throwing rings of embers, rocks from the ceiling and fire round your feet; then it's worn out and stands dazed for a moment: stomp it then · its last fury (one stomp left) adds its own signature move · the Last Dark takes 5 stomps and you can't stomp it again until it calms down · your ammo waits for you outside</li>
         <li>Neo: when a slab sits right over your ledge, flush with its edge, run off the edge, jump at once and steer straight back in to land on top (miss, and you just drop back)</li>
@@ -889,7 +890,7 @@
     // (and its lanterns are done with).
     if (playCtx.kind === 'story') store.set('midway', null);
     // (Towers have no guns, so the ammo you're carrying waits for you outside.)
-    if (playCtx.kind === 'story' && !hardcore) { saveCarry(W.player); if (!W.def.noAmmo) store.set('ammo', W.player.ammo); }
+    if (playCtx.kind === 'story' && !hardcore) { saveCarry({ ...W.player, ...(W.player.held || {}) }); if (!W.def.noAmmo) store.set('ammo', W.player.ammo); }
     // Out of the Fruit Grove: everything picked goes in the inventory.
     if (playCtx.kind === 'house') {
       screen = 'clear';

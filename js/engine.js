@@ -191,7 +191,7 @@
       else if (AMMO[c] && def.noAmmo) tiles[y][x] = ' ';
       else if (AMMO[c]) { W.ammo.push({ big: c !== 'q', huge: c === '$', n: AMMO[c], tx: x, ty: y, x: x * TS + 16, y: y * TS + 20, taken: false }); tiles[y][x] = ' '; }
       else if (c === 'T' || c === 'H') { W.blinks.push({ tx: x, ty: y, c, wait: false }); if (c === 'H') tiles[y][x] = 'h'; }
-      else if (LF.FRUITS[c]) { W.fruits.push({ type: c, tx: x, ty: y, x: x * TS + 16, y: y * TS + 18, taken: false, regrow: 0, pop: 0 }); tiles[y][x] = ' '; }
+      else if (LF.FRUITS[c]) { W.fruits.push({ type: def.sky ? 'a' : c, tx: x, ty: y, x: x * TS + 16, y: y * TS + 18, taken: false, regrow: 0, pop: 0 }); tiles[y][x] = ' '; }
       else if (c === 'D') { W.door = { tx: x, ty: y, x: x * TS, y: (y - 1) * TS + 4, w: 32, h: 60, open: false, glow: 0 }; tiles[y][x] = ' '; }
       // j is a passage door: walk into it and you come out at the matching n (the k-th j,
       // counting left to right, leads to the k-th n). They join the parts of a tower.
@@ -304,6 +304,15 @@
       const pw = def.powers;
       W.player.shield = Math.min(2, pw.shield || 0); W.player.boost = pw.boost ? 1 : 0; W.player.dbl = pw.dbl ? 1 : 0; W.player.fast = pw.fast ? 1 : 0;
     }
+    // The Sky Roads are pure platforming: up there the wind holds your jump boost, double
+    // jump and speed (only apples work), and gives them back when you leave (p.held).
+    if (def.sky) {
+      const p = W.player;
+      if (p.boost || p.dbl || p.fast) {
+        p.held = { boost: p.boost, dbl: p.dbl, fast: p.fast }; p.boost = p.dbl = p.fast = 0;
+        W.floaters.push({ x: p.x + p.w / 2, y: p.y - 18, t: 'the wind holds your fruit here (apples work)', life: 2.4, c: '#DCE8FF' });
+      }
+    }
     W.got = {};   // fruit picked up, by type
     // Back into a level whose lanterns you'd lit last time (def.resume = { lit: [lantern
     // indexes], cp: { tx, ty } }): they're still lit, and you start at the last one.
@@ -311,7 +320,7 @@
       for (const k of def.resume.lit) if (W.lanterns[k]) W.lanterns[k].lit = true;
       W.lanternLit = true; W.checkpoint = { ...def.resume.cp };
       const { ammo } = W.player;
-      Object.assign(W.player, makePlayer(W.checkpoint), { ammo, shield: W.player.shield, boost: W.player.boost, dbl: W.player.dbl, fast: W.player.fast });
+      Object.assign(W.player, makePlayer(W.checkpoint), { ammo, shield: W.player.shield, boost: W.player.boost, dbl: W.player.dbl, fast: W.player.fast, held: W.player.held });
       if (W.door && W.lanterns.every(l => l.lit) && !W.enemies.some(isBoss)) W.door.open = true;
     }
     // def.noSpawnInv (Hardcore): no invincible second at the start or after respawning.
