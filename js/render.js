@@ -1398,6 +1398,15 @@
           ctx.fillStyle = '#FFE2A8'; ctx.beginPath(); ctx.moveTo(b.x - d * 2, b.y - 3.5); ctx.lineTo(b.x + d * 5, b.y); ctx.lineTo(b.x - d * 2, b.y + 3.5); ctx.fill();
           return;
         }
+        if (b.kind === 'dyn') {
+          // A stick of dynamite, its fuse spitting sparks (and blinking faster as it burns down).
+          ctx.fillStyle = '#C0392B'; ctx.fillRect(b.x - 3, b.y - 7, 6, 11);
+          ctx.fillStyle = '#7A2E1C'; ctx.fillRect(b.x - 3, b.y - 4, 6, 1.5); ctx.fillRect(b.x - 3, b.y + 1, 6, 1.5);
+          ctx.strokeStyle = '#D9C9A0'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(b.x, b.y - 7); ctx.quadraticCurveTo(b.x + 3, b.y - 10, b.x + 2, b.y - 12); ctx.stroke();
+          const blink = reduced || Math.floor(b.life * (b.life < 1 ? 14 : 5)) % 2;
+          ctx.fillStyle = blink ? '#FFE066' : '#FF6B3D'; ctx.beginPath(); ctx.arc(b.x + 2, b.y - 12, 2, 0, TAU); ctx.fill();
+          return;
+        }
         if (b.kind === 'grenade') {
           ctx.fillStyle = '#3A2F55'; ctx.beginPath(); ctx.arc(b.x, b.y, 5, 0, TAU); ctx.fill();
           ctx.strokeStyle = '#8F81AB'; ctx.lineWidth = 1; ctx.stroke();

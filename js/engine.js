@@ -26,11 +26,14 @@
   };
   // Every enemy runs this much faster than its base numbers (movement, timers, attacks).
   const ENEMY_SPEED = LF.ENEMY_SPEED = 1.35;
-  // Special shots: X fires an explosive round, Q lobs a bouncing grenade. Both use shared ammo.
+  // Special shots: X fires an explosive round, Q lobs a bouncing grenade, D throws a stick of
+  // dynamite. All use shared ammo.
   const SPECIAL = LF.SPECIAL = {
     rocket: { cost: 2, name: 'explosive round' },
     grenade: { cost: 3, name: 'grenade' },
+    dyn: { cost: 4, name: 'dynamite' },
   };
+  const FUSE = 3, DYN_R = 5;   // dynamite: seconds of fuse, and blocks of blast (twice that when big)
   // A: the kill shot. 3 ammo, and whatever it hits dies at once: golems, TNT carts, armor
   // and all (a boss just takes it as one hit). It doesn't splash.
   const KILL_COST = LF.KILL_COST = 3;
@@ -692,7 +695,7 @@
     for (const e of W.enemies) {
       if (!e.alive || e.phased || Math.hypot(e.x + e.w / 2 - x, e.y + e.h / 2 - y) > r + Math.max(e.w, e.h) / 2) continue;
       if (lethal && !isBoss(e)) e.hp = 1;
-      shootEnemy(W, e, Math.sign(e.x + e.w / 2 - x) || 1, shot, 'boom');
+      shootEnemy(W, e, Math.sign(e.x + e.w / 2 - x) || 1, shot, lethal && e.armored ? 'KO' : 'boom');
     }
     for (const q of W.projectiles) if (Math.hypot(q.x + q.w / 2 - x, q.y + q.h / 2 - y) < r) q.life = 0;
     for (const d of W.shotDoors) if (!d.open && d.tiles.some(([tx, ty]) => Math.hypot(tx * TS + 16 - x, ty * TS + 16 - y) < r + 16)) hitShotDoor(W, d, shot);
@@ -706,6 +709,27 @@
   function stepSpecial(W, b, dt) {
     b.life -= dt;
     const inHorde = () => W.horde && along(W.horde, b.x, b.y) < W.horde.f;
+    // Dynamite: thrown in an arc, it falls and settles wherever it lands (sliding to a stop,
+    // and riding along on whatever it's sitting on). When its 3-second fuse burns down it
+    // goes up, killing everything within 5 blocks (10 for a big stick): golems, carts, all
+    // of it. A boss takes it as one hit. It doesn't hurt you.
+    if (b.kind === 'dyn') {
+      b.vy = Math.min(MAXFALL, b.vy + G * .8 * dt);
+      const wall = c => isSolid(c) || c === '^';
+      const nx = b.x + b.vx * dt;
+      if (wall(tile(W, Math.floor((nx + Math.sign(b.vx) * 4) / TS), Math.floor(b.y / TS)))) b.vx *= -.3;
+      else b.x = nx;
+      const ny = b.y + b.vy * dt, foot = Math.floor((ny + 4) / TS), c = tile(W, Math.floor(b.x / TS), foot);
+      const plat = b.vy >= 0 && W.plats.find(pl => pl.state !== 'gone' && b.x > pl.x && b.x < pl.x + pl.w && b.y + 4 <= pl.y + 2 && ny + 4 >= pl.y);
+      if (plat) { b.y = plat.y - 4; b.vy = 0; b.x += (plat.dx || 0); b.vx *= Math.pow(.01, dt); }
+      else if (b.vy > 0 && Math.floor((b.y + 4) / TS) < foot + 1 && (wall(c) || c === '=' || c === '~' || c === '!')) { b.y = foot * TS - 4; b.vy = 0; b.vx *= Math.pow(.01, dt); }
+      else if (b.vy < 0 && wall(tile(W, Math.floor(b.x / TS), Math.floor((ny - 4) / TS)))) b.vy = 0;
+      else b.y = ny;
+      if (Math.random() < .5) W.particles.push({ x: b.x + 3, y: b.y - 8 * b.s, vx: (Math.random() - .5) * 60, vy: -40 - Math.random() * 60, life: .25, max: .25, c: Math.random() < .5 ? '#FFE066' : '#FF6B3D', size: 1.6, g: 200 });
+      if (b.y > W.h * TS + 40) { b.life = 0; return; }
+      if (b.life <= 0) explode(W, b.x, b.y, TS * DYN_R * b.s, true, b.id, true);
+      return;
+    }
     if (b.kind === 'rocket') {
       b.x += b.vx * dt;
       if (Math.random() < .6) W.particles.push({ x: b.x - Math.sign(b.vx) * 6, y: b.y, vx: -b.vx * .15, vy: (Math.random() - .5) * 30, life: .3, max: .3, c: LF.WARM[Math.floor(Math.random() * 3)], size: 2.5, g: 0 });
@@ -2461,8 +2485,8 @@
     p.cool -= dt; p.flash -= dt;
     if (p.hold > 0) {
       p.hold -= dt;
-      if (input.firePressed || input.rocketPressed || input.grenadePressed || input.killPressed) {
-        input.firePressed = input.rocketPressed = input.grenadePressed = input.killPressed = false;
+      if (input.firePressed || input.rocketPressed || input.grenadePressed || input.killPressed || input.dynPressed) {
+        input.firePressed = input.rocketPressed = input.grenadePressed = input.killPressed = input.dynPressed = false;
         if (!W.floaters.some(f => f.t === 'steady…')) W.floaters.push({ x: p.x + p.w / 2, y: p.y - 10, t: 'steady…', life: .8, c: '#D9D0F0' });
       }
     }
@@ -2494,8 +2518,8 @@
         W.floaters.push({ x: p.x + p.w / 2, y: p.y - 10, t: W.def.noAmmo ? 'no guns in a tower: stomp!' : `kill shot needs ${KILL_COST} ammo`, life: 1, c: '#D9D0F0' });
       }
     }
-    // X and Q work like E: tap for one, hold to keep firing while there's ammo for it.
-    for (const kind of ['rocket', 'grenade']) {
+    // X, Q and D work like E: tap for one, hold to keep firing while there's ammo for it.
+    for (const kind of ['rocket', 'grenade', 'dyn']) {
       const tapped = input[kind + 'Pressed'];
       if (!tapped && !input[kind]) continue;
       if (p.cool > 0) continue;
@@ -2511,8 +2535,9 @@
       p.ammo -= cost; p.cool = .4; p.flash = .1;
       const g = LF.gunPos(p);
       if (kind === 'rocket') W.bullets.push({ id: newShot(W), kind, x: g.x, y: g.y, vx: p.face * 430, vy: 0, life: 1.6, s });
+      else if (kind === 'dyn') W.bullets.push({ id: newShot(W), kind, x: g.x, y: g.y - 4, vx: p.face * 240 + p.vx * .3, vy: -380, life: FUSE, s });
       else W.bullets.push({ id: newShot(W, 3), kind, x: g.x, y: g.y - 4, vx: p.face * 270 + p.vx * .3, vy: -420, life: 2.2, bounces: 0, s });
-      p.vx -= p.face * 70;
+      if (kind !== 'dyn') p.vx -= p.face * 70;
       W.emit(kind === 'rocket' ? 'rocket' : 'lob');
     }
 
