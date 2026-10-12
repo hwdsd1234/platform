@@ -503,6 +503,7 @@
   }
 
   LF.kill = kill;
+  LF.timeLeft = W => W.def.deadline - (W.time - (W.clockFrom || 0));
   // Practice: set a checkpoint where you stand (Z), or take the latest one away (X).
   LF.setMark = W => {
     const p = W.player;
@@ -611,6 +612,16 @@
     if (W.endTimer > 0 && !W.cleared && (W.endTimer -= dt) <= 0) { W.cleared = true; W.clearedBy = 'boss'; W.emit('clear'); }
     // A timed level (def.timeLimit, in seconds) ends when the time is up.
     if (playing && !W.cleared && W.def.timeLimit && W.time >= W.def.timeLimit) { W.cleared = true; W.clearedBy = 'time'; W.emit('clear'); }
+    // The clock (def.deadline, in seconds): with 100 seconds left it's 'hurry' (once), and
+    // when it runs out you die. (If you come back at a checkpoint, the clock starts again.)
+    if (playing && !W.cleared && !p.dead && W.def.deadline) {
+      const left = LF.timeLeft(W);
+      if (left <= 100 && !W.hurried) { W.hurried = true; W.emit('hurry'); }
+      if (left <= 0) {
+        W.floaters.push({ x: p.x + p.w / 2, y: p.y - 18, t: 'time’s up!', life: 1.6, c: '#FF6B3D' });
+        W.emit('timeup'); kill(W); W.clockFrom = W.time; W.hurried = false;
+      }
+    }
     if (playing && !W.cleared) {
       W.time += dt;
       if (p.dead) { if (!W.lost) { W.deadTimer -= dt; if (W.deadTimer <= 0) respawn(W); } }

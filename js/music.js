@@ -247,14 +247,14 @@
   }
 
   // ---- the scheduler ----
-  let track = null, want = 'map', step = 0, nextT = 0, timer = null, on = true, muted = false, duck = 1;
+  let track = null, want = 'map', step = 0, nextT = 0, timer = null, on = true, muted = false, duck = 1, fast = false, quietTill = 0;
   const level = () => (on && !muted ? .5 * duck : 0);
   function tick() {
     if (!ac || !track || ac.state !== 'running') return;
-    const spb = 60 / track.bpm / 4;
+    const spb = 60 / track.bpm / 4 / (fast ? 1.3 : 1);
     if (nextT < ac.currentTime) nextT = ac.currentTime + .05;
     while (nextT < ac.currentTime + .15) {
-      if (level() > 0) playStep(track, step, nextT);
+      if (level() > 0 && nextT >= quietTill) playStep(track, step, nextT);
       nextT += spb; step = (step + 1) % (track.bars.length * 16);
     }
   }
@@ -279,6 +279,22 @@
   M.setMuted = v => { muted = v; setLevel(); };
   M.duck = v => { duck = v ? .35 : 1; setLevel(); };
   M.isOn = () => on;
+  // Hurry up (the level clock's down to 100 seconds): a quick rising tune, three runs each a
+  // step higher than the last, while the track holds its breath; then the track plays on
+  // faster until hurry(false).
+  M.hurry = v => {
+    if (!v) { fast = false; quietTill = 0; return; }
+    if (fast) return;
+    fast = true;
+    if (!ac) return;
+    const t0 = ac.currentTime + .05, n = .075;
+    [0, 2, 4].forEach((up, k) => [72, 76, 79, 84].forEach((m, j) => {
+      const t = t0 + k * .42 + j * n;
+      voice(hz(m + up), t, n * 1.6, 'square', .05, .004); voice(hz(m + up - 12), t, n * 1.6, 'triangle', .05, .004);
+    }));
+    [0, 2, 4].forEach((up, k) => kick(t0 + k * .42, .2));
+    quietTill = t0 + 3 * .42 + .25;
+  };
   // (For checking it's playing: the track, the step it's on, the volume.)
   M.status = () => ({ track: want, step, level: level(), running: !!(ac && ac.state === 'running') });
 })();
