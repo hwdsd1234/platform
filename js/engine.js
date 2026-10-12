@@ -85,12 +85,14 @@
     9: { name: 'The Powder King', boss: true, w: 48, h: 56, stomp: true, drop: 10, hits: 18, note: 'boss: lobs bombs and sends TNT carts' },
   };
   // A fruit's power on the player: apple adds a shield layer (up to 2), orange the jump
-  // boost, banana the double jump, watermelon speed, and so on (POWERS). False if it would
-  // add nothing.
+  // boost, banana the double jump, watermelon speed, and so on (POWERS). Only one of those
+  // works at a time: a new one takes the place of the last. False if it would add nothing.
   LF.applyFruit = (p, type) => {
     if (type === 'a') { if (p.shield >= 2) return false; p.shield++; return true; }
     const k = POWERS[type];
     if (!k || p[k]) return false;
+    if (p.dbl) p.airJumps = Math.max(0, p.airJumps - 1);
+    for (const f of FLAGS) p[f] = 0;
     p[k] = 1; if (k === 'dbl') p.airJumps = Math.max(p.airJumps, 1);
     return true;
   };
@@ -314,7 +316,9 @@
     // Powers brought from the last level (or the inventory): def.powers = { shield, boost, dbl }.
     if (def.powers) {
       const pw = def.powers;
-      W.player.shield = Math.min(2, pw.shield || 0); Object.assign(W.player, LF.powerFlags(pw));
+      W.player.shield = Math.min(2, pw.shield || 0);
+      // (One power at a time: an old save carrying more keeps just the first.)
+      const one = FLAGS.find(k => pw[k]); if (one) W.player[one] = 1;
     }
     // The Sky Roads are pure platforming: up there the wind holds every fruit power but the
     // apple's shield, and gives them back when you leave (p.held).
