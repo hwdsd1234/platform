@@ -44,7 +44,16 @@
     o: { name: 'Orange', power: 'Jump boost', color: '#FF9A2E', note: 'higher jumps, until you die' },
     b: { name: 'Banana', power: 'Double jump', color: '#FFE066', note: 'jump again in mid-air, until you die' },
     m: { name: 'Watermelon', power: 'Speed', color: '#4CAF50', note: 'run faster, until you die' },
+    p: { name: 'Pear', power: 'Big bounce', color: '#C5D94A', note: 'stomps bounce you half as high again, until you die' },
+    s: { name: 'Strawberry', power: 'Wall grip', color: '#F0506E', note: 'slide down walls at a third of the speed, until you die' },
+    'ç': { name: 'Cherry', power: 'Ammo magnet', color: '#B3123A', note: 'ammo crates within 4 blocks fly to you, until you die' },
+    'ƀ': { name: 'Blueberry', power: 'Night eyes', color: '#5B6EE1', note: 'your light reaches twice as far, until you die' },
   };
+  // Every fruit but the apple gives a power that's on or off: the player's flag for each.
+  const POWERS = LF.POWERS = { o: 'boost', b: 'dbl', m: 'fast', p: 'bounce', s: 'grip', 'ç': 'magnet', 'ƀ': 'glow' };
+  const FLAGS = Object.values(POWERS);
+  LF.powerFlags = p => Object.fromEntries(FLAGS.map(k => [k, p[k] ? 1 : 0]));
+  LF.hasPowers = p => FLAGS.some(k => p[k]);
 
   // drop: ammo an enemy leaves behind when you kill it — the harder it is to kill, the more.
   LF.ENEMIES = {
@@ -74,13 +83,14 @@
     9: { name: 'The Powder King', boss: true, w: 48, h: 56, stomp: true, drop: 10, hits: 18, note: 'boss: lobs bombs and sends TNT carts' },
   };
   // A fruit's power on the player: apple adds a shield layer (up to 2), orange the jump
-  // boost, banana the double jump, watermelon speed. False if it would add nothing.
+  // boost, banana the double jump, watermelon speed, and so on (POWERS). False if it would
+  // add nothing.
   LF.applyFruit = (p, type) => {
     if (type === 'a') { if (p.shield >= 2) return false; p.shield++; return true; }
-    if (type === 'o') { if (p.boost) return false; p.boost = 1; return true; }
-    if (type === 'b') { if (p.dbl) return false; p.dbl = 1; p.airJumps = Math.max(p.airJumps, 1); return true; }
-    if (type === 'm') { if (p.fast) return false; p.fast = 1; return true; }
-    return false;
+    const k = POWERS[type];
+    if (!k || p[k]) return false;
+    p[k] = 1; if (k === 'dbl') p.airJumps = Math.max(p.airJumps, 1);
+    return true;
   };
 
   // Giant bosses: one for every enemy and hazard without a boss of its own. They only come
@@ -302,14 +312,14 @@
     // Powers brought from the last level (or the inventory): def.powers = { shield, boost, dbl }.
     if (def.powers) {
       const pw = def.powers;
-      W.player.shield = Math.min(2, pw.shield || 0); W.player.boost = pw.boost ? 1 : 0; W.player.dbl = pw.dbl ? 1 : 0; W.player.fast = pw.fast ? 1 : 0;
+      W.player.shield = Math.min(2, pw.shield || 0); Object.assign(W.player, LF.powerFlags(pw));
     }
-    // The Sky Roads are pure platforming: up there the wind holds your jump boost, double
-    // jump and speed (only apples work), and gives them back when you leave (p.held).
+    // The Sky Roads are pure platforming: up there the wind holds every fruit power but the
+    // apple's shield, and gives them back when you leave (p.held).
     if (def.sky) {
       const p = W.player;
-      if (p.boost || p.dbl || p.fast) {
-        p.held = { boost: p.boost, dbl: p.dbl, fast: p.fast }; p.boost = p.dbl = p.fast = 0;
+      if (LF.hasPowers(p)) {
+        p.held = LF.powerFlags(p); for (const k of FLAGS) p[k] = 0;
         W.floaters.push({ x: p.x + p.w / 2, y: p.y - 18, t: 'the wind holds your fruit here (apples work)', life: 2.4, c: '#DCE8FF' });
       }
     }
@@ -320,7 +330,7 @@
       for (const k of def.resume.lit) if (W.lanterns[k]) W.lanterns[k].lit = true;
       W.lanternLit = true; W.checkpoint = { ...def.resume.cp };
       const { ammo } = W.player;
-      Object.assign(W.player, makePlayer(W.checkpoint), { ammo, shield: W.player.shield, boost: W.player.boost, dbl: W.player.dbl, fast: W.player.fast, held: W.player.held });
+      Object.assign(W.player, makePlayer(W.checkpoint), { ammo, shield: W.player.shield, ...LF.powerFlags(W.player), held: W.player.held });
       if (W.door && W.lanterns.every(l => l.lit) && !W.enemies.some(isBoss)) W.door.open = true;
     }
     // def.noSpawnInv (Hardcore): no invincible second at the start or after respawning.
@@ -2431,7 +2441,7 @@
       if (Math.random() < .05) W.particles.push({ x: p.x + p.w / 2 + p.face * 4, y: p.y + 4, vx: 0, vy: -40, life: .6, max: .6, c: '#9FD8FF', size: 2, g: -60 });
     } else p.vy = Math.min(MAXFALL * Math.sqrt(T.gravity), p.vy + grav * dt * (p.vy > 0 ? 1.15 : 1));
     if (p.sliding) {
-      p.vy = Math.min(p.vy, WALL_SLIDE * T.wallSlide);
+      p.vy = Math.min(p.vy, WALL_SLIDE * T.wallSlide / (p.grip ? 3 : 1));
       if (Math.random() < .12) W.particles.push({ x: p.wall > 0 ? p.x + p.w : p.x, y: p.y + p.h - 4, vx: -p.wall * 20, vy: -30, life: .35, max: .35, c: '#9A8FBF', size: 2, g: 200 });
     }
     if (p.boost > 0 && Math.random() < .08) W.particles.push({ x: p.x + Math.random() * p.w, y: p.y + p.h, vx: 0, vy: -40, life: .4, max: .4, c: '#FFB547', size: 2, g: -40 });
@@ -2614,7 +2624,7 @@
         continue;
       }
       if (spec.stomp && p.vy > 0 && p.y + p.h - e.y < 14) {
-        e.alive = false; dropAmmo(W, e); p.vy = (input.jump ? -620 : -460) * Math.sqrt(T.gravity); p.jumping = input.jump;
+        e.alive = false; dropAmmo(W, e); p.vy = (input.jump ? -620 : -460) * (p.bounce ? 1.25 : 1) * Math.sqrt(T.gravity); p.jumping = input.jump;
         burst(W, e.x + e.w / 2, e.y + e.h / 2, 14, ['#FF6B3D', '#463C6B'], 160, 500);
         W.floaters.push({ x: e.x + e.w / 2, y: e.y - 6, t: 'stomp', life: .8, c: '#FF6B3D' });
         W.shake = .12; W.freeze = .05; ring(W, e.x + e.w / 2, e.y + e.h / 2, 28, '255,107,61'); W.emit('stomp', { type: e.type, kill: true });
@@ -2626,9 +2636,9 @@
     // apple shield.
     if (W.def.arenaX && !W.stripped && p.x >= W.def.arenaX * TS) {
       W.stripped = true;
-      const had = [p.boost && 'o', p.dbl && 'b', p.fast && 'm'].filter(Boolean);
+      const had = Object.keys(POWERS).filter(t => p[POWERS[t]]);
       if (had.length) {
-        p.boost = p.dbl = p.fast = 0; p.airJumps = Math.min(p.airJumps, playerTune(W.def).airJumps);
+        for (const k of FLAGS) p[k] = 0; p.airJumps = Math.min(p.airJumps, playerTune(W.def).airJumps);
         for (const t of had) for (let k = 0; k < 10; k++) {
           const a = Math.random() * TAU, sp = 120 + Math.random() * 160;
           W.particles.push({ x: cx, y: cy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 120, life: .9, max: .9, c: LF.FRUITS[t].color, size: 3, g: 500 });
@@ -2671,6 +2681,12 @@
     }
 
     for (const a of W.ammo) {
+      // (With the cherry's magnet, crates nearby come flying to you.)
+      if (!a.taken && p.magnet && Math.hypot(cx - a.x, cy - a.y) < 4 * TS && !(Math.abs(cx - a.x) <= 20 && Math.abs(cy - a.y) <= 22)) {
+        a.taken = true; W.ammoFly.push({ n: a.n, x: a.x, y: a.y, vx: 0, vy: -120, t: .2 });
+        burst(W, a.x, a.y, 10, ['#FFE2A8', '#B3123A'], 110, 100, 2); W.emit('ammo');
+        continue;
+      }
       if (a.taken || Math.abs(cx - a.x) > 20 || Math.abs(cy - a.y) > 22) continue;
       a.taken = true; p.ammo += a.n;
       burst(W, a.x, a.y, a.huge ? 40 : a.big ? 24 : 12, ['#FFE2A8', '#FFB547'], a.huge ? 180 : 130, 150, 2.5);

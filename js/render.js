@@ -882,6 +882,26 @@
         ctx.fillStyle = '#A5D6A7'; ctx.beginPath(); ctx.arc(0, -2, 7, 0, Math.PI); ctx.fill();
         ctx.fillStyle = '#E5484D'; ctx.beginPath(); ctx.arc(0, -2, 6, 0, Math.PI); ctx.fill();
         ctx.fillStyle = '#211C3F'; ctx.fillRect(-3, 0, 1.4, 2); ctx.fillRect(0, 1.5, 1.4, 2); ctx.fillRect(3, 0, 1.4, 2);
+      } else if (f.type === 'p') {
+        // A pear: a small top on a round bottom, with a stalk.
+        ctx.fillStyle = '#C5D94A'; ctx.beginPath(); ctx.arc(0, 3, 6, 0, TAU); ctx.arc(0, -3, 3.8, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#E4F08A'; ctx.fillRect(-3.5, 0, 2.2, 2.5);
+        ctx.strokeStyle = '#6B452C'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(1, -10); ctx.stroke();
+      } else if (f.type === 's') {
+        // A strawberry: a red heart point down, pale seeds, a green crown.
+        ctx.fillStyle = '#F0506E'; ctx.beginPath(); ctx.moveTo(-6.5, -2); ctx.quadraticCurveTo(-6, 7, 0, 8); ctx.quadraticCurveTo(6, 7, 6.5, -2); ctx.quadraticCurveTo(0, -5, -6.5, -2); ctx.fill();
+        ctx.fillStyle = '#FFE2A8'; for (const [sx, sy] of [[-3, 0], [1, 1], [3.5, -1], [-1, 4], [2, 5]]) ctx.fillRect(sx, sy, 1.2, 1.2);
+        ctx.fillStyle = '#5FBF5A'; ctx.beginPath(); ctx.moveTo(-5, -3); ctx.lineTo(0, -7); ctx.lineTo(5, -3); ctx.lineTo(0, -4); ctx.fill();
+      } else if (f.type === 'ç') {
+        // Two cherries on a forked stalk.
+        ctx.strokeStyle = '#4E7A2E'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(-4, 2); ctx.quadraticCurveTo(-2, -6, 2, -9); ctx.moveTo(4, 3); ctx.quadraticCurveTo(3, -4, 2, -9); ctx.stroke();
+        ctx.fillStyle = '#B3123A'; ctx.beginPath(); ctx.arc(-4, 4, 4, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.arc(4, 5, 4, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#FF6B8A'; ctx.fillRect(-6, 2, 1.6, 1.6); ctx.fillRect(2, 3, 1.6, 1.6);
+      } else if (f.type === 'ƀ') {
+        // A little cluster of blueberries.
+        ctx.fillStyle = '#5B6EE1'; for (const [bx, by] of [[-3.5, 3], [3.5, 3], [0, -2.5]]) { ctx.beginPath(); ctx.arc(bx, by, 4, 0, TAU); ctx.fill(); }
+        ctx.fillStyle = '#A9B8FF'; ctx.fillRect(-5, 1, 1.5, 1.5); ctx.fillRect(2, 1, 1.5, 1.5); ctx.fillRect(-1.5, -4.5, 1.5, 1.5);
+        ctx.fillStyle = '#2A2F6B'; ctx.fillRect(-.6, -6, 1.2, 1.2);
       } else {
         ctx.strokeStyle = '#FFE066'; ctx.lineWidth = 4.5; ctx.lineCap = 'round';
         ctx.beginPath(); ctx.arc(1, -7, 10, Math.PI * .6, Math.PI * 1.15); ctx.stroke();
@@ -1092,7 +1112,7 @@
 
     function lights(W) {
       const out = [], p = W.player;
-      if (!p.dead) { const f = LF.flamePos(p); out.push({ x: f.x, y: f.y, r: 150 * flick(0, .03) }); }
+      if (!p.dead) { const f = LF.flamePos(p); out.push({ x: f.x, y: f.y, r: 150 * (p.glow ? 2 : 1) * flick(0, .03) }); }
       for (const f of W.fruits) if (!f.taken) out.push({ x: f.x, y: f.y, r: 44 });
       for (let k = 0; k < W.lavaTop.length; k += 3) { const l = W.lavaTop[k]; out.push({ x: l.tx * TS + 16, y: l.ty * TS + 10, r: 95 }); }
       for (const a of W.ammo) if (!a.taken) out.push({ x: a.x, y: a.y, r: a.huge ? 70 : 40 });

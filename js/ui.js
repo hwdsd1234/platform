@@ -148,7 +148,7 @@
   // it was underwater) and any starting ammo, then turn the water and anything swimming in it
   // into lava, unless the level needs swimming.
   // Shot doors (v, w, z) go too: with no ammo they could never open.
-  const HARDCORE_GONE = new Set(['L', 'q', 'Q', '$', 'a', 'o', 'b', 'm', 'v', 'w', 'z']);
+  const HARDCORE_GONE = new Set(['L', 'q', 'Q', '$', ...Object.keys(LF.FRUITS), 'v', 'w', 'z']);
   function hardcoreDef(def) {
     const rows = LF.normalize(def.map).map(r => r.split(''));
     rows.forEach((r, y) => r.forEach((c, x) => { if (HARDCORE_GONE.has(c)) r[x] = rows[y - 1]?.[x] === '~' ? '~' : '.'; }));
@@ -621,7 +621,7 @@
   // The Fruit Grove: 10 seconds on a little hillside of ledges strewn with fruit (different
   // for every house). Whatever you pick goes in your inventory.
   function fruitGrove(i) {
-    const R = LF.rng(4242 + i * 31), kinds = 'aobm';
+    const R = LF.rng(4242 + i * 31), kinds = [...Object.keys(LF.FRUITS)];
     return {
       name: 'Fruit Grove', dark: .3, timeLimit: 10, noRegrow: true,
       signs: [{ x: 2, y: 9.4, t: '10 seconds: grab all the fruit you can!' }],
@@ -630,10 +630,10 @@
         for (let k = 0; k < 6; k++) {
           const x = 5 + k * 6 + Math.floor(R() * 3), y = 7 + Math.floor(R() * 3), len = 3 + Math.floor(R() * 2);
           r(x, y, x + len, y, R() < .5 ? '=' : '#');
-          s(x + 1 + Math.floor(R() * (len - 1)), y - 1, kinds[Math.floor(R() * 4)]);
-          if (R() < .6) s(x + Math.floor(len / 2), y - 4, kinds[Math.floor(R() * 4)]);
+          s(x + 1 + Math.floor(R() * (len - 1)), y - 1, kinds[Math.floor(R() * kinds.length)]);
+          if (R() < .6) s(x + Math.floor(len / 2), y - 4, kinds[Math.floor(R() * kinds.length)]);
         }
-        for (let x = 6; x < 42; x += 5) if (R() < .7) s(x, 11, kinds[Math.floor(R() * 4)]);
+        for (let x = 6; x < 42; x += 5) if (R() < .7) s(x, 11, kinds[Math.floor(R() * kinds.length)]);
         s(20, 11, 'B'); s(34, 11, 'B');
       }),
     };
@@ -733,13 +733,13 @@
   // Fruit you've gathered (in Fruit Groves), up to INV_MAX of each. Tab opens it, on the map
   // only (not in a level): using a fruit gets you ready for your next level. Powers last until you
   // die, and carry on from level to level (carry: { shield, boost, dbl }). Not in Hardcore.
-  const INV_MAX = 999, FRUIT_ICON = { a: '🍎', o: '🍊', b: '🍌', m: '🍉' };
-  let inventory = { a: 0, o: 0, b: 0, m: 0, ...store.get('inventory', {}) }, carry = store.get('powers', null), invFrom = null;
+  const INV_MAX = 999, FRUIT_ICON = { a: '🍎', o: '🍊', b: '🍌', m: '🍉', p: '🍐', s: '🍓', 'ç': '🍒', 'ƀ': '🫐' };
+  let inventory = { ...Object.fromEntries(Object.keys(LF.FRUITS).map(t => [t, 0])), ...store.get('inventory', {}) }, carry = store.get('powers', null), invFrom = null;
   function saveCarry(p) {
-    carry = p.shield || p.boost || p.dbl || p.fast ? { shield: p.shield, boost: !!p.boost, dbl: !!p.dbl, fast: !!p.fast } : null;
+    carry = p.shield || LF.hasPowers(p) ? { shield: p.shield, ...LF.powerFlags(p) } : null;
     store.set('powers', carry);
   }
-  const powersText = p => [p.shield ? `🍎 shield${p.shield > 1 ? ' ×2' : ''}` : '', p.boost ? '🍊 jump boost' : '', p.dbl ? '🍌 double jump' : '', p.fast ? '🍉 speed' : ''].filter(Boolean).join(' · ') || 'none';
+  const powersText = p => [p.shield ? `🍎 shield${p.shield > 1 ? ' ×2' : ''}` : '', ...Object.entries(LF.POWERS).map(([t, k]) => p[k] ? `${FRUIT_ICON[t]} ${LF.FRUITS[t].power.toLowerCase()}` : '')].filter(Boolean).join(' · ') || 'none';
   function showInventory() {
     if (screen === 'play') return flash('Your items are on the map, not in a level');
     if (screen !== 'map' && screen !== 'inv') return;
@@ -767,7 +767,7 @@
   }
   function useItem(t) {
     if (hardcore || !(inventory[t] > 0)) return;
-    const target = { shield: 0, boost: 0, dbl: 0, fast: 0, airJumps: 0, ...(carry || {}) };
+    const target = { shield: 0, airJumps: 0, ...(carry || {}) };
     if (!LF.applyFruit(target, t)) return flash('You already have that power');
     inventory[t]--; store.set('inventory', inventory);
     saveCarry(target);
@@ -789,7 +789,7 @@
         <li><kbd>E</kbd> fire: tap for one shot, hold for autofire; shots splash 1 block · <kbd>X</kbd> explosive round (2 ammo, 3-block blast) · <kbd>A</kbd> kill shot (3 ammo): kills whatever it hits in one go, golems and carts too (a boss takes it as one hit) · every shot counts as one hit (a grenade one per blast, up to three), so golems take 3 and TNT carts 5 (stomps count too); a TNT blast kills everything near it but you · <kbd>Q</kbd> bouncing grenade (3 ammo) · hold any of them to keep firing · hold <kbd>Shift</kbd> for a big shot: 2× size and blast, 2× ammo · ammo crates are hidden through each level; big crates hold 10, huge ones 25; enemies drop 1–5 ammo when killed, more for tougher ones (TNT carts drop none)</li>
         <li>Keys open the locked-door blocks you touch, one block at a time; you keep the key</li>
         <li>Water is safe: you sink slowly and can jump as often as you like</li>
-        <li>Fruit: 🍎 shield (a second apple doubles it) · 🍊 jump boost · 🍌 double jump · 🍉 speed · powers last until you die; powers and leftover ammo carry on to the next level · in the Sky Roads only apples work: the wind holds your other powers and gives them back when you leave</li>
+        <li>Fruit: 🍎 shield (a second apple doubles it) · 🍊 jump boost · 🍌 double jump · 🍉 speed · 🍐 big bounce off stomps · 🍓 wall grip · 🍒 ammo magnet · 🫐 night eyes (twice the light) · powers last until you die; powers and leftover ammo carry on to the next level · in the Sky Roads only apples work: the wind holds your other powers and gives them back when you leave</li>
         <li>Stepping into a tower's boss arena, you lose every fruit power but your apple shield, and the only fruit in there is apples</li>
         <li>Towers have no guns: the boss falls to 3 stomps, but each stomp throws it into a 10-second fury: it glows red and rampages round the arena, leaping (with a slam where it lands) or darting about dropping bombs, and throwing rings of embers, rocks from the ceiling and fire round your feet; then it's worn out and stands dazed for a moment: stomp it then · its last fury (one stomp left) adds its own signature move · the Last Dark takes 5 stomps and you can't stomp it again until it calms down · your ammo waits for you outside</li>
         <li>Neo: when a slab sits right over your ledge, flush with its edge, run off the edge, jump at once and steer straight back in to land on top (miss, and you just drop back)</li>
@@ -1229,7 +1229,7 @@
     const lit = W.lanterns.filter(l => l.lit).length, open = W.door && W.door.open;
     const p = W.player;
     const boss = W.enemies.find(e => e.alive && e.awake && LF.isBoss(e));
-    const key = `${lit}|${Math.floor(W.time * 10)}|${W.falls}|${open}|${p.shield}|${Math.ceil(p.boost)}|${Math.ceil(p.dbl)}|${p.fast}|${p.ammo}|${JSON.stringify(p.keys)}|${boss ? boss.type + boss.hp : ''}`;
+    const key = `${lit}|${Math.floor(W.time * 10)}|${W.falls}|${open}|${p.shield}|${Object.values(LF.powerFlags(p)).join('')}|${p.ammo}|${JSON.stringify(p.keys)}|${boss ? boss.type + boss.hp : ''}`;
     if (key === hudCache) return;
     hudCache = key;
     // With no lanterns (a boss arena, or Hardcore) the door is all there is to show.
@@ -1249,6 +1249,7 @@
     if (p.boost > 0) powers.push('<i class="pw-o">Boost</i>');
     if (p.dbl > 0) powers.push('<i class="pw-b">Double</i>');
     if (p.fast > 0) powers.push('<i class="pw-m">Speed</i>');
+    for (const [t, k, label] of [['p', 'bounce', 'Bounce'], ['s', 'grip', 'Grip'], ['ç', 'magnet', 'Magnet'], ['ƀ', 'glow', 'Eyes']]) if (p[k]) powers.push(`<i style="color:${LF.FRUITS[t].color}">${label}</i>`);
     $('hud-powers-wrap').hidden = !powers.length;
     $('hud-powers').innerHTML = powers.join('');
     $('boss-bar').hidden = !boss;
