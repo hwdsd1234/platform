@@ -503,6 +503,7 @@
   }
 
   LF.kill = kill;
+  const HURRY = LF.HURRY = 50;
   LF.timeLeft = W => W.def.deadline - (W.time - (W.clockFrom || 0));
   // Practice: set a checkpoint where you stand (Z), or take the latest one away (X).
   LF.setMark = W => {
@@ -612,11 +613,18 @@
     if (W.endTimer > 0 && !W.cleared && (W.endTimer -= dt) <= 0) { W.cleared = true; W.clearedBy = 'boss'; W.emit('clear'); }
     // A timed level (def.timeLimit, in seconds) ends when the time is up.
     if (playing && !W.cleared && W.def.timeLimit && W.time >= W.def.timeLimit) { W.cleared = true; W.clearedBy = 'time'; W.emit('clear'); }
-    // The clock (def.deadline, in seconds): with 100 seconds left it's 'hurry' (once), and
+    // The clock (def.deadline, in seconds): with HURRY seconds left it's 'hurry' (once), and
     // when it runs out you die. (If you come back at a checkpoint, the clock starts again.)
+    // Stepping into a boss arena adds def.bossTime seconds (and calms the hurry, if it's
+    // back over HURRY).
     if (playing && !W.cleared && !p.dead && W.def.deadline) {
+      if (W.def.bossTime && !W.bossClock && W.def.arenaX && p.x >= W.def.arenaX * TS) {
+        W.bossClock = true; W.clockFrom = (W.clockFrom || 0) + W.def.bossTime;
+        W.floaters.push({ x: p.x + p.w / 2, y: p.y - 30, t: `+${W.def.bossTime} seconds`, life: 1.6, c: '#9FD8FF' });
+        if (W.hurried && LF.timeLeft(W) > HURRY) { W.hurried = false; W.emit('calm'); }
+      }
       const left = LF.timeLeft(W);
-      if (left <= 100 && !W.hurried) { W.hurried = true; W.emit('hurry'); }
+      if (left <= HURRY && !W.hurried) { W.hurried = true; W.emit('hurry'); }
       if (left <= 0) {
         W.floaters.push({ x: p.x + p.w / 2, y: p.y - 18, t: 'time’s up!', life: 1.6, c: '#FF6B3D' });
         W.emit('timeup'); kill(W); W.clockFrom = W.time; W.hurried = false;

@@ -788,7 +788,7 @@
       <ul class="keys">
         <li>Map: <kbd>←</kbd><kbd>↑</kbd><kbd>→</kbd><kbd>↓</kbd> walk along the paths (the little arrows show the ways on) · <kbd>Enter</kbd> play · crossroads open more than one level</li>
         <li><kbd>←</kbd><kbd>→</kbd> walk · <kbd>Space</kbd> jump (hold for height) · <kbd>↓</kbd> drop through planks</li>
-        <li>Every level has a 200-second clock: at 100 seconds left a hurry-up tune plays and the music speeds up; when it runs out you die (Fruit Groves have their own 10 seconds)</li>
+        <li>Every level has a 100-second clock (a tower’s boss arena adds 100 more when you reach it, the castle’s 200): at 50 seconds left a hurry-up tune plays and the music speeds up; when it runs out you die (Fruit Groves have their own 10 seconds)</li>
         <li>Push into a wall to slide down it · jump off walls to climb</li>
         <li><kbd>E</kbd> fire: tap for one shot, hold for autofire; shots splash 1 block · <kbd>X</kbd> explosive round (2 ammo, 3-block blast) · <kbd>A</kbd> kill shot (3 ammo): kills whatever it hits in one go, golems and carts too (a boss takes it as one hit) · every shot counts as one hit (a grenade one per blast, up to three), so golems take 3 and TNT carts 5 (stomps count too); a TNT blast kills everything near it but you · <kbd>Q</kbd> bouncing grenade (3 ammo) · <kbd>D</kbd> dynamite (4 ammo): thrown, it falls and sits where it lands, and after a 3-second fuse kills everything within 5 blocks, golems and carts too (a boss takes it as one hit; it never hurts you) · <kbd>Shift</kbd>+<kbd>D</kbd> big dynamite (8 ammo, 10 blocks) · hold any of them to keep firing · hold <kbd>Shift</kbd> for a big shot: 2× size and blast, 2× ammo · ammo crates are hidden through each level; big crates hold 10, huge ones 25; enemies drop 1–5 ammo when killed, more for tougher ones (TNT carts drop none)</li>
         <li>Keys open the locked-door blocks you touch, one block at a time; you keep the key</li>
@@ -836,7 +836,7 @@
   }
   const chapterIndex = i => { const names = [...new Set(LF.LEVELS.map(l => l.chapter))]; return names.indexOf(LF.LEVELS[i].chapter); };
 
-  const LEVEL_CLOCK = 200;
+  const LEVEL_CLOCK = 100;
   function play(def, ctx) {
     playDef = def; playCtx = ctx;
     // (While you're in a story level, the save says so: see leftMidLevel.)
@@ -856,9 +856,9 @@
       if (!mw || mw.index !== ctx.index) store.set('midway', null);
     }
     if (ctx.kind === 'practice') withPowers = { ...withPowers, carryAmmo: 40 };
-    // Every level but a timed one (a Fruit Grove) has a 200-second clock; not in practice or
-    // when testing in the editor.
-    if (!def.timeLimit && ctx.kind !== 'practice' && ctx.kind !== 'test') withPowers = { ...withPowers, deadline: LEVEL_CLOCK };
+    // Every level but a timed one (a Fruit Grove) has a 100-second clock, and a tower's boss
+    // arena adds 100 more (the castle's, 200); not in practice or when testing in the editor.
+    if (!def.timeLimit && ctx.kind !== 'practice' && ctx.kind !== 'test') withPowers = { ...withPowers, deadline: LEVEL_CLOCK, bossTime: def.arenaX ? (def.finalFight ? 200 : 100) : 0 };
     if (LF.music) LF.music.hurry(false);
     W = LF.createWorld(hardcore && ctx.kind !== 'test' ? hardcoreDef(withPowers) : withPowers);
     for (const k in input) input[k] = false;
@@ -1252,7 +1252,7 @@
     const clock = W.def.deadline ? Math.max(0, Math.ceil(LF.timeLeft(W))) : null;
     $('hud-time').textContent = clock != null ? clock : fmt(W.def.timeLimit ? Math.max(0, W.def.timeLimit - W.time) : W.time);
     $('hud-time').previousElementSibling.textContent = W.def.timeLimit || clock != null ? 'Left' : 'Time';
-    $('hud-time').style.color = clock != null && clock <= 100 ? '#FF6B3D' : '';
+    $('hud-time').style.color = clock != null && clock <= LF.HURRY ? '#FF6B3D' : '';
     $('hud-falls').textContent = W.falls;
     $('hud-ammo').textContent = W.def.noAmmo ? 'stomp!' : p.ammo;
     const held = Object.keys(p.keys);
@@ -1293,7 +1293,8 @@
         if (ev.type === 'warp') LF.followCamera(W, cam, 0, true);
         if (ev.type === 'lost') { lostTimer = .9; saveMidway(); }
         // Dying in the story loses your fruit powers and all the ammo you were carrying.
-        if (ev.type === 'hurry') { flash('Hurry up! 100 seconds left'); if (LF.music) LF.music.hurry(true); }
+        if (ev.type === 'hurry') { flash(`Hurry up! ${LF.HURRY} seconds left`); if (LF.music) LF.music.hurry(true); }
+        if (ev.type === 'calm' && LF.music) LF.music.hurry(false);
         if (ev.type === 'timeup' && LF.music) LF.music.hurry(false);
         if (ev.type === 'die' && playCtx.kind === 'story') { carry = null; store.set('powers', null); store.set('ammo', 0); store.set('inLevel', null); }
       }
