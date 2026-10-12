@@ -47,7 +47,7 @@
   }
   // Boss fights are built differently, after the castle-boss music of the Mario games: one
   // short hook, played again and carried round the chords so it sticks (and a third higher
-  // the second time round), an answer, then a cadence with the band's "bah! bah!"; under it
+  // the second time round), an answer, then a cadence with two big chord hits; under it
   // a bass pumping octaves that creeps up by semitones into the next chord, brass stabs on
   // the off-beats, and a tom fill to bring it round again. Hooks are [step, degree above the
   // chord's root] (16 steps a bar); each boss nudges a note or two of its own.
@@ -90,7 +90,7 @@
       return {
         lead, len, bass, chord: [0, 2, 4].map(d => pitch(c + d)),
         stab: k % 4 === 3 ? [] : k % 2 ? [6, 14] : [3, 6],
-        bah: k % 4 === 3 ? [8, 10] : [],
+        hit: k % 4 === 3 ? [8, 10] : [],
         toms: k === 7, fill: k === 3,
       };
     });
@@ -155,15 +155,6 @@
     else { g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur); }
     s.connect(f).connect(g).connect(out); s.start(t); s.stop(t + dur + .02);
   }
-  // The band's "bah!": a chord of buzzy voices through a filter that opens like a mouth.
-  function bah(notes, t, dur, v) {
-    const f = ac.createBiquadFilter(), g = ac.createGain();
-    f.type = 'bandpass'; f.Q.value = 2.5;
-    f.frequency.setValueAtTime(320, t); f.frequency.exponentialRampToValueAtTime(1100, t + .05);
-    g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(v, t + .015); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
-    f.connect(g).connect(out);
-    for (const n of notes) { const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(hz(n), t); o.connect(f); o.start(t); o.stop(t + dur + .05); }
-  }
   function tom(t, f, v) {
     const o = ac.createOscillator(), g = ac.createGain();
     o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f * .6, t + .16);
@@ -184,13 +175,13 @@
     }
     if (tr.feel === 'fight') {
       // A fight: a brassy lead doubled an octave down, the pumping bass, off-beat stabs and
-      // "bah"s; hats on every step, kicks driving, snares on the backbeat (a fill at the end
+      // chord hits; hats on every step, kicks driving, snares on the backbeat (a fill at the end
       // of the first half, toms at the end of the second) and a crash at the top.
       const bar = Math.floor(i / 16);
       if (b.lead[s]) { const d = spb * b.len[s] * .85 + .03; voice(hz(b.lead[s]), t, d, 'square', .028, .005); voice(hz(b.lead[s] - 12), t, d, 'sawtooth', .012, .005); }
       if (b.bass[s]) { voice(hz(b.bass[s]), t, spb * 1.1, 'triangle', .1, .005); voice(hz(b.bass[s]), t, spb * .8, 'sawtooth', .018, .005); }
       if (b.stab.includes(s)) for (const n of b.chord) voice(hz(n), t, spb * 1.3, 'sawtooth', .016, .004);
-      if (b.bah.includes(s)) bah(b.chord, t, spb * 1.8, .09);
+      if (b.hit.includes(s)) for (const n of b.chord) { voice(hz(n), t, spb * 1.8, 'square', .02, .004); voice(hz(n - 12), t, spb * 1.8, 'triangle', .03, .004); }
       noise(t, s % 2 ? .01 : .02, .03, 'highpass', 8000);
       if ([0, 3, 6, 8, 11, 14].includes(s) && !(b.toms && s >= 12)) kick(t, .24);
       if (b.toms && s >= 12) tom(t, 260 - (s - 12) * 45, .2);
