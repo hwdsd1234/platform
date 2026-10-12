@@ -882,11 +882,6 @@
         ctx.fillStyle = '#A5D6A7'; ctx.beginPath(); ctx.arc(0, -2, 7, 0, Math.PI); ctx.fill();
         ctx.fillStyle = '#E5484D'; ctx.beginPath(); ctx.arc(0, -2, 6, 0, Math.PI); ctx.fill();
         ctx.fillStyle = '#211C3F'; ctx.fillRect(-3, 0, 1.4, 2); ctx.fillRect(0, 1.5, 1.4, 2); ctx.fillRect(3, 0, 1.4, 2);
-      } else if (f.type === 'p') {
-        // A pear: a small top on a round bottom, with a stalk.
-        ctx.fillStyle = '#C5D94A'; ctx.beginPath(); ctx.arc(0, 3, 6, 0, TAU); ctx.arc(0, -3, 3.8, 0, TAU); ctx.fill();
-        ctx.fillStyle = '#E4F08A'; ctx.fillRect(-3.5, 0, 2.2, 2.5);
-        ctx.strokeStyle = '#6B452C'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(1, -10); ctx.stroke();
       } else if (f.type === 's') {
         // A strawberry: a red heart point down, pale seeds, a green crown.
         ctx.fillStyle = '#F0506E'; ctx.beginPath(); ctx.moveTo(-6.5, -2); ctx.quadraticCurveTo(-6, 7, 0, 8); ctx.quadraticCurveTo(6, 7, 6.5, -2); ctx.quadraticCurveTo(0, -5, -6.5, -2); ctx.fill();

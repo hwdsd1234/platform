@@ -309,7 +309,7 @@
   const markerSvg = '<path d="M-7 14 L0 -2 L7 14 Z" fill="#D9D0F0"/><circle cy="-6" r="5" fill="#D9D0F0"/><line x1="6" y1="0" x2="12" y2="-12" stroke="#8F81AB" stroke-width="2"/><circle cx="12" cy="-15" r="3.5" fill="#FFB547"/>';
 
   function showMap() {
-    screen = 'map';
+    screen = 'map'; store.set('inLevel', null);
     if (LF.music) { LF.music.play('map'); LF.music.duck(false); }
     if (location.hash) history.replaceState(null, '', location.pathname + location.search);
     attract = LF.createWorld(LF.LEVELS[0]);
@@ -733,8 +733,10 @@
   // Fruit you've gathered (in Fruit Groves), up to INV_MAX of each. Tab opens it, on the map
   // only (not in a level): using a fruit gets you ready for your next level. Powers last until you
   // die, and carry on from level to level (carry: { shield, boost, dbl }). Not in Hardcore.
-  const INV_MAX = 999, FRUIT_ICON = { a: '🍎', o: '🍊', b: '🍌', m: '🍉', p: '🍐', s: '🍓', 'ç': '🍒', 'ƀ': '🫐' };
-  let inventory = { ...Object.fromEntries(Object.keys(LF.FRUITS).map(t => [t, 0])), ...store.get('inventory', {}) }, carry = store.get('powers', null), invFrom = null;
+  const INV_MAX = 999, FRUIT_ICON = { a: '🍎', o: '🍊', b: '🍌', m: '🍉', s: '🍓', 'ç': '🍒', 'ƀ': '🫐' };
+  let inventory = { ...Object.fromEntries(Object.keys(LF.FRUITS).map(t => [t, 0])), ...store.get('inventory', {}) };
+  for (const t in inventory) if (!LF.FRUITS[t]) delete inventory[t];   // (fruit that's since gone, like the pear)
+  let carry = store.get('powers', null), invFrom = null;
   function saveCarry(p) {
     carry = p.shield || LF.hasPowers(p) ? { shield: p.shield, ...LF.powerFlags(p) } : null;
     store.set('powers', carry);
@@ -789,7 +791,7 @@
         <li><kbd>E</kbd> fire: tap for one shot, hold for autofire; shots splash 1 block · <kbd>X</kbd> explosive round (2 ammo, 3-block blast) · <kbd>A</kbd> kill shot (3 ammo): kills whatever it hits in one go, golems and carts too (a boss takes it as one hit) · every shot counts as one hit (a grenade one per blast, up to three), so golems take 3 and TNT carts 5 (stomps count too); a TNT blast kills everything near it but you · <kbd>Q</kbd> bouncing grenade (3 ammo) · hold any of them to keep firing · hold <kbd>Shift</kbd> for a big shot: 2× size and blast, 2× ammo · ammo crates are hidden through each level; big crates hold 10, huge ones 25; enemies drop 1–5 ammo when killed, more for tougher ones (TNT carts drop none)</li>
         <li>Keys open the locked-door blocks you touch, one block at a time; you keep the key</li>
         <li>Water is safe: you sink slowly and can jump as often as you like</li>
-        <li>Fruit: 🍎 shield (a second apple doubles it) · 🍊 jump boost · 🍌 double jump · 🍉 speed · 🍐 big bounce off stomps · 🍓 wall grip · 🍒 ammo magnet · 🫐 night eyes (twice the light) · powers last until you die; powers and leftover ammo carry on to the next level · in the Sky Roads only apples work: the wind holds your other powers and gives them back when you leave</li>
+        <li>Fruit: 🍎 shield (a second apple doubles it) · 🍊 jump boost · 🍌 double jump · 🍉 speed · 🍓 wall grip · 🍒 ammo magnet · 🫐 night eyes (twice the light) · powers last until you die; powers and leftover ammo carry on to the next level · in the Sky Roads only apples work: the wind holds your other powers and gives them back when you leave</li>
         <li>Stepping into a tower's boss arena, you lose every fruit power but your apple shield, and the only fruit in there is apples</li>
         <li>Towers have no guns: the boss falls to 3 stomps, but each stomp throws it into a 10-second fury: it glows red and rampages round the arena, leaping (with a slam where it lands) or darting about dropping bombs, and throwing rings of embers, rocks from the ceiling and fire round your feet; then it's worn out and stands dazed for a moment: stomp it then · its last fury (one stomp left) adds its own signature move · the Last Dark takes 5 stomps and you can't stomp it again until it calms down · your ammo waits for you outside</li>
         <li>Neo: when a slab sits right over your ledge, flush with its edge, run off the edge, jump at once and steer straight back in to land on top (miss, and you just drop back)</li>
@@ -834,6 +836,10 @@
 
   function play(def, ctx) {
     playDef = def; playCtx = ctx;
+    // (While you're in a story level, the save says so: see leftMidLevel.)
+    store.set('inLevel', ctx.kind === 'story' ? { index: ctx.index } : null);
+    // A Fruit Grove counts as visited the moment you walk in: no refreshing for another go.
+    if (ctx.kind === 'house') { houses[ctx.i] = { at: Date.now() }; store.set('houses', houses); }
     if (LF.music) { LF.music.play(trackFor(def, ctx, false)); LF.music.duck(false); }
     if (ctx.kind !== 'shared') setHash(keyFor(ctx));
     // Fruit powers and ammo you're carrying come with you into story levels (not in Hardcore).
@@ -873,19 +879,19 @@
       ${keyFor(playCtx) ? `<p class="lede">Level key <b class="lvl-key">${keyFor(playCtx)}</b> · <span class="key-link">${esc(keyLink(keyFor(playCtx)))}</span>${playCtx.kind === 'custom' ? '<br><small>Your own levels’ keys only work in this browser. To share one, use Copy play link in the editor’s Share code.</small>' : ''}</p>` : ''}
       <div class="menu">
         <button class="go" data-act="resume">Resume</button>
-        <button class="alt" data-act="giveUp">Give up · R</button>
+        ${playCtx.kind === 'house' ? '' : '<button class="alt" data-act="giveUp">Give up · R</button>'}
         ${playCtx.kind === 'test' ? '<button class="alt" data-act="backToEditor">Back to editor</button>' : ''}
         ${playCtx.kind === 'random' ? '<button class="alt" data-act="editRandom">Open in editor</button>' : ''}
         ${playCtx.kind !== 'test' && playCtx.kind !== 'story' ? '<button class="alt" data-act="copyToEditor">Copy to editor</button>' : ''}
-        ${playCtx.kind === 'story' ? '' : '<button class="alt" data-act="menu">Back to the map</button>'}
+        ${playCtx.kind === 'story' || playCtx.kind === 'house' ? '' : '<button class="alt" data-act="menu">Back to the map</button>'}
       </div>
-      ${playCtx.kind === 'story' ? '<p class="lede"><small>No walking out of a story level: finish it, or give up (that counts as a death).</small></p>' : ''}`);
+      ${playCtx.kind === 'story' ? '<p class="lede"><small>No walking out of a story level: finish it, or give up (that counts as a death).</small></p>' : playCtx.kind === 'house' ? '<p class="lede"><small>No giving up in a Fruit Grove: the clock’s running till it’s over.</small></p>' : ''}`);
   }
 
   function cleared() {
     // Clearing a story level carries your fruit powers and leftover ammo on to the next
     // (and its lanterns are done with).
-    if (playCtx.kind === 'story') store.set('midway', null);
+    if (playCtx.kind === 'story') { store.set('midway', null); store.set('inLevel', null); }
     // (Towers have no guns, so the ammo you're carrying waits for you outside.)
     if (playCtx.kind === 'story' && !hardcore) { saveCarry({ ...W.player, ...(W.player.held || {}) }); if (!W.def.noAmmo) store.set('ammo', W.player.ammo); }
     // Out of the Fruit Grove: everything picked goes in the inventory.
@@ -1185,7 +1191,7 @@
       }
       // R gives up: it's a death like any other (back to the map, your lit lanterns kept), and
       // in the story you lose everything you were carrying too: fruit powers and ammo.
-      if (e.code === 'KeyR' && !e.repeat && !W.player.dead && !W.cleared) giveUp();
+      if (e.code === 'KeyR' && !e.repeat && !W.player.dead && !W.cleared && playCtx.kind !== 'house') giveUp();
       if (e.code === 'Escape' && playCtx.kind === 'test') ACTIONS.backToEditor();
       else if (e.code === 'Escape' || e.code === 'KeyP') pause();
       if (e.code === 'KeyM') { muted = !muted; store.set('muted', muted); if (LF.music) LF.music.setMuted(muted); flash(muted ? 'Sound off' : 'Sound on'); }
@@ -1249,7 +1255,7 @@
     if (p.boost > 0) powers.push('<i class="pw-o">Boost</i>');
     if (p.dbl > 0) powers.push('<i class="pw-b">Double</i>');
     if (p.fast > 0) powers.push('<i class="pw-m">Speed</i>');
-    for (const [t, k, label] of [['p', 'bounce', 'Bounce'], ['s', 'grip', 'Grip'], ['ç', 'magnet', 'Magnet'], ['ƀ', 'glow', 'Eyes']]) if (p[k]) powers.push(`<i style="color:${LF.FRUITS[t].color}">${label}</i>`);
+    for (const [t, k, label] of [['s', 'grip', 'Grip'], ['ç', 'magnet', 'Magnet'], ['ƀ', 'glow', 'Eyes']]) if (p[k]) powers.push(`<i style="color:${LF.FRUITS[t].color}">${label}</i>`);
     $('hud-powers-wrap').hidden = !powers.length;
     $('hud-powers').innerHTML = powers.join('');
     $('boss-bar').hidden = !boss;
@@ -1278,7 +1284,7 @@
         if (ev.type === 'warp') LF.followCamera(W, cam, 0, true);
         if (ev.type === 'lost') { lostTimer = .9; saveMidway(); }
         // Dying in the story loses your fruit powers and all the ammo you were carrying.
-        if (ev.type === 'die' && playCtx.kind === 'story') { carry = null; store.set('powers', null); store.set('ammo', 0); }
+        if (ev.type === 'die' && playCtx.kind === 'story') { carry = null; store.set('powers', null); store.set('ammo', 0); store.set('inLevel', null); }
       }
       W.events.length = 0;
       if (clearTimer > 0 && screen === 'play') { clearTimer -= dt; if (clearTimer <= 0) cleared(); }
@@ -1299,10 +1305,20 @@
     requestAnimationFrame(frame);
   }
 
+  // Refreshing (or closing the page) in the middle of a story level counts as dying there:
+  // your fruit powers and ammo are gone, and you're back on the map (lanterns you'd lit are
+  // kept, as with any death).
+  addEventListener('pagehide', () => { if (W && (screen === 'play' || screen === 'paused' || screen === 'inv')) saveMidway(); });
+  function leftMidLevel() {
+    if (!store.get('inLevel', null)) return false;
+    carry = null; store.set('powers', null); store.set('ammo', 0); store.set('inLevel', null);
+    showMap(); flash('You left in the middle of a level: that counts as a death (powers and ammo gone)');
+    return true;
+  }
   function start(data) {
     try { window.claude?.hot?.snapshot?.(() => ({ screen, ctx: playCtx && playCtx.kind === 'story' ? playCtx : null })); } catch (e) {}
     if (data && data.ctx && data.ctx.kind === 'story' && LF.LEVELS[data.ctx.index]) play(LF.LEVELS[data.ctx.index], data.ctx);
-    else if (!openFromLink()) showMap();
+    else if (!leftMidLevel() && !openFromLink()) showMap();
     requestAnimationFrame(frame);
   }
   window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});

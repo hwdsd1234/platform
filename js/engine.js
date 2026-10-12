@@ -44,13 +44,12 @@
     o: { name: 'Orange', power: 'Jump boost', color: '#FF9A2E', note: 'higher jumps, until you die' },
     b: { name: 'Banana', power: 'Double jump', color: '#FFE066', note: 'jump again in mid-air, until you die' },
     m: { name: 'Watermelon', power: 'Speed', color: '#4CAF50', note: 'run faster, until you die' },
-    p: { name: 'Pear', power: 'Big bounce', color: '#C5D94A', note: 'stomps bounce you half as high again, until you die' },
     s: { name: 'Strawberry', power: 'Wall grip', color: '#F0506E', note: 'slide down walls at a third of the speed, until you die' },
     'ç': { name: 'Cherry', power: 'Ammo magnet', color: '#B3123A', note: 'ammo crates within 4 blocks fly to you, until you die' },
     'ƀ': { name: 'Blueberry', power: 'Night eyes', color: '#5B6EE1', note: 'your light reaches twice as far, until you die' },
   };
   // Every fruit but the apple gives a power that's on or off: the player's flag for each.
-  const POWERS = LF.POWERS = { o: 'boost', b: 'dbl', m: 'fast', p: 'bounce', s: 'grip', 'ç': 'magnet', 'ƀ': 'glow' };
+  const POWERS = LF.POWERS = { o: 'boost', b: 'dbl', m: 'fast', s: 'grip', 'ç': 'magnet', 'ƀ': 'glow' };
   const FLAGS = Object.values(POWERS);
   LF.powerFlags = p => Object.fromEntries(FLAGS.map(k => [k, p[k] ? 1 : 0]));
   LF.hasPowers = p => FLAGS.some(k => p[k]);
@@ -2624,7 +2623,7 @@
         continue;
       }
       if (spec.stomp && p.vy > 0 && p.y + p.h - e.y < 14) {
-        e.alive = false; dropAmmo(W, e); p.vy = (input.jump ? -620 : -460) * (p.bounce ? 1.25 : 1) * Math.sqrt(T.gravity); p.jumping = input.jump;
+        e.alive = false; dropAmmo(W, e); p.vy = (input.jump ? -620 : -460) * Math.sqrt(T.gravity); p.jumping = input.jump;
         burst(W, e.x + e.w / 2, e.y + e.h / 2, 14, ['#FF6B3D', '#463C6B'], 160, 500);
         W.floaters.push({ x: e.x + e.w / 2, y: e.y - 6, t: 'stomp', life: .8, c: '#FF6B3D' });
         W.shake = .12; W.freeze = .05; ring(W, e.x + e.w / 2, e.y + e.h / 2, 28, '255,107,61'); W.emit('stomp', { type: e.type, kill: true });
