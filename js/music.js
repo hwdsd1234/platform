@@ -18,14 +18,15 @@
     harmonic: [[0, 0, 5, 4], [0, 3, 4, 4]],
   };
   // What each track is: mode, root note (MIDI), tempo, feel (calm: pad and soft hats;
-  // drive: full drums; boss: driving bass and drums), and a seed.
+  // drive: full drums; sky; spooky; grand; fight), and a seed.
   const TRACKS = {
     map: { mode: 'major', root: 60, bpm: 92, feel: 'calm', seed: 11 },
     grove: { mode: 'major', root: 65, bpm: 150, feel: 'drive', seed: 77 },
-    // Towers: the climb and battlements; the castle's climb. (Each boss's own fight music
-    // is made from its name: see fightTrack. The final boss has its own.)
-    tower: { mode: 'harmonic', root: 57, bpm: 132, feel: 'boss', seed: 31 },
-    castle: { mode: 'minor', root: 50, bpm: 112, feel: 'boss', seed: 41 },
+    // Towers: the climb and battlements (spooky); the castle's climb (grand, an organ and
+    // brass march). (Each boss's own fight music is made from its name: see fightTrack. The
+    // final boss has its own.)
+    tower: { mode: 'harmonic', root: 57, bpm: 108, feel: 'spooky', seed: 31 },
+    castle: { mode: 'harmonic', root: 50, bpm: 96, feel: 'grand', seed: 41 },
     final: { mode: 'harmonic', root: 50, bpm: 160, feel: 'fight', seed: 99 },
     world0: { mode: 'major', root: 62, bpm: 104, feel: 'drive', seed: 1 },      // Old Town
     world1: { mode: 'mixo', root: 60, bpm: 98, feel: 'drive', seed: 2 },        // the Waterfront
@@ -100,7 +101,19 @@
   function compose(name) {
     if (cache[name]) return cache[name];
     const t = name.startsWith('fight:') ? fightTrack(name.slice(6)) : TRACKS[name] || TRACKS.map, R = LF.rng(t.seed * 7919 + 13), scale = SCALES[t.mode];
-    if (t.feel === 'fight') return cache[name] = { ...t, bars: composeFight(t, R) };
+    // (Fights, the towers and the castle are all built on a hook, so they stick.)
+    if (t.feel === 'fight' || t.feel === 'grand') return cache[name] = { ...t, bars: composeFight(t, R) };
+    if (t.feel === 'spooky') {
+      // A tower: the hook, but under it a bass creeping down a semitone every bar (back up at
+      // the top), plucked on the beat and a tritone above.
+      const bars = composeFight(t, R);
+      bars.forEach((b, k) => {
+        const root = t.root - 24 - (k % 4);
+        b.bass = Array(16).fill(null);
+        for (const st of [0, 4, 8, 12]) b.bass[st] = root + (st === 4 || st === 12 ? 6 : 0);
+      });
+      return cache[name] = { ...t, bars };
+    }
     const prog = PROGS[t.mode][Math.floor(R() * PROGS[t.mode].length)];
     const pitch = d => t.root + scale[((d % 7) + 7) % 7] + 12 * Math.floor(d / 7);
     const chordTones = c => [c, c + 2, c + 4];
@@ -161,6 +174,14 @@
     g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + .2);
     o.connect(g).connect(out); o.start(t); o.stop(t + .25);
   }
+  // A theremin-ish voice: a sine that slides up into its note and wavers.
+  function theremin(f, t, dur, v) {
+    const o = ac.createOscillator(), g = ac.createGain(), lfo = ac.createOscillator(), lg = ac.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(f * .96, t); o.frequency.exponentialRampToValueAtTime(f, t + .07);
+    lfo.frequency.setValueAtTime(5.5, t); lg.gain.setValueAtTime(f * .018, t); lfo.connect(lg).connect(o.frequency);
+    g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(v, t + .05); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(g).connect(out); o.start(t); o.stop(t + dur + .05); lfo.start(t); lfo.stop(t + dur + .05);
+  }
   function playStep(tr, i, t) {
     const b = tr.bars[Math.floor(i / 16)], s = i % 16, spb = 60 / tr.bpm / 4;
     if (tr.feel === 'sky') {
@@ -171,6 +192,33 @@
       if (b.bass[s]) voice(hz(b.bass[s]), t, spb * 15, 'sine', .07, .05);
       if (s === 0 && Math.floor(i / 16) % 2 === 0) noise(t, .02, spb * 28, 'bandpass', 500, true);
       if (s % 4 === 2) noise(t, .008, .05, 'highpass', 9000);
+      return;
+    }
+    if (tr.feel === 'spooky') {
+      // A tower: a wavering theremin tune with a ghostly echo, a music box tinkling the chord
+      // high up, the creeping plucked bass, a clock ticking, and a deep bell now and then.
+      const bar = Math.floor(i / 16);
+      if (b.lead[s]) { const d = spb * Math.max(2, b.len[s]) * .95; theremin(hz(b.lead[s]), t, d, .05); theremin(hz(b.lead[s]), t + spb * 3, d, .016); }
+      if (s % 2 === 0) voice(hz(b.chord[(s / 2) % 3] + 24), t, spb * 1.5, 'triangle', .012, .003);
+      if (b.bass[s]) voice(hz(b.bass[s]), t, spb * 1.2, 'triangle', .09, .004);
+      if (s % 4 === 0) noise(t, s % 8 ? .006 : .011, .025, 'highpass', 6000);
+      if (s === 0 || s === 10) kick(t, .12);
+      if (s === 0 && bar % 4 === 0) { voice(hz(tr.root - 12), t, spb * 14, 'sine', .05, .005); voice(hz(tr.root - 12) * 2.76, t, spb * 6, 'sine', .015, .005); }
+      if (b.hit.includes(s)) for (const n of b.chord) voice(hz(n), t, spb * 3, 'sine', .022, .01);
+      return;
+    }
+    if (tr.feel === 'grand') {
+      // The castle: a pipe organ holding the chords, a brass tune over it, octave bass,
+      // timpani on the beat (rolling into each half's end), a marching snare and cymbals.
+      const bar = Math.floor(i / 16);
+      if (s === 0 || s === 8) for (const n of b.chord) for (const o of [-12, 0, 12]) voice(hz(n + o), t, spb * 8.5, o ? 'sine' : 'square', o ? .012 : .008, .04);
+      if (b.lead[s]) { const d = spb * b.len[s] * .95 + .04; voice(hz(b.lead[s]), t, d, 'sawtooth', .022, .02); voice(hz(b.lead[s] + 12), t, d, 'square', .007, .02); }
+      if (b.bass[s] && s % 4 === 0) { voice(hz(b.bass[s]), t, spb * 3.5, 'triangle', .1, .01); voice(hz(b.bass[s] - 12), t, spb * 3.5, 'sine', .06, .01); }
+      if (s === 0 || s === 8 || ((b.fill || b.toms) && s >= 12)) tom(t, hz(b.chord[0] - 24) * 2, .26);
+      if (s === 4 || s === 12) noise(t, .05, .1, 'bandpass', 2200);
+      if (s === 14 && bar % 2) noise(t, .03, .06, 'bandpass', 2200);
+      if (s === 0 && bar % 4 === 0) noise(t, .045, 1.2, 'highpass', 4500);
+      if (b.stab.includes(s) || b.hit.includes(s)) for (const n of b.chord) voice(hz(n), t, spb * 1.6, 'sawtooth', .014, .006);
       return;
     }
     if (tr.feel === 'fight') {
