@@ -733,7 +733,7 @@
   // Fruit you've gathered (in Fruit Groves), up to INV_MAX of each. Tab opens it, on the map
   // only (not in a level): using a fruit gets you ready for your next level. Powers last until you
   // die, and carry on from level to level (carry: { shield, boost, dbl }). Not in Hardcore.
-  const INV_MAX = 9, FRUIT_ICON = { a: '🍎', o: '🍊', b: '🍌', m: '🍉' };
+  const INV_MAX = 999, FRUIT_ICON = { a: '🍎', o: '🍊', b: '🍌', m: '🍉' };
   let inventory = { a: 0, o: 0, b: 0, m: 0, ...store.get('inventory', {}) }, carry = store.get('powers', null), invFrom = null;
   function saveCarry(p) {
     carry = p.shield || p.boost || p.dbl || p.fast ? { shield: p.shield, boost: !!p.boost, dbl: !!p.dbl, fast: !!p.fast } : null;
