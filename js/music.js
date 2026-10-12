@@ -39,16 +39,68 @@
   };
   const RHYTHMS = [[0, 3, 6, 8, 10, 12, 14], [0, 2, 4, 6, 8, 11, 12, 14], [0, 4, 6, 8, 12, 14], [0, 2, 3, 6, 8, 10, 12], [0, 3, 4, 8, 11, 12]];
 
-  // A boss fight's music: 'fight:<name>' — fast, heavy and minor, with its own key, tempo,
-  // mode and tune from the boss's name.
+  // A boss fight's music: 'fight:<name>' — fast and minor, with its own key, tempo, mode,
+  // chords and hook from the boss's name (see composeFight).
   function fightTrack(name) {
     let h = 7; for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-    return { mode: ['harmonic', 'minor', 'dorian', 'harmonic'][h % 4], root: 52 + (h >> 3) % 7, bpm: 146 + (h >> 6) % 5 * 4, feel: 'fight', seed: h % 100000 };
+    return { mode: ['harmonic', 'minor', 'dorian', 'harmonic'][h % 4], root: 52 + (h >>> 3) % 7, bpm: 146 + (h >>> 6) % 5 * 4, feel: 'fight', seed: h % 100000 };
   }
+  // Boss fights are built differently, after the castle-boss music of the Mario games: one
+  // short hook, played again and carried round the chords so it sticks (and a third higher
+  // the second time round), an answer, then a cadence with the band's "bah! bah!"; under it
+  // a bass pumping octaves that creeps up by semitones into the next chord, brass stabs on
+  // the off-beats, and a tom fill to bring it round again. Hooks are [step, degree above the
+  // chord's root] (16 steps a bar); each boss nudges a note or two of its own.
+  const FIGHT_PROGS = [[0, 5, 6, 4], [0, 3, 4, 0], [0, 6, 5, 4], [0, 3, 5, 4]];
+  const HOOKS = [
+    [[0, 0], [2, 0], [3, 2], [6, 4], [8, 3], [10, 2], [12, 1], [14, -1]],
+    [[0, 4], [3, 4], [6, 2], [8, 0], [10, 1], [11, 2], [12, 4]],
+    [[0, 0], [3, 0], [4, 1], [6, 2], [8, 4], [11, 2], [12, 0]],
+    [[0, 7], [2, 6], [3, 4], [6, 4], [8, 2], [10, 4], [11, 2], [12, 0]],
+    [[0, 0], [1, 0], [2, 0], [4, 2], [6, 4], [7, 4], [8, 4], [10, 5], [12, 4], [14, 2]],
+    [[0, 4], [2, 3], [3, 4], [6, 0], [8, 4], [10, 3], [11, 4], [12, 7]],
+  ];
+  const ANSWERS = [
+    [[0, 4], [2, 2], [4, 0], [6, -1], [8, 0]],
+    [[0, 2], [3, 1], [6, 0], [8, -1], [10, -3], [12, -1]],
+    [[0, 7], [2, 4], [4, 2], [6, 4], [8, 0]],
+  ];
+  const CADENCE = [[0, 4], [3, 2], [6, 0]];
+  function composeFight(t, R) {
+    const scale = SCALES[t.mode], pitch = d => t.root + scale[((d % 7) + 7) % 7] + 12 * Math.floor(d / 7);
+    const prog = FIGHT_PROGS[Math.floor(R() * FIGHT_PROGS.length)];
+    const hook = HOOKS[Math.floor(R() * HOOKS.length)].map(([s, d], k) => [s, d + (k && R() < .2 ? (R() < .5 ? 1 : -1) : 0)]);
+    const answer = ANSWERS[Math.floor(R() * ANSWERS.length)];
+    // (Chords high in the scale take the hook down an octave, to keep the tune in one range.)
+    const phrase = (notes, c, lift) => {
+      if (c > 3) c -= 7;
+      const lead = Array(16).fill(null), len = Array(16).fill(0);
+      notes.forEach(([s, d], k) => { lead[s] = pitch(7 + c + d + lift); len[s] = Math.min(3, (notes[k + 1] || [16])[0] - s); });
+      return { lead, len };
+    };
+    return Array.from({ length: 8 }, (_, k) => {
+      const c = prog[k % 4], next = prog[(k + 1) % 4], lift = k >= 4 && k % 4 < 2 ? 2 : 0;
+      const { lead, len } = phrase(k % 4 < 2 ? hook : k % 4 === 2 ? answer : CADENCE, c, lift);
+      // (The last bar runs up into the hook to go round again.)
+      if (k === 7) [-4, -3, -2, -1].forEach((d, j) => { lead[12 + j] = pitch(7 + prog[0] + hook[0][1] + d); len[12 + j] = 1; });
+      const root = pitch(c) - 24, to = pitch(next) - 24 + (pitch(next) < pitch(c) - 4 ? 12 : 0);
+      const bass = Array(16).fill(null);
+      for (let s = 0; s < 16; s += 2) bass[s] = root + (s % 4 === 2 ? 12 : 0);
+      if (k % 2) { bass[12] = to - 3; bass[13] = to - 2; bass[14] = to - 1; bass[15] = null; }
+      return {
+        lead, len, bass, chord: [0, 2, 4].map(d => pitch(c + d)),
+        stab: k % 4 === 3 ? [] : k % 2 ? [6, 14] : [3, 6],
+        bah: k % 4 === 3 ? [8, 10] : [],
+        toms: k === 7, fill: k === 3,
+      };
+    });
+  }
+
   const cache = {};
   function compose(name) {
     if (cache[name]) return cache[name];
     const t = name.startsWith('fight:') ? fightTrack(name.slice(6)) : TRACKS[name] || TRACKS.map, R = LF.rng(t.seed * 7919 + 13), scale = SCALES[t.mode];
+    if (t.feel === 'fight') return cache[name] = { ...t, bars: composeFight(t, R) };
     const prog = PROGS[t.mode][Math.floor(R() * PROGS[t.mode].length)];
     const pitch = d => t.root + scale[((d % 7) + 7) % 7] + 12 * Math.floor(d / 7);
     const chordTones = c => [c, c + 2, c + 4];
@@ -71,8 +123,7 @@
     const bars = [...A, ...B].map((lead, k) => {
       const c = prog[k % 4];
       const bass = Array(16).fill(null);
-      if (t.feel === 'fight') for (let s = 0; s < 16; s++) bass[s] = s % 4 === 3 ? null : pitch(c) - 24 + (s % 8 === 6 ? 12 : s % 8 === 7 ? 7 : 0);
-      else if (t.feel === 'boss') for (let s = 0; s < 16; s += 2) bass[s] = pitch(c) - 24 + (s % 8 === 6 ? 7 : 0);
+      if (t.feel === 'boss') for (let s = 0; s < 16; s += 2) bass[s] = pitch(c) - 24 + (s % 8 === 6 ? 7 : 0);
       else if (t.feel === 'sky') bass[0] = pitch(c) - 24;
       else for (const s of [0, 4, 8, 12]) bass[s] = pitch(c) - 24 + (s === 8 && t.feel !== 'calm' ? 7 : 0);
       return { lead, bass, chord: chordTones(c).map(d => pitch(d) - 12) };
@@ -104,6 +155,21 @@
     else { g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur); }
     s.connect(f).connect(g).connect(out); s.start(t); s.stop(t + dur + .02);
   }
+  // The band's "bah!": a chord of buzzy voices through a filter that opens like a mouth.
+  function bah(notes, t, dur, v) {
+    const f = ac.createBiquadFilter(), g = ac.createGain();
+    f.type = 'bandpass'; f.Q.value = 2.5;
+    f.frequency.setValueAtTime(320, t); f.frequency.exponentialRampToValueAtTime(1100, t + .05);
+    g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(v, t + .015); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    f.connect(g).connect(out);
+    for (const n of notes) { const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(hz(n), t); o.connect(f); o.start(t); o.stop(t + dur + .05); }
+  }
+  function tom(t, f, v) {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f * .6, t + .16);
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + .2);
+    o.connect(g).connect(out); o.start(t); o.stop(t + .25);
+  }
   function playStep(tr, i, t) {
     const b = tr.bars[Math.floor(i / 16)], s = i % 16, spb = 60 / tr.bpm / 4;
     if (tr.feel === 'sky') {
@@ -116,20 +182,26 @@
       if (s % 4 === 2) noise(t, .008, .05, 'highpass', 9000);
       return;
     }
-    if (b.lead[s]) voice(hz(b.lead[s]), t, spb * (tr.feel === 'calm' ? 3.5 : 2.2), tr.feel === 'calm' ? 'triangle' : 'square', tr.feel === 'calm' ? .05 : .022);
-    if (b.bass[s]) voice(hz(b.bass[s]), t, spb * (tr.feel === 'fight' ? .9 : tr.feel === 'boss' ? 1.8 : 3.6), tr.feel === 'fight' ? 'sawtooth' : 'triangle', tr.feel === 'fight' ? .04 : .07);
-    if (s === 0 && tr.feel === 'calm') for (const n of b.chord) voice(hz(n), t, spb * 16, 'sine', .018, .4);
-    if (tr.feel === 'calm') { if (s === 4 || s === 12) noise(t, .012, .04, 'highpass', 7000); return; }
     if (tr.feel === 'fight') {
-      // A fight: hats on every step, kicks driving, snares on the backbeat with a fill at the
-      // end of every fourth bar, and a crash at the top of each phrase.
+      // A fight: a brassy lead doubled an octave down, the pumping bass, off-beat stabs and
+      // "bah"s; hats on every step, kicks driving, snares on the backbeat (a fill at the end
+      // of the first half, toms at the end of the second) and a crash at the top.
       const bar = Math.floor(i / 16);
-      noise(t, s % 2 ? .012 : .024, .03, 'highpass', 8000);
-      if ([0, 3, 6, 8, 11, 14].includes(s)) kick(t, .24);
-      if (s === 4 || s === 12 || (bar % 4 === 3 && s >= 13)) noise(t, .08, .11, 'bandpass', 1900);
-      if (s === 0 && bar % 4 === 0) noise(t, .05, .6, 'highpass', 5000);
+      if (b.lead[s]) { const d = spb * b.len[s] * .85 + .03; voice(hz(b.lead[s]), t, d, 'square', .028, .005); voice(hz(b.lead[s] - 12), t, d, 'sawtooth', .012, .005); }
+      if (b.bass[s]) { voice(hz(b.bass[s]), t, spb * 1.1, 'triangle', .1, .005); voice(hz(b.bass[s]), t, spb * .8, 'sawtooth', .018, .005); }
+      if (b.stab.includes(s)) for (const n of b.chord) voice(hz(n), t, spb * 1.3, 'sawtooth', .016, .004);
+      if (b.bah.includes(s)) bah(b.chord, t, spb * 1.8, .09);
+      noise(t, s % 2 ? .01 : .02, .03, 'highpass', 8000);
+      if ([0, 3, 6, 8, 11, 14].includes(s) && !(b.toms && s >= 12)) kick(t, .24);
+      if (b.toms && s >= 12) tom(t, 260 - (s - 12) * 45, .2);
+      else if (s === 4 || s === 12 || (b.fill && s >= 13)) noise(t, .08, .11, 'bandpass', 1900);
+      if (s === 0 && bar % 8 === 0) noise(t, .05, .6, 'highpass', 5000);
       return;
     }
+    if (b.lead[s]) voice(hz(b.lead[s]), t, spb * (tr.feel === 'calm' ? 3.5 : 2.2), tr.feel === 'calm' ? 'triangle' : 'square', tr.feel === 'calm' ? .05 : .022);
+    if (b.bass[s]) voice(hz(b.bass[s]), t, spb * (tr.feel === 'boss' ? 1.8 : 3.6), 'triangle', .07);
+    if (s === 0 && tr.feel === 'calm') for (const n of b.chord) voice(hz(n), t, spb * 16, 'sine', .018, .4);
+    if (tr.feel === 'calm') { if (s === 4 || s === 12) noise(t, .012, .04, 'highpass', 7000); return; }
     if (s % 2 === 0) noise(t, tr.feel === 'boss' ? .022 : .014, .035, 'highpass', 7000);
     if (s === 0 || s === 8 || (tr.feel === 'boss' && (s === 3 || s === 10))) kick(t, .22);
     if (s === 4 || s === 12) noise(t, .07, .12, 'bandpass', 1800);
