@@ -23,8 +23,7 @@
     map: { mode: 'major', root: 60, bpm: 92, feel: 'calm', seed: 11 },
     grove: { mode: 'major', root: 65, bpm: 150, feel: 'drive', seed: 77 },
     // Towers: the climb and battlements (spooky); the castle's climb (grand, an organ and
-    // brass march). (Each boss's own fight music is made from its name: see fightTrack. The
-    // final boss has its own.)
+    // brass march). (Every boss fight plays the boss theme, BOSS; the final boss has its own.)
     tower: { mode: 'harmonic', root: 57, bpm: 108, feel: 'spooky', seed: 31 },
     castle: { mode: 'harmonic', root: 50, bpm: 100, feel: 'grand', seed: 41 },
     final: { mode: 'harmonic', root: 50, bpm: 160, feel: 'fight', seed: 99 },
@@ -40,12 +39,6 @@
   };
   const RHYTHMS = [[0, 3, 6, 8, 10, 12, 14], [0, 2, 4, 6, 8, 11, 12, 14], [0, 4, 6, 8, 12, 14], [0, 2, 3, 6, 8, 10, 12], [0, 3, 4, 8, 11, 12]];
 
-  // A boss fight's music: 'fight:<name>' — fast and minor, with its own key, tempo, mode,
-  // chords and hook from the boss's name (see composeFight).
-  function fightTrack(name) {
-    let h = 7; for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-    return { mode: ['harmonic', 'minor', 'dorian', 'harmonic'][h % 4], root: 52 + (h >>> 3) % 7, bpm: 146 + (h >>> 6) % 5 * 4, feel: 'fight', seed: h % 100000 };
-  }
   // Boss fights are built differently, after the castle-boss music of the Mario games: one
   // short hook, played again and carried round the chords so it sticks (and a third higher
   // the second time round), an answer, then a cadence with two big chord hits; under it
@@ -120,10 +113,36 @@
     });
   }
 
+  // The boss theme: one tune for every boss fight (bar the Last Dark's), as the Mario games
+  // do it. E minor, fast: a hook that climbs and falls back over i–♭VI–♭VII–V, again a
+  // step higher over ♭VI, a dive down through iv, and a run up into the top. Under it a
+  // galloping bass. Notes are [step, MIDI].
+  const BOSS = [
+    { ch: [64, 67, 71], root: 40, lead: [[0, 76], [2, 76], [3, 79], [6, 83], [8, 81], [10, 79], [11, 78], [12, 79], [14, 76]] },
+    { ch: [60, 64, 67], root: 36, lead: [[0, 79], [2, 79], [3, 84], [6, 83], [8, 79], [10, 76], [12, 72], [14, 76]] },
+    { ch: [62, 66, 69], root: 38, lead: [[0, 78], [2, 78], [3, 81], [6, 86], [8, 84], [10, 81], [11, 79], [12, 78], [14, 74]], fill: true },
+    { ch: [59, 63, 66], root: 35, lead: [[0, 75], [3, 78], [6, 81], [8, 83], [12, 75]], hit: [12, 14] },
+    { ch: [64, 67, 71], root: 40, lead: [[0, 76], [2, 76], [3, 79], [6, 83], [8, 81], [10, 79], [11, 78], [12, 79], [14, 76]] },
+    { ch: [60, 64, 67], root: 36, lead: [[0, 79], [3, 84], [6, 88], [8, 86], [10, 84], [11, 83], [12, 79]] },
+    { ch: [57, 60, 64], root: 33, lead: [[0, 81], [2, 84], [3, 81], [6, 76], [8, 77], [10, 76], [12, 72], [14, 71]] },
+    { ch: [59, 63, 66], root: 35, lead: [[0, 71], [4, 75], [8, 78], [10, 81], [12, 83], [14, 87]], toms: true },
+  ];
+  const GALLOP = [0, 0, 12, 0, 0, 0, 12, 0, 0, 0, 12, 0, 0, 12, 0, 12];
+  function bossBars() {
+    return BOSS.map(c => {
+      const lead = Array(16).fill(null), len = Array(16).fill(0);
+      c.lead.forEach(([st, n], k) => { lead[st] = n; len[st] = Math.min(4, (c.lead[k + 1] || [16])[0] - st); });
+      const bass = GALLOP.map((d, k) => (k % 4 === 3 ? null : c.root + d));
+      return { lead, len, bass, chord: c.ch, stab: c.hit ? [] : [6, 14], hit: c.hit || [], fill: !!c.fill, toms: !!c.toms };
+    });
+  }
+
   const cache = {};
   function compose(name) {
     if (cache[name]) return cache[name];
-    const t = name.startsWith('fight:') ? fightTrack(name.slice(6)) : TRACKS[name] || TRACKS.map, R = LF.rng(t.seed * 7919 + 13), scale = SCALES[t.mode];
+    // (Every boss fight plays the one boss theme.)
+    if (name.startsWith('fight:')) return cache[name] = cache.boss || (cache.boss = { mode: 'minor', root: 52, bpm: 168, feel: 'fight', bars: bossBars() });
+    const t = TRACKS[name] || TRACKS.map, R = LF.rng(t.seed * 7919 + 13), scale = SCALES[t.mode];
     // (Fights, the towers and the castle are all built on a hook, so they stick.)
     if (t.feel === 'grand') return cache[name] = { ...t, bars: castleBars() };
     if (t.feel === 'fight') return cache[name] = { ...t, bars: composeFight(t, R) };
