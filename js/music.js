@@ -153,6 +153,19 @@
     o.connect(g).connect(out); o.start(t); o.stop(t + dur + .05);
   }
   const hz = n => 440 * Math.pow(2, (n - 69) / 12);
+  // A string section: each note on two slightly detuned saws, softened, swelling in slowly.
+  function pad(notes, t, dur, v) {
+    const f = ac.createBiquadFilter(), g = ac.createGain();
+    f.type = 'lowpass'; f.frequency.setValueAtTime(1500, t);
+    g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(v, t + dur * .3); g.gain.linearRampToValueAtTime(v * .7, t + dur * .85); g.gain.linearRampToValueAtTime(.0001, t + dur + .3);
+    f.connect(g).connect(out);
+    for (const n of notes) for (const d of [-8, 8]) {
+      const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(hz(n), t); o.detune.setValueAtTime(d, t);
+      o.connect(f); o.start(t); o.stop(t + dur + .35);
+    }
+  }
+  // How loud the strings are under each kind of track.
+  const STRINGS = { calm: .012, drive: .011, sky: .008, spooky: .007, grand: .011, fight: .009 };
   function kick(t, v) {
     const o = ac.createOscillator(), g = ac.createGain();
     o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(45, t + .12);
@@ -183,7 +196,15 @@
     o.connect(g).connect(out); o.start(t); o.stop(t + dur + .05); lfo.start(t); lfo.stop(t + dur + .05);
   }
   function playStep(tr, i, t) {
-    const b = tr.bars[Math.floor(i / 16)], s = i % 16, spb = 60 / tr.bpm / 4;
+    const b = tr.bars[Math.floor(i / 16)], s = i % 16, spb = 60 / tr.bpm / 4 / (fast ? 1.3 : 1), bar = Math.floor(i / 16);
+    // Under every track: strings on each bar's chord (an octave of it, with the root below);
+    // and, but for the gentle ones, timpani at the top of each phrase and a cymbal swelling
+    // into the loop's return.
+    if (s === 0) pad([b.chord[0] - 12, ...b.chord, b.chord[0] + 12], t, spb * 16, STRINGS[tr.feel] || .01);
+    if (tr.feel !== 'calm' && tr.feel !== 'sky') {
+      if (s === 0 && bar % 4 === 0) { tom(t, hz(b.chord[0] - 24) * 2, .24); tom(t + spb, hz(b.chord[0] - 24) * 2, .16); }
+      if (bar === tr.bars.length - 1 && s === 8) noise(t, .035, spb * 8, 'highpass', 4000, true);
+    }
     if (tr.feel === 'sky') {
       // The Sky Roads: a high bell of a tune with an echo, harp-like arpeggios rippling up,
       // a deep slow bass, gusts of wind, and just a shaker for a beat.
@@ -197,7 +218,6 @@
     if (tr.feel === 'spooky') {
       // A tower: a wavering theremin tune with a ghostly echo, a music box tinkling the chord
       // high up, the creeping plucked bass, a clock ticking, and a deep bell now and then.
-      const bar = Math.floor(i / 16);
       if (b.lead[s]) { const d = spb * Math.max(2, b.len[s]) * .95; theremin(hz(b.lead[s]), t, d, .05); theremin(hz(b.lead[s]), t + spb * 3, d, .016); }
       if (s % 2 === 0) voice(hz(b.chord[(s / 2) % 3] + 24), t, spb * 1.5, 'triangle', .012, .003);
       if (b.bass[s]) voice(hz(b.bass[s]), t, spb * 1.2, 'triangle', .09, .004);
@@ -210,7 +230,6 @@
     if (tr.feel === 'grand') {
       // The castle: a pipe organ holding the chords, a brass tune over it, octave bass,
       // timpani on the beat (rolling into each half's end), a marching snare and cymbals.
-      const bar = Math.floor(i / 16);
       if (s === 0 || s === 8) for (const n of b.chord) for (const o of [-12, 0, 12]) voice(hz(n + o), t, spb * 8.5, o ? 'sine' : 'square', o ? .012 : .008, .04);
       if (b.lead[s]) { const d = spb * b.len[s] * .95 + .04; voice(hz(b.lead[s]), t, d, 'sawtooth', .022, .02); voice(hz(b.lead[s] + 12), t, d, 'square', .007, .02); }
       if (b.bass[s] && s % 4 === 0) { voice(hz(b.bass[s]), t, spb * 3.5, 'triangle', .1, .01); voice(hz(b.bass[s] - 12), t, spb * 3.5, 'sine', .06, .01); }
@@ -225,7 +244,6 @@
       // A fight: a brassy lead doubled an octave down, the pumping bass, off-beat stabs and
       // chord hits; hats on every step, kicks driving, snares on the backbeat (a fill at the end
       // of the first half, toms at the end of the second) and a crash at the top.
-      const bar = Math.floor(i / 16);
       if (b.lead[s]) { const d = spb * b.len[s] * .85 + .03; voice(hz(b.lead[s]), t, d, 'square', .028, .005); voice(hz(b.lead[s] - 12), t, d, 'sawtooth', .012, .005); }
       if (b.bass[s]) { voice(hz(b.bass[s]), t, spb * 1.1, 'triangle', .1, .005); voice(hz(b.bass[s]), t, spb * .8, 'sawtooth', .018, .005); }
       if (b.stab.includes(s)) for (const n of b.chord) voice(hz(n), t, spb * 1.3, 'sawtooth', .016, .004);
@@ -238,6 +256,8 @@
       return;
     }
     if (b.lead[s]) voice(hz(b.lead[s]), t, spb * (tr.feel === 'calm' ? 3.5 : 2.2), tr.feel === 'calm' ? 'triangle' : 'square', tr.feel === 'calm' ? .05 : .022);
+    // (A horn doubling the tune an octave down.)
+    if (b.lead[s] && tr.feel === 'drive') voice(hz(b.lead[s] - 12), t, spb * 2.4, 'sawtooth', .012, .02);
     if (b.bass[s]) voice(hz(b.bass[s]), t, spb * (tr.feel === 'boss' ? 1.8 : 3.6), 'triangle', .07);
     if (s === 0 && tr.feel === 'calm') for (const n of b.chord) voice(hz(n), t, spb * 16, 'sine', .018, .4);
     if (tr.feel === 'calm') { if (s === 4 || s === 12) noise(t, .012, .04, 'highpass', 7000); return; }
@@ -267,7 +287,15 @@
   }
   M.attach = context => {
     if (ac || !context) return;
-    ac = context; out = ac.createGain(); out.gain.value = 0; out.connect(ac.destination);
+    ac = context; out = ac.createGain(); out.gain.value = 0;
+    // Everything plays in a big hall: a long reverb tail mixed under the dry sound, and a
+    // gentle compressor gluing it all together.
+    const comp = ac.createDynamicsCompressor(), hall = ac.createConvolver(), wet = ac.createGain();
+    comp.threshold.value = -18; comp.ratio.value = 3; comp.attack.value = .01; comp.release.value = .25;
+    const len = Math.floor(ac.sampleRate * 2.8), ir = ac.createBuffer(2, len, ac.sampleRate);
+    for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); }
+    hall.buffer = ir; wet.gain.value = .32;
+    out.connect(comp); out.connect(hall).connect(wet).connect(comp); comp.connect(ac.destination);
     timer = setInterval(tick, 25);
     start(want);
   };
