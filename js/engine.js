@@ -221,6 +221,10 @@
       // counting left to right, leads to the k-th n). They join the parts of a tower.
       else if (c === 'j') { W.passages.push({ tx: x, ty: y, x: x * TS, y: (y - 1) * TS + 4, w: 32, h: 60, open: true, glow: 1 }); tiles[y][x] = ' '; }
       else if (c === 'n') { W.entries.push({ tx: x, ty: y }); tiles[y][x] = ' '; }
+      // The Last Dark's chase (def.finalChase): Ħ is the wall that breaks open when it begins,
+      // Ŧ the TNT cart waiting at the end of the run.
+      else if (c === 'Ħ') { (W.chaseGate ||= []).push([x, y]); tiles[y][x] = '#'; }
+      else if (c === 'Ŧ') { W.chaseCart = { x: x * TS + 2, y: (y + 1) * TS - 22, w: 28, h: 22, state: 'idle', vx: 0 }; tiles[y][x] = ' '; }
       // + is a cannon: climb in with ↓ and it fires you out of the level (that finishes it).
       else if (c === '+') { W.cannon = { x: x * TS + 16, y: (y + 1) * TS, state: 'idle', t: 0 }; tiles[y][x] = ' '; }
       // ? is a secret exit: a second door, always open, tucked away somewhere.
@@ -262,6 +266,11 @@
       if (tiles[y][x] === ' ' && (tiles[y - 1][x] === '~' || tiles[y - 1][x] === '!') && rows[y][x] !== '.') tiles[y][x] = tiles[y - 1][x];
     }
     // Lava surface tiles: they glow and throw off embers.
+    // In a tower or castle the sections run left to right, each door (j) leading into the
+    // next section's entry (n): pair them by column.
+    if (def.arenaX) { W.passages.sort((a, b) => a.tx - b.tx); W.entries.sort((a, b) => a.tx - b.tx); }
+    // Moving lava (def.flows): see stepFlows.
+    W.flows = (def.flows || []).map(f => ({ ...f, s: (f.mode === 'fall' ? f.hi : f.lo) * TS, on: f.trigger == null, t: 0 }));
     W.lavaTop = [];
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (tiles[y][x] === '!' && (y === 0 || tiles[y - 1][x] !== '!')) W.lavaTop.push({ tx: x, ty: y });
     // Every lava pool gets lava bubbles, spread evenly and centered along each stretch of
@@ -499,7 +508,7 @@
     return false;
   };
   function hazardHit(W, p, swims = false) {
-    if (lavaAt(W, p)) return true;
+    if (lavaAt(W, p) || (p === W.player && inFlow(W, p))) return true;
     const x0 = Math.floor((p.x + 3) / TS), x1 = Math.floor((p.x + p.w - 3) / TS);
     const y0 = Math.floor((p.y + 4) / TS), y1 = Math.floor((p.y + p.h - 1) / TS);
     for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
@@ -525,7 +534,7 @@
   function setClock(W, left) {
     left = Math.max(CLOCK_MIN, left);
     W.clockFrom = W.time - (W.def.deadline - left);
-    if (W.hurried && left > HURRY) W.emit('calm');
+    if (W.hurried && left > (W.def.hurry || HURRY)) W.emit('calm');
     W.hurried = false;
   }
   LF.timeLeft = W => W.def.deadline - (W.time - (W.clockFrom || 0));
@@ -567,6 +576,8 @@
     // never be left out of reach.
     const { keys } = W.player;
     Object.assign(W.player, makePlayer(W.checkpoint), { ammo: 0, keys });
+    for (const f of W.flows) if (f.trigger != null) Object.assign(f, { s: (f.mode === 'fall' ? f.hi : f.lo) * TS, on: false, t: 0 });
+    for (const e of W.enemies) if (e.alive && e.chase) { e.chase.x = W.player.x - TS * 14; e.chase.t = 1; }
     // The clock goes back to what it read when you lit your checkpoint's lantern (the time it
     // took you to get there is gone), or to the full clock if you haven't lit one.
     if (W.def.deadline) { W.bossClock = !!W.cpBoss; setClock(W, W.cpLeft ?? W.def.deadline); }
@@ -600,10 +611,41 @@
   }
 
   // ---------- step ----------
+  // Moving lava: a body of lava filling columns x0..x1 from its surface down to row
+  // `bottom`, the surface (rows, top of the map is 0) moving one of four ways:
+  //   tide  rises to row hi and sinks back to row lo, over and over (period seconds);
+  //   wave  waves of height amp rows roll along it (wavelength len columns, period seconds),
+  //         about row lo;
+  //   rise  floods: creeps up from lo to hi at speed rows a second;
+  //   fall  drains: sinks from hi to lo at speed rows a second.
+  // A flow with a trigger column waits until you reach it (and starts again from the
+  // beginning if you come back at a checkpoint).
+  LF.flowSurface = (W, f, x) => {
+    if (f.mode === 'tide') return (f.lo - (f.lo - f.hi) * (.5 - .5 * Math.cos(f.t / f.period * TAU))) * TS;
+    if (f.mode === 'wave') return (f.lo - f.amp * (.5 + .5 * Math.sin((x / TS) / f.len * TAU - f.t / f.period * TAU))) * TS;
+    return f.s;
+  };
+  function stepFlows(W, dt) {
+    const p = W.player;
+    for (const f of W.flows) {
+      if (!f.on) { if (p.x >= f.trigger * TS) { f.on = true; if (f.mode === 'fall') W.floaters.push({ x: p.x + p.w / 2, y: p.y - 20, t: 'the lava’s draining… wait!', life: 2, c: '#FFB547' }); if (f.mode === 'rise') W.floaters.push({ x: p.x + p.w / 2, y: p.y - 20, t: 'the lava’s rising! climb!', life: 2, c: '#FF6B3D' }); } else continue; }
+      f.t += dt;
+      if (f.mode === 'rise') f.s = Math.max(f.hi * TS, f.s - f.speed * TS * dt);
+      if (f.mode === 'fall') f.s = Math.min(f.lo * TS, f.s + f.speed * TS * dt);
+      if (Math.random() < dt * (f.x1 - f.x0) * .3) { const x = (f.x0 + Math.random() * (f.x1 - f.x0 + 1)) * TS; burst(W, x, LF.flowSurface(W, f, x), 2, ['#FFB547', '#FF6B3D'], 60, 300, 2); }
+    }
+  }
+  const inFlow = (W, p) => W.flows.some(f => {
+    const cx = p.x + p.w / 2;
+    return cx >= f.x0 * TS && cx <= (f.x1 + 1) * TS && p.y < (f.bottom + 1) * TS && p.y + p.h > LF.flowSurface(W, f, cx) + 8;
+  });
+
   LF.step = function (W, input, dt, playing = true) {
     // Hit-freeze: a few frames of stillness make stomps and kills land harder.
     if (W.freeze > 0) { W.freeze -= dt; return; }
     W.clock += dt;
+    stepFlows(W, dt);
+    stepChaseCart(W, dt);
     stepPlats(W, dt);
     stepSpinners(W, dt);
     stepCrumbles(W, dt);
@@ -651,10 +693,10 @@
       if (W.def.bossTime && !W.bossClock && W.def.arenaX && p.x >= W.def.arenaX * TS) {
         W.bossClock = true; W.clockFrom = (W.clockFrom || 0) + W.def.bossTime;
         W.floaters.push({ x: p.x + p.w / 2, y: p.y - 30, t: `+${W.def.bossTime} seconds`, life: 1.6, c: '#9FD8FF' });
-        if (W.hurried && LF.timeLeft(W) > HURRY) { W.hurried = false; W.emit('calm'); }
+        if (W.hurried && LF.timeLeft(W) > (W.def.hurry || HURRY)) { W.hurried = false; W.emit('calm'); }
       }
       const left = LF.timeLeft(W);
-      if (left <= HURRY && !W.hurried) { W.hurried = true; W.emit('hurry'); }
+      if (left <= (W.def.hurry || HURRY) && !W.hurried) { W.hurried = true; W.emit('hurry'); }
       if (left <= 0) {
         W.floaters.push({ x: p.x + p.w / 2, y: p.y - 18, t: 'time’s up!', life: 1.6, c: '#FF6B3D' });
         W.emit('timeup'); kill(W);
@@ -1341,6 +1383,7 @@
 
   // ---------- bosses ----------
   function startFury(W, e) {
+    if (W.def.finalChase && e.type === 'Ω+' && e.hp === 1) return startChase(W, e);
     e.fury = FURY; e.furyHit = .5; e.furyN = 0; e.dazed = 0;
     // One stomp left: the last fury, with the boss's signature move.
     e.finale = e.hp === 1 && FINALE[e.type] ? FINALE[e.type] : null;
@@ -1348,6 +1391,48 @@
     if (e.wait > .3) e.wait = .3;
     W.floaters.push({ x: e.x + e.w / 2, y: e.y - 22, t: 'FURY!', life: 1.4, c: '#FF4D3D' });
     W.shake = Math.max(W.shake, .3); W.emit('roar');
+  }
+  // The Last Dark's last stand: one stomp from the end, it grows to three times its size,
+  // the arena's far wall breaks open, and it comes after you, through anything, faster the
+  // further behind it falls. Touch it and you're done for. At the end of the run waits a
+  // TNT cart: touch that and it rolls back into the Last Dark and blows it apart.
+  function startChase(W, e) {
+    e.chase = { t: 0, x: e.x + e.w / 2, y: e.y + e.h / 2 }; e.phased = true; e.k = 1;
+    e.fury = 0; e.dazed = 0; e.rest = 0; W.chasing = true;
+    for (const [x, y] of W.chaseGate || []) { W.tiles[y][x] = ' '; burst(W, x * TS + 16, y * TS + 16, 6, ['#8F81AB', '#463C6B', '#FF6B3D'], 160, 300, 3); }
+    W.floaters.push({ x: e.x + e.w / 2, y: e.y - 40, t: 'THE LAST DARK GROWS… RUN →', life: 3, c: '#FF4D3D' });
+    W.shake = Math.max(W.shake, .8); W.emit('roar'); W.emit('unlock');
+  }
+  function stepChase(W, e, dt) {
+    const c = e.chase, p = W.player, px = p.x + p.w / 2, py = p.y + p.h / 2;
+    c.t += dt; e.k = Math.min(3, 1 + c.t * 1.3);
+    if (c.t > 1.6 && !p.dead) c.x += Math.max(170, Math.min(420, 170 + (px - c.x - TS * 9) * 1.2)) * dt;
+    c.y += (Math.min(py, (W.h - 2) * TS - e.h * e.k / 2) - c.y) * Math.min(1, dt * 2);
+    e.x = c.x - e.w / 2; e.y = c.y - e.h / 2; e.face = 1;
+    if (Math.random() < dt * 40) burst(W, c.x - e.w * e.k * .4, c.y + (Math.random() - .5) * e.h * e.k, 1, ['#463C6B', '#0E0C22', '#FF4D3D'], 80, -40, 4);
+    const hw = e.w * e.k * .38, hh = e.h * e.k * .42;
+    if (!p.dead && Math.abs(px - c.x) < hw + p.w / 2 && Math.abs(py - c.y) < hh + p.h / 2) kill(W);
+  }
+  function stepChaseCart(W, dt) {
+    const k = W.chaseCart, p = W.player;
+    if (!k || k.state === 'gone') return;
+    if (k.state === 'idle') {
+      if (p.dead || !overlap(p, k)) return;
+      if (!W.chasing) { if (!W.floaters.some(f => f.t.startsWith('a TNT cart'))) W.floaters.push({ x: k.x + 14, y: k.y - 14, t: 'a TNT cart… save it for the Last Dark', life: 1.6, c: '#FFE2A8' }); return; }
+      k.state = 'roll'; k.vx = -720; W.floaters.push({ x: k.x + 14, y: k.y - 14, t: 'GO!', life: 1.2, c: '#FFB547' }); W.emit('rocket');
+      return;
+    }
+    k.x += k.vx * dt;
+    if (Math.random() < .6) W.particles.push({ x: k.x + 28, y: k.y + 4, vx: 60, vy: -30, life: .3, max: .3, c: '#FFB547', size: 2.5, g: 0 });
+    const e = W.enemies.find(b => b.alive && b.chase);
+    if (e && Math.abs(k.x + 14 - e.chase.x) < e.w * e.k * .45 + 14) {
+      k.state = 'gone'; W.chasing = false;
+      const x = e.chase.x, y = e.chase.y;
+      for (let n = 0; n < 6; n++) burst(W, x + (Math.random() - .5) * e.w * e.k, y + (Math.random() - .5) * e.h * e.k, 30, ['#FFF1CF', '#FFB547', '#FF6B3D', '#463C6B'], 360, 300, 5);
+      ring(W, x, y, TS * 10, '255,181,71', .8); W.shake = 1.2; W.freeze = .2; W.emit('boom');
+      W.floaters.push({ x, y: y - 60, t: 'KABOOM!', life: 2, c: '#FFB547' });
+      e.hp = 0; e.alive = false; e.phased = false; e.chase = null; bossDown(W, e);
+    } else if (k.x < 0) k.state = 'gone';
   }
   // Raging, the boss rampages round its arena: every FURY_EVERY seconds it does the next
   // thing in turn: a leap (walkers) or a dart (flyers) to somewhere new, a ring of embers,
@@ -2406,6 +2491,7 @@
         break;
       }
       case 'Ω+': {
+        if (e.chase) { stepChase(W, e, dt); break; }
         // The Last Dark: the final boss. It hovers over you, and grows wilder as it weakens:
         // three phases, each faster and with more attacks. Its dives slam the floor and leave
         // it dazed there, the best moment to stomp it.

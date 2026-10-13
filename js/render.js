@@ -648,7 +648,9 @@
       } else if (e.type === 'Ω+') {
         // The Last Dark: a towering hooded shape under a candle-snuffer, eyes burning hotter
         // with each phase, wisps of smoke circling it.
-        const ph = e.phase || 1, sway = reduced ? 0 : Math.sin(clock * 2) * 3, body = e.hurt > 0 ? '#CFC6E8' : '#0E0C22';
+        const ph = e.chase ? 3 : e.phase || 1, sway = reduced ? 0 : Math.sin(clock * 2) * 3, body = e.hurt > 0 ? '#CFC6E8' : '#0E0C22';
+        // (Grown huge for the chase: drawn k times the size about its middle.)
+        ctx.save(); if (e.k > 1) { ctx.translate(cx, cy); ctx.scale(e.k, e.k); ctx.translate(-cx, -cy); }
         ctx.fillStyle = 'rgba(70,60,107,.55)';
         for (let k = 0; k < 6; k++) { const a = clock * (.8 + ph * .3) + k / 6 * TAU; ctx.beginPath(); ctx.arc(cx + Math.cos(a) * 46, cy + Math.sin(a) * 30, 7 + (k % 2) * 3, 0, TAU); ctx.fill(); }
         ctx.fillStyle = body;
@@ -662,6 +664,7 @@
         ctx.fillStyle = ['#FF6B3D', '#FFB547', '#FFE2A8'][ph - 1];
         const blink = e.state === 'floor' ? 1 : 3;
         ctx.fillRect(cx - 10, e.y + 31, 7, blink); ctx.fillRect(cx + 3, e.y + 31, 7, blink);
+        ctx.restore();
       } else {
         // A horde's heart: a knot of shadow with a red eye that opens when it lunges.
         const pulse = reduced ? 1 : 1 + Math.sin(clock * 6) * .06, open = e.state === 'lunge';
@@ -1204,6 +1207,7 @@
       if (!p.dead) { const f = LF.flamePos(p); out.push({ x: f.x, y: f.y, r: 150 * (p.glow ? 2 : 1) * flick(0, .03) }); }
       for (const f of W.fruits) if (!f.taken) out.push({ x: f.x, y: f.y, r: 44 });
       for (let k = 0; k < W.lavaTop.length; k += 3) { const l = W.lavaTop[k]; out.push({ x: l.tx * TS + 16, y: l.ty * TS + 10, r: 95 }); }
+      for (const f of W.flows || []) for (let x = f.x0; x <= f.x1; x += 3) out.push({ x: x * TS + 16, y: LF.flowSurface(W, f, x * TS + 16) + 8, r: 100 });
       for (const a of W.ammo) if (!a.taken) out.push({ x: a.x, y: a.y, r: a.huge ? 70 : 40 });
       for (const k of W.keys) if (!k.taken) out.push({ x: k.x, y: k.y, r: 60 });
       for (const b of W.bullets) out.push({ x: b.x, y: b.y, r: 45 * (b.s || 1) });
@@ -1603,6 +1607,21 @@
       }
     }
 
+    // Moving lava: its surface traced across, filled down to its bottom, a bright crust.
+    function drawFlows(W) {
+      for (const f of W.flows || []) {
+        const x0 = f.x0 * TS, x1 = (f.x1 + 1) * TS, bot = (f.bottom + 1) * TS;
+        ctx.beginPath(); ctx.moveTo(x0, bot);
+        for (let x = x0; x <= x1; x += 8) ctx.lineTo(x, LF.flowSurface(W, f, Math.min(x, x1)));
+        ctx.lineTo(x1, LF.flowSurface(W, f, x1)); ctx.lineTo(x1, bot); ctx.closePath();
+        const top = Math.min(LF.flowSurface(W, f, x0), LF.flowSurface(W, f, x1)) - TS, g = ctx.createLinearGradient(0, top, 0, bot);
+        g.addColorStop(0, '#FF6B3D'); g.addColorStop(.25, '#E0452B'); g.addColorStop(1, '#7A2E1C');
+        ctx.fillStyle = g; ctx.fill();
+        ctx.strokeStyle = '#FFB547'; ctx.lineWidth = 3; ctx.beginPath();
+        for (let x = x0; x <= x1; x += 8) { const y = LF.flowSurface(W, f, x) + (reduced ? 0 : Math.sin(clock * 5 + x * .1) * 1.5); x === x0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
+        ctx.stroke();
+      }
+    }
     R.render = (W, cam, opts = {}, dt = 0) => {
       clock += dt;
       drawSky(W, cam);
@@ -1613,6 +1632,7 @@
         for (const s of W.def.signs) ctx.fillText(s.t, s.x * TS, s.y * TS);
         ctx.textBaseline = 'alphabetic';
       }
+      drawFlows(W);
       drawTiles(W, cam, opts);
       drawPlats(W);
       drawDoor(W.door); if (W.secretSeen || opts.edit) drawDoor(W.secret);
@@ -1623,6 +1643,15 @@
         ctx.fillStyle = '#9FD8FF'; ctx.beginPath(); ctx.moveTo(m.x + 9, m.y - 6); ctx.lineTo(m.x + 21, m.y - 2); ctx.lineTo(m.x + 9, m.y + 2); ctx.fill();
       }
       drawCannon(W, opts);
+      // The TNT cart waiting at the end of the Last Dark's chase.
+      const tc = W.chaseCart;
+      if (tc && tc.state !== 'gone') {
+        ctx.fillStyle = '#C0392B'; ctx.fillRect(tc.x, tc.y, tc.w, tc.h - 6);
+        ctx.fillStyle = '#7A2E1C'; ctx.fillRect(tc.x, tc.y, tc.w, 3);
+        ctx.fillStyle = '#FFE2A8'; ctx.font = '700 8px "Martian Mono", ui-monospace, monospace'; ctx.fillText('TNT', tc.x + 5, tc.y + 12);
+        ctx.fillStyle = '#211C3F'; for (const d of [6, 22]) { ctx.beginPath(); ctx.arc(tc.x + d, tc.y + tc.h - 4, 4, 0, TAU); ctx.fill(); }
+        if (W.chasing && tc.state === 'idle') { ctx.strokeStyle = `rgba(255,181,71,${.5 + .5 * Math.sin(clock * 8)})`; ctx.lineWidth = 2; ctx.strokeRect(tc.x - 3, tc.y - 3, tc.w + 6, tc.h + 2); }
+      }
       for (const l of W.lanterns) drawLantern(l);
       // A raging boss glows red (it can't be stomped till it calms down).
       for (const e of W.enemies) {

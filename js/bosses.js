@@ -712,6 +712,23 @@
       for (let x = c.x0 + 4, n = 0; x + 2 <= c.x1 - 2; x += 7, n++) { put(g, x, F, x + 2, F, '^'); if (n === 3) g[F - 1][x + 5] = 'L'; }
       return g;
     },
+    // A lava tide: it floods the walkway and ebbs away, over and over; wait it out on the
+    // posts.
+    lavaTide(R, first) {
+      const c = course(64, first), { g, F } = c;
+      for (let x = c.x0 + 4, n = 0; x + 1 < c.x1 - 2; x += 9, n++) { put(g, x, F - 3, x + 1, F - 1, '#'); if (n === 3) g[F - 4][x] = 'L'; }
+      g.flows = [{ mode: 'tide', x0: c.x0, x1: c.x1, hi: F - 2, lo: F + 1, bottom: F + 1, period: 7 }];
+      return g;
+    },
+    // Waves of lava rolling along under low stepping stones: hop with the troughs.
+    lavaWaves(R, first) {
+      const c = course(64, first), { g, F } = c;
+      put(g, c.x0, F, c.x1, F + 1, '.');
+      let n = 0;
+      for (let x = c.x0 + 1; x + 2 <= c.x1; x += 6, n++) { put(g, x, F - 1, x + 2, F - 1, '#'); if (n === 4) put(g, x, F - 4, x + 2, F - 4, '#'), g[F - 5][x + 1] = 'L'; }
+      g.flows = [{ mode: 'wave', x0: c.x0, x1: c.x1, lo: F + 1, amp: 3.2, len: 9, period: 3.2, bottom: F + 1 }];
+      return g;
+    },
     // Ice ledges climbing up and down, crumbling ones between.
     iceSteps(R, first) {
       const c = course(62, first), { g, F } = c;
@@ -725,17 +742,36 @@
     },
   };
 
+  // A shaft that floods: the lava starts rising the moment you step in. Climb!
+  function floodShaft(R) {
+    const g = shaft(R), h = g.length, w = g[0].length;
+    for (const row of g) for (let x = 0; x < w; x++) if (row[x] === 'P') row[x] = 'n';
+    g.flows = [{ mode: 'rise', x0: 1, x1: w - 2, lo: h - 2, hi: 7, bottom: h - 2, speed: .7, trigger: 5 }];
+    return g;
+  }
+  // Drop onto a row of falling shingles over a lake of lava, and keep hopping from shingle
+  // to shingle while it drains away, till you can get down to the door.
+  function shingleDrain() {
+    const w = 40, h = 22, g = grid(w, h);
+    put(g, 0, 0, w - 1, 0, '#'); put(g, 0, 0, 0, h - 1, '#'); put(g, w - 1, 0, w - 1, h - 1, '#'); put(g, 0, h - 3, w - 1, h - 1, '#');
+    put(g, 1, 3, 4, 3, '#'); g[2][2] = 'n';
+    for (let x = 7; x <= w - 8; x += 2) g[8][x] = 'd';
+    g[h - 4][w - 3] = 'j'; g[h - 4][w - 6] = 'L';
+    g.flows = [{ mode: 'fall', x0: 5, x1: w - 2, hi: 10, lo: h - 2, bottom: h - 2, speed: .45, trigger: 6 }];
+    return g;
+  }
+
   // The castles: one at the end of every world but the last (whose castle is the Last
   // Dark's), each with its own keeper (see stepKeeper in engine.js). A castle's arena is a
   // hall with planks to get above its keeper; fliers hover high, walkers stand on the floor.
   const CASTLES = [
-    { world: 'The Hollow Spire', name: 'Candle Keep', giant: 'Γ', course: ['lavaHops', 'crumbleLava'], sign: 'THE CANDLE KING · mind the wax and the flames · stomp him when he melts after a hop' },
+    { world: 'The Hollow Spire', name: 'Candle Keep', giant: 'Γ', course: ['lavaHops', 'lavaWaves'], sign: 'THE CANDLE KING · mind the wax and the flames · stomp him when he melts after a hop' },
     { world: 'The Lighthouse', name: 'Lighthouse Castle', giant: 'Δ', course: ['swim', 'liftsSpikes'], sign: 'THE LIGHTHOUSE CRAB · it scuttles into walls · stomp it while it’s stuck' },
     { world: 'The Powder Works', name: 'Clockwork Castle', giant: 'Ξ', course: ['conveyCrush', 'blinkLava'], sign: 'THE CLOCKWORK KNIGHT · jump his gears · stomp him while he winds down' },
     { world: 'The Neo Ledges', name: 'Storm Castle', giant: 'Λ', fly: true, course: ['skyTurns', 'skyWheels'], sign: 'THE STORM ROC · it swoops low · stomp it when it lands to rest' },
     { world: 'The Soot Canals', name: 'Rat Castle', giant: 'Π', course: ['crumbleSpikes', 'pendulums'], sign: 'THE RAT KING · dodge his dash · stomp him on his throne' },
     { world: 'The Melon Patch', name: 'Pumpkin Castle', giant: 'Φ', course: ['springLava', 'pendulums'], sign: 'THE PUMPKIN KNIGHT · his bombs land where they’re marked · stomp him when he’s dizzy' },
-    { world: 'The Bell Foundry', name: 'Smog Castle', giant: 'Ψ', fly: true, course: ['bubblePits', 'liftsLava'], sign: 'THE SMOG DRAGON · it breathes fire across the floor · stomp it when it lands' },
+    { world: 'The Bell Foundry', name: 'Smog Castle', giant: 'Ψ', fly: true, course: ['bubblePits', 'lavaTide'], sign: 'THE SMOG DRAGON · it breathes fire across the floor · stomp it when it lands' },
     { world: 'The Cinder Mines', name: 'Crystal Castle', giant: 'Σ', course: ['icePits', 'iceSteps'], sign: 'THE CRYSTAL MOLE · it bursts up where the floor glows · stomp it while it’s stunned' },
   ];
   function castleOf(k) {
@@ -940,6 +976,9 @@
       x0 += p[0].length + GAP;
     }
     const arena = at[at.length - 1], climbAt = at[0], runAt = at[1];
+    // (Moving lava carried by the parts, moved to where each part landed.)
+    if (def.map.flows) arenaRows.flows = def.map.flows;
+    const flows = parts.flatMap((p, i) => (p.flows || []).map(f => ({ ...f, x0: f.x0 + at[i].x, x1: f.x1 + at[i].x, hi: f.hi != null ? f.hi + at[i].y : undefined, lo: f.lo + at[i].y, bottom: f.bottom + at[i].y, trigger: f.trigger != null ? f.trigger + at[i].x : undefined })));
     // A lantern just before the boss's door (the last passage before the arena): a
     // checkpoint right outside the fight.
     for (let y = h - 1; y >= 0; y--) {
@@ -959,6 +998,7 @@
       ],
     };
     delete out.hordeStop; delete out.course;
+    if (flows.length) out.flows = flows;
     return out;
   }
 
@@ -989,20 +1029,38 @@
     }
   });
   // ---- The final boss ----
-  // The very last level, a chapter of its own: the Last Dark.
-  const finalMap = B(60, 20, ({ r, s, walls }) => {
-    walls(); r(0, 0, 59, 0); r(1, 17, 58, 18);
-    s(2, 16, 'P'); s(4, 16, '$'); s(6, 16, 'Q'); s(8, 16, 'a');
-    r(10, 13, 15, 13, '='); s(12, 12, 'o'); r(44, 13, 49, 13, '='); s(46, 12, 'b');
-    r(20, 10, 26, 10, '='); s(23, 9, '$'); r(33, 10, 39, 10, '='); s(36, 9, 'Q');
-    r(27, 7, 32, 7, '='); s(29, 6, 'a'); s(52, 16, '$');
-    s(30, 9, '0'); r(56, 1, 56, 16, 'g'); s(57, 16, 'D');
+  // The very last level, a chapter of its own: the Last Dark's castle, five times the size
+  // of the others: climbs, lava tides and waves, a flooding shaft, the walls, a lake of lava
+  // to wait out on falling shingles, more climbing and lava, then the Last Dark's hall. Four
+  // stomps: after the third it grows huge and chases you out through the hall's far wall
+  // and along a last run of lava and crumbling stone to a TNT cart (see startChase).
+  const finalMap = B(170, 20, ({ r, s, walls }) => {
+    walls(); r(0, 0, 169, 0); r(1, 17, 58, 18);
+    s(2, 16, 'P'); s(8, 16, 'a');
+    r(10, 13, 15, 13, '='); r(44, 13, 49, 13, '='); s(46, 12, 'a');
+    r(20, 10, 26, 10, '='); r(33, 10, 39, 10, '=');
+    r(27, 7, 32, 7, '=');
+    s(30, 9, '0');
+    r(59, 1, 59, 16, 'Ħ');
+    // The run.
+    r(59, 17, 69, 18);
+    for (const x of [71, 76, 81]) r(x, 16, x + 2, 16);
+    r(85, 17, 96, 18); s(88, 17, '^'); s(93, 17, '^');
+    r(97, 18, 110, 18, '!'); for (let x = 98; x <= 108; x += 2) s(x, 15, 'd');
+    r(111, 17, 124, 18); r(118, 15, 119, 16);
+    r(125, 18, 150, 18, '!'); r(125, 17, 150, 17, 'C');
+    r(151, 17, 168, 18); s(163, 16, 'Ŧ');
   });
-  out.push({
-    ...tower({ name: 'Final Bossfight', dark: .82, map: easeAccess(finalMap), giant: 'Ω',
-      signs: [{ x: 2, y: 14.4, t: 'THE LAST DARK · 5 stomps · stomp it when it dives to the floor' }] }, 999, true),
-    chapter: 'The Last Night', boss: true, finalFight: true,
-  });
+  finalMap.flows = [{ mode: 'wave', x0: 70, x1: 84, lo: 18, amp: 3, len: 9, period: 3.2, bottom: 18 }];
+  const climbIn = R => castleClimb(R).map(row => row.map(c => (c === 'P' ? 'n' : c)));
+  const finalDef = {
+    name: 'Final Bossfight', dark: .82, map: finalMap, giant: 'Ω', bossHits: 4, finalChase: true, clock: 400, hurry: 100,
+    course: R => [castleClimb(R), COURSES.lavaTide(R, false), floodShaft(R), COURSES.lavaWaves(R, false), castleWalls(R),
+      shingleDrain(), COURSES.crumbleLava(R, false), climbIn(R), COURSES.lavaHops(R, false), COURSES.bubblePits(R, false),
+      COURSES.blinkLava(R, false), floodShaft(R), COURSES.liftsLava(R, false), climbIn(R), COURSES.conveyCrush(R, false), COURSES.icePits(R, false), COURSES.iceSteps(R, false)],
+    signs: [{ x: 2, y: 14.4, t: 'THE LAST DARK · 4 stomps · stomp it when it dives to the floor · after the third: RUN →' }],
+  };
+  out.push({ ...tower(finalDef, 999, true), chapter: 'The Last Night', boss: true, finalFight: true });
   // The newer fruit (strawberry, cherry, blueberry) grow in the story levels too: every
   // third apple outside the towers and the Sky Roads becomes one of them, in turn.
   const NEW_FRUIT = ['s', 'ç', 'ƀ'];
