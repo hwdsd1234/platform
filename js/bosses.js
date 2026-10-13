@@ -646,11 +646,14 @@
       const holeRight = f % 2 === 0, hx = holeRight ? w - 5 : 3;
       put(g, 1, y, w - 2, y, '#'); put(g, hx, y, hx + 1, y, '.');
       g[below - 1][hx] = '#';                                // a step under the hole
-      // Along the floor below: a spike or two to hop and somebody in the way.
-      const from = holeRight ? 6 : 8, to = holeRight ? w - 9 : w - 7;
-      for (let n = 0; n < 2; n++) { const sx = from + Math.floor(R() * (to - from)); if (g[below][sx] === '#' && g[below - 1][sx] === '.') g[below][sx] = '^'; }
-      const ex = from + Math.floor(R() * (to - from));
-      if (g[below - 1][ex] === '.') g[below - 1][ex] = FOES[Math.floor(R() * FOES.length)];
+      // Along the floor below: a spike or two to hop and somebody in the way, the spikes at
+      // least SPACE tiles apart and the foe FOE_SPACE from them (so you never land from one
+      // straight onto the next).
+      const from = holeRight ? 6 : 8, to = holeRight ? w - 9 : w - 7, SPACE = 6, FOE_SPACE = 8, spikes = [];
+      for (let n = 0; n < 2; n++) { const sx = from + Math.floor(R() * (to - from)); if (g[below][sx] === '#' && g[below - 1][sx] === '.' && spikes.every(x => Math.abs(x - sx) >= SPACE)) { g[below][sx] = '^'; spikes.push(sx); } }
+      let ex = from + Math.floor(R() * (to - from));
+      for (let k = 0; k < 10 && spikes.some(x => Math.abs(x - ex) < FOE_SPACE); k++) ex = from + Math.floor(R() * (to - from));
+      if (g[below - 1][ex] === '.' && !spikes.some(x => Math.abs(x - ex) < FOE_SPACE)) g[below - 1][ex] = FOES[Math.floor(R() * FOES.length)];
       if (f % 3 === 2) { const cx = from + Math.floor(R() * (to - from - 5)); put(g, cx, y, cx + 4, y, 'C'); }
       if (f % 4 === 1 && g[below - 3][20] === '.') g[below - 3][20] = R() < .5 ? 'W' : 'Z';
       if (f === Math.floor(floors.length / 3) || f === Math.floor(floors.length * 2 / 3)) g[y - 1][holeRight ? 6 : w - 7] = 'L';
