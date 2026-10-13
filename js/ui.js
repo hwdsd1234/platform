@@ -228,7 +228,7 @@
     // Next to a cleared level, or to where a secret cannon lands you.
     return near(i).some(j => progress[j] || landedBySecret(j));
   };
-  const COLS = 8, CW = 104, RH = 150, PAD = 70;
+  const COLS = 8, CW = 104, RH = 150, PAD = 70, BIG_CASTLE = 820;
   const stopR = lv => lv.finalFight ? 22 : lv.boss ? 17 : 12;
 
   // Where everything goes: each world starts a new block of rows under its title, snaking
@@ -242,6 +242,9 @@
       const top = y - 160;
       let row = 0;
       for (let i = wd.first, c = 0; i <= wd.last; i++, c++) {
+        // The last castle stands alone at the bottom of the map, room above it for all ten
+        // times its size.
+        if (LF.LEVELS[i].finalFight) { y += BIG_CASTLE; pos[i] = { x: PAD + (COLS - 1) * CW / 2, y, base: y, row: row + 1, big: true }; continue; }
         if (c === COLS) { c = 0; row++; y += RH; }
         // A good wobble, so the road winds about rather than running ruled.
         pos[i] = { x: PAD + (row % 2 ? COLS - 1 - c : c) * CW + Math.sin(i * 1.9) * 14, y: y + Math.sin(i * 1.1 + row) * 10, base: y, row };
@@ -380,6 +383,9 @@
     });
     Object.values(secretCannons).forEach(c => keepOff.push({ x: c.x, y: c.y, r: 34 }));
     Object.values(houseSpots).forEach(c => keepOff.push({ x: c.x, y: c.y, r: 32 }));
+    // (Nothing in front of the last castle.)
+    const big = pos.find(p => p && p.big);
+    if (big) for (let dy = 0; dy < 760; dy += 60) for (let dx = -300; dx <= 300; dx += 60) keepOff.push({ x: big.x + dx, y: big.y - dy, r: 40 });
     const clear = (x, y) => keepOff.every(o => Math.hypot(x - o.x, y - o.y) > o.r);
     worlds.forEach((wl, k) => {
       const th = art.theme(k), rect = { x0: 12, y0: wl.top, x1: w - 12, y1: wl.bottom };
@@ -388,6 +394,8 @@
       out += art.scenery(k, rect, clear, 1000 + k * 77);
       out += `<text class="wname" x="${PAD - 30}" y="${wl.top + 36}">World ${k + 1} · ${esc(LF.WORLDS[k].name)}</text>`;
     });
+    // The last castle, behind the road that leads to its gate.
+    L.forEach((lv, i) => { if (lv.finalFight) out += art.bigCastle(pos[i].x, pos[i].y, !!progress[i]); });
     // The path: a worn trail in each world's color, dotted down the middle; brighter where
     // it's open to you.
     for (let i = 1; i < n; i++) {

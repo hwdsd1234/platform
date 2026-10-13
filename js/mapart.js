@@ -92,14 +92,24 @@
     return spots.map(({ x, y }, n) => `<g transform="translate(${x} ${y})"><g class="mp-wander ${flies ? 'fly' : 'walk'}" style="animation-delay:-${n * 2.3}s">${CRITTERS[kind]}</g></g>`).join('');
   }
 
+  // A castle: a keep between two towers, a gate, a flag (gold once its keeper's beaten).
+  const castleShape = `<rect x="-26" y="-30" width="52" height="34"/><rect x="-32" y="-46" width="14" height="50"/><rect x="18" y="-46" width="14" height="50"/><rect x="-8" y="-56" width="16" height="30"/>
+      <path class="crenel" d="M-32 -46 h4 v-5 h3 v5 h4 v-5 h3 v5 M18 -46 h4 v-5 h3 v5 h4 v-5 h3 v5"/><path d="M-6 4 v-14 a6 6 0 0 1 12 0 v14 Z" class="gate"/>
+      <line x1="0" y1="-56" x2="0" y2="-72"/><path class="flag" d="M0 -72 L14 -67 L0 -62 Z"/>`;
+  // The last castle, ten times the size, standing over the end of the road with lit
+  // windows; its stop is the gate (see bigCastle and stop).
+  function bigCastle(x, y, lit) {
+    const windows = [[-28, -40], [22, -40], [-28, -24], [22, -24], [-16, -20], [-4, -48], [8, -20], [-18, -10], [12, -10]].map(([wx, wy]) => `<rect class="win" x="${wx}" y="${wy}" width="2.4" height="4" rx="1.2"/>`).join('');
+    return `<g class="castle giant${lit ? ' won' : ''}" transform="translate(${x} ${y}) scale(10)">${castleShape}${windows}</g>`;
+  }
   // A stop: a lamp post (lit once cleared), a tower for a boss fight (its flag turns gold
-  // once beaten), a castle for the final boss. Locked stops are just a dim post.
+  // once beaten), a castle for a world's castle. The last castle's stop is its gate (the
+  // castle itself is drawn behind the road: see bigCastle). Locked stops are just a dim post.
   function stop(lv, state) {
     const lit = state === 'lit', locked = state === 'locked';
-    if (lv.finalFight) return `<circle class="hit" r="30"/>
-      <g class="castle${lit ? ' won' : ''}"><rect x="-26" y="-30" width="52" height="34"/><rect x="-32" y="-46" width="14" height="50"/><rect x="18" y="-46" width="14" height="50"/><rect x="-8" y="-56" width="16" height="30"/>
-      <path class="crenel" d="M-32 -46 h4 v-5 h3 v5 h4 v-5 h3 v5 M18 -46 h4 v-5 h3 v5 h4 v-5 h3 v5"/><path d="M-6 4 v-14 a6 6 0 0 1 12 0 v14 Z" class="gate"/>
-      <line x1="0" y1="-56" x2="0" y2="-72"/><path class="flag" d="M0 -72 L14 -67 L0 -62 Z"/></g>`;
+    if (lv.finalFight) return `<circle class="hit" r="34"/>`;
+    if (lv.castle) return `<circle class="hit" r="30"/>
+      <g class="castle${lit ? ' won' : ''}${locked ? ' locked' : ''}">${castleShape}</g>`;
     if (lv.boss) return `<circle class="hit" r="22"/>
       <g class="tower${lit ? ' won' : ''}${locked ? ' locked' : ''}"><rect x="-12" y="-30" width="24" height="34"/><path class="crenel" d="M-12 -30 v-6 h5 v6 h4 v-6 h6 v6 h4 v-6 h5 v6"/><path d="M-5 4 v-10 a5 5 0 0 1 10 0 v10 Z" class="gate"/>
       <line x1="0" y1="-36" x2="0" y2="-50"/><path class="flag" d="M0 -50 L12 -46 L0 -42 Z"/></g>`;
@@ -107,5 +117,5 @@
       <g class="post${lit ? ' lit' : ''}${locked ? ' locked' : ''}">${lit ? '<circle class="halo" cy="-22" r="13"/>' : ''}<line x1="0" y1="4" x2="0" y2="-16"/><rect class="lamp" x="-6" y="-28" width="12" height="13" rx="3"/><path class="cap" d="M-8 -28 L0 -34 L8 -28 Z"/><ellipse class="base" cy="5" rx="9" ry="3"/></g>`;
   }
 
-  LF.mapArt = { theme, scenery, wanderers, stop };
+  LF.mapArt = { theme, scenery, wanderers, stop, bigCastle };
 })();
