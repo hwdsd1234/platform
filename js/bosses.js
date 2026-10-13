@@ -568,23 +568,181 @@
     signs: [{ x: 2, y: 9.4, t: 'THE MELON BRUTE · it rolls till it hits a wall · stomp it while it’s cracked' }],
   });
 
+  // Castle challenges: each world castle is two of these, then its keeper's hall. Every one
+  // is a 16-row hall (floor at F, you stand on S) with its entry on the left and its door
+  // on the right; `first` puts the start there instead of an entry. Each has a lantern.
+  function course(w, first) {
+    const h = 16, g = runFrame(w, h);
+    if (first) { g[h - 4][2] = 'P'; g[h - 4][4] = 'a'; }
+    return { g, h, F: h - 3, S: h - 4, x0: 7, x1: w - 9 };
+  }
+  const COURSES = {
+    // Hopping stones over lava, lava bubbles leaping up between them.
+    lavaHops(R, first) {
+      const c = course(64, first), { g, F } = c;
+      put(g, c.x0, F, c.x1, F + 1, '!');
+      let x = c.x0 + 2, n = 0;
+      while (x + 2 < c.x1 - 1) {
+        const y = F - 1 - Math.floor(R() * 3);
+        put(g, x, y, x + 2, y, '#');
+        if (++n === 4) g[y - 1][x + 1] = 'L';
+        if (n % 2 === 0) g[F][x - 2] = '*';
+        x += 6;
+      }
+      return g;
+    },
+    // Crumbling bridges low over lava, with fire bars turning over them.
+    crumbleLava(R, first) {
+      const c = course(62, first), { g, F } = c;
+      put(g, c.x0, F, c.x1, F + 1, '!');
+      let n = 0;
+      for (let x = c.x0 + 1; x + 3 <= c.x1; x += 7, n++) {
+        put(g, x, F - 1, x + 4, F - 1, n === 3 ? '#' : 'C');
+        if (n === 3) g[F - 2][x + 2] = 'L';
+        else if (n % 2 === 1) g[F - 5][x + 2] = 'f';
+      }
+      return g;
+    },
+    // Lifts sliding back and forth over a bed of spikes.
+    liftsSpikes(R, first) {
+      const c = course(60, first), { g, F } = c, y = F - 2;
+      put(g, c.x0 - 1, F, c.x1 + 1, F, '^');
+      g[y][c.x0 - 2] = '|'; g[y][c.x0] = 'M';
+      put(g, 24, y, 28, y, '#'); g[y - 1][26] = 'L'; g[y][23] = '|';
+      g[y][29] = '|'; g[y][31] = 'M'; g[y][c.x1 + 2] = '|';
+      return g;
+    },
+    // A flooded hall: swim the channel past pike and jellies.
+    swim(R, first) {
+      const c = course(60, first), { g, F } = c;
+      put(g, c.x0, F - 3, c.x1, F + 1, '~'); put(g, c.x0 - 1, F - 3, c.x0 - 1, F - 1, '#');
+      put(g, 28, F - 3, 31, F + 1, '#'); g[F - 4][29] = 'L';
+      g[F][16] = 'Y'; g[F - 1][40] = 'U'; g[F][46] = 'Y';
+      return g;
+    },
+    // Conveyors running against you, crushers waiting overhead.
+    conveyCrush(R, first) {
+      const c = course(62, first), { g, F } = c;
+      put(g, c.x0, F, c.x1, F, '<');
+      for (let x = c.x0 + 5; x < c.x1 - 2; x += 9) g[3][x] = 'k';
+      g[F - 1][30] = 'L'; put(g, 29, F, 31, F, '#');
+      return g;
+    },
+    // Blinking blocks over lava: cross on whichever set is lit.
+    blinkLava(R, first) {
+      const c = course(60, first), { g, F } = c;
+      put(g, c.x0, F, c.x1, F + 1, '!');
+      let n = 0;
+      for (let x = c.x0 + 1; x + 1 <= c.x1; x += 4, n++) put(g, x, F - 1, x + 1, F - 1, n === 6 ? '#' : n % 2 ? 'H' : 'T');
+      g[F - 2][c.x0 + 1 + 6 * 4] = 'L';
+      return g;
+    },
+    // Sky: no floor at all, islands and turn blocks over the drop.
+    skyTurns(R, first) {
+      const w = 60, h = 16, g = runFrame(w, h), F = h - 3;
+      if (first) { g[h - 4][2] = 'P'; g[h - 4][4] = 'a'; }
+      put(g, 1, F, w - 2, h - 1, '.');
+      const isle = (a, b) => put(g, a, F, b, F, '#');
+      isle(1, 5); g[F][10] = ':'; isle(14, 17); g[F][21] = ';'; isle(25, 28); g[F - 1][26] = 'L';
+      g[F][32] = ':'; isle(36, 39); g[F][43] = ';'; isle(47, w - 2);
+      return g;
+    },
+    // Sky: wheels to ride from island to island.
+    skyWheels(R, first) {
+      const w = 62, h = 16, g = runFrame(w, h), F = h - 3;
+      if (first) { g[h - 4][2] = 'P'; g[h - 4][4] = 'a'; }
+      put(g, 1, F, w - 2, h - 1, '.');
+      const isle = (a, b) => put(g, a, F, b, F, '#');
+      isle(1, 5); g[F - 2][10] = ','; isle(15, 18); g[F - 1][17] = 'L'; g[F - 2][23] = 'x'; isle(28, 31);
+      g[F - 2][36] = ','; isle(41, 44); g[F - 2][49] = 'x'; isle(54, w - 2);
+      return g;
+    },
+    // Crumbling ledges over a spike pit, beetles on the safe ones.
+    crumbleSpikes(R, first) {
+      const c = course(62, first), { g, F } = c;
+      put(g, c.x0, F, c.x1, F, '^');
+      let n = 0;
+      for (let x = c.x0 + 1; x + 3 <= c.x1; x += 6, n++) {
+        const y = F - 2 - (n % 2);
+        put(g, x, y, x + 3, y, n % 3 === 2 ? '#' : 'C');
+        if (n === 5) g[y - 1][x + 1] = 'L';
+        else if (n % 3 === 2) g[y - 1][x + 2] = 'B';
+      }
+      return g;
+    },
+    // Pendulums swinging across a run of narrow ledges over pits.
+    pendulums(R, first) {
+      const c = course(62, first), { g, F } = c;
+      put(g, 1, 1, c.x1 + 6, 2, '#');
+      for (let x = c.x0 + 2; x < c.x1 - 1; x += 8) { put(g, x, F, x + 2, F + 1, '.'); g[3][x + 5] = R() < .5 ? 'e' : 'E'; }
+      g[F - 1][30] = 'L';
+      return g;
+    },
+    // Springs over lava up onto planks.
+    springLava(R, first) {
+      const c = course(60, first), { g, F } = c;
+      put(g, c.x0, F, c.x1, F + 1, '!');
+      for (let x = c.x0 + 2, n = 0; x + 6 <= c.x1; x += 10, n++) {
+        put(g, x, F - 1, x + 1, F - 1, '#'); g[F - 1][x + 1] = 'O';
+        put(g, x + 3, F - 6, x + 7, F - 6, n === 2 ? '#' : '=');
+        if (n === 2) g[F - 7][x + 5] = 'L';
+      }
+      return g;
+    },
+    // Lava pits, each with a lava bubble leaping out of it.
+    bubblePits(R, first) {
+      const c = course(62, first), { g, F } = c;
+      for (let x = c.x0 + 1, n = 0; x + 3 <= c.x1; x += 7, n++) {
+        put(g, x, F, x + 2, F + 1, '!'); g[F][x + 1] = '*';
+        if (n === 3) g[F - 1][x + 5] = 'L';
+        if (n % 2 === 1) g[F - 5][x + 5] = 'f';
+      }
+      return g;
+    },
+    // Lifts over lava.
+    liftsLava(R, first) {
+      const g = COURSES.liftsSpikes(R, first);
+      for (const row of g) for (let x = 0; x < row.length; x++) if (row[x] === '^') row[x] = '!';
+      return g;
+    },
+    // Ice over spike pits: slippery run-ups to every jump.
+    icePits(R, first) {
+      const c = course(62, first), { g, F } = c;
+      put(g, c.x0, F, c.x1, F, 'i');
+      for (let x = c.x0 + 4, n = 0; x + 2 <= c.x1 - 2; x += 7, n++) { put(g, x, F, x + 2, F, '^'); if (n === 3) g[F - 1][x + 5] = 'L'; }
+      return g;
+    },
+    // Ice ledges climbing up and down, crumbling ones between.
+    iceSteps(R, first) {
+      const c = course(62, first), { g, F } = c;
+      put(g, c.x0, F, c.x1, F, '^');
+      for (let x = c.x0 + 1, n = 0; x + 3 <= c.x1; x += 6, n++) {
+        const y = F - 1 - (n % 3);
+        put(g, x, y, x + 3, y, n % 2 ? 'C' : 'i');
+        if (n === 4) g[y - 1][x + 1] = 'L';
+      }
+      return g;
+    },
+  };
+
   // The castles: one at the end of every world but the last (whose castle is the Last
   // Dark's), each with its own keeper (see stepKeeper in engine.js). A castle's arena is a
   // hall with planks to get above its keeper; fliers hover high, walkers stand on the floor.
   const CASTLES = [
-    { world: 'The Hollow Spire', name: 'Candle Keep', giant: 'Γ', sign: 'THE CANDLE KING · mind the wax and the flames · stomp him when he melts after a hop' },
-    { world: 'The Lighthouse', name: 'Lighthouse Castle', giant: 'Δ', sign: 'THE LIGHTHOUSE CRAB · it scuttles into walls · stomp it while it’s stuck' },
-    { world: 'The Powder Works', name: 'Clockwork Castle', giant: 'Ξ', sign: 'THE CLOCKWORK KNIGHT · jump his gears · stomp him while he winds down' },
-    { world: 'The Neo Ledges', name: 'Storm Castle', giant: 'Λ', fly: true, sign: 'THE STORM ROC · it swoops low · stomp it when it lands to rest' },
-    { world: 'The Soot Canals', name: 'Rat Castle', giant: 'Π', sign: 'THE RAT KING · dodge his dash · stomp him on his throne' },
-    { world: 'The Melon Patch', name: 'Pumpkin Castle', giant: 'Φ', sign: 'THE PUMPKIN KNIGHT · his bombs land where they’re marked · stomp him when he’s dizzy' },
-    { world: 'The Bell Foundry', name: 'Smog Castle', giant: 'Ψ', fly: true, sign: 'THE SMOG DRAGON · it breathes fire across the floor · stomp it when it lands' },
-    { world: 'The Cinder Mines', name: 'Crystal Castle', giant: 'Σ', sign: 'THE CRYSTAL MOLE · it bursts up where the floor glows · stomp it while it’s stunned' },
+    { world: 'The Hollow Spire', name: 'Candle Keep', giant: 'Γ', course: ['lavaHops', 'crumbleLava'], sign: 'THE CANDLE KING · mind the wax and the flames · stomp him when he melts after a hop' },
+    { world: 'The Lighthouse', name: 'Lighthouse Castle', giant: 'Δ', course: ['swim', 'liftsSpikes'], sign: 'THE LIGHTHOUSE CRAB · it scuttles into walls · stomp it while it’s stuck' },
+    { world: 'The Powder Works', name: 'Clockwork Castle', giant: 'Ξ', course: ['conveyCrush', 'blinkLava'], sign: 'THE CLOCKWORK KNIGHT · jump his gears · stomp him while he winds down' },
+    { world: 'The Neo Ledges', name: 'Storm Castle', giant: 'Λ', fly: true, course: ['skyTurns', 'skyWheels'], sign: 'THE STORM ROC · it swoops low · stomp it when it lands to rest' },
+    { world: 'The Soot Canals', name: 'Rat Castle', giant: 'Π', course: ['crumbleSpikes', 'pendulums'], sign: 'THE RAT KING · dodge his dash · stomp him on his throne' },
+    { world: 'The Melon Patch', name: 'Pumpkin Castle', giant: 'Φ', course: ['springLava', 'pendulums'], sign: 'THE PUMPKIN KNIGHT · his bombs land where they’re marked · stomp him when he’s dizzy' },
+    { world: 'The Bell Foundry', name: 'Smog Castle', giant: 'Ψ', fly: true, course: ['bubblePits', 'liftsLava'], sign: 'THE SMOG DRAGON · it breathes fire across the floor · stomp it when it lands' },
+    { world: 'The Cinder Mines', name: 'Crystal Castle', giant: 'Σ', course: ['icePits', 'iceSteps'], sign: 'THE CRYSTAL MOLE · it bursts up where the floor glows · stomp it while it’s stunned' },
   ];
   function castleOf(k) {
     const c = CASTLES[k];
     const def = {
       name: c.name, dark: .7, giant: c.giant, bossHits: 4,
+      course: R => c.course.map((k, n) => COURSES[k](R, n === 0)),
       map: hall(48, 16, ({ r, s }) => {
         r(8, 10, 13, 10, '='); s(10, 9, 'a'); r(34, 10, 39, 10, '='); s(36, 9, 'a');
         r(20, 7, 27, 7, '='); s(30, c.fly ? 4 : 12, '0');
@@ -770,7 +928,7 @@
     const climb = sky ? skyClimb() : castle ? castleClimb(R) : CLIMBS[t % CLIMBS.length](R, cv);
     const run = sky ? skyRun() : castle ? castleWalls(R) : RUNS[(t + Math.floor(t / RUNS.length)) % RUNS.length](R, Math.floor(t / RUNS.length) % 3);
     if (!castle && !sky) { harden(climb, R, false); harden(run, R, true); }
-    const parts = [castle || sky || cv % 2 === 0 ? climb : mirror(climb), run, arenaRows];
+    const parts = def.course ? [...def.course(R), arenaRows] : [castle || sky || cv % 2 === 0 ? climb : mirror(climb), run, arenaRows];
     const h = Math.max(...parts.map(p => p.length));
     const w = parts.reduce((s, p) => s + p[0].length, 0) + GAP * (parts.length - 1);
     const g = grid(w, h, '#'), at = [];
@@ -795,12 +953,12 @@
       // No guns in a tower: the boss falls to 3 stomps, and flies into a fury after each.
       ...def, map: g.map(row => row.join('')), noDoor: true, bossEnds: true, arenaX: arena.x, noAmmo: true, bossFury: true, bossHits: def.bossHits ?? (castle ? 5 : 3), castle: !!castle,
       signs: [
-        { x: climbAt.x + 2, y: climbAt.y + parts[0].length - 4.6, t: castle ? 'THE CASTLE · climb, floor after floor · no guns here' : 'CLIMB THE TOWER ↑ · no guns here: stomp' },
-        { x: runAt.x + 2, y: runAt.y + parts[1].length - 6.6, t: 'along the battlements →' },
+        { x: climbAt.x + 2, y: climbAt.y + parts[0].length - 4.6, t: def.course ? `${def.name.toUpperCase()} · no guns here · onward →` : castle ? 'THE CASTLE · climb, floor after floor · no guns here' : 'CLIMB THE TOWER ↑ · no guns here: stomp' },
+        { x: runAt.x + 2, y: runAt.y + parts[1].length - 6.6, t: def.course ? 'keep going →' : 'along the battlements →' },
         ...(def.signs || []).map(s => ({ ...s, x: s.x + arena.x, y: s.y + arena.y })),
       ],
     };
-    delete out.hordeStop;
+    delete out.hordeStop; delete out.course;
     return out;
   }
 
