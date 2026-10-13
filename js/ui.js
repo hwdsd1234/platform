@@ -31,8 +31,8 @@
   const levelsV = store.get('levelsV', 1);
   // Later additions say which save version brought them in (lv.since): the Storm Heights
   // and the Sky Spire came with version 6, the Melon Vault with 7, the High Winds with 8,
-  // the Neo Ledges with 9.
-  const SAVE_V = 9;
+  // the Neo Ledges with 9, the world castles with 10.
+  const SAVE_V = 10;
   if (levelsV < SAVE_V) {
     const was = LF.LEVELS.map((lv, i) => i).filter(i => !((LF.LEVELS[i].since || 0) > levelsV) && (levelsV >= 3 || (levelsV < 2 ? !LF.LEVELS[i].boss : !LF.LEVELS[i].giantFight)));
     const move = book => Object.fromEntries(Object.entries(book).map(([k, v]) => [was[k] ?? k, v]));
@@ -55,7 +55,7 @@
   // castle's) until you step into the boss's arena, then that boss's own fight music (the
   // Last Dark's for the castle).
   const trackFor = (def, ctx, inArena) => ctx.kind === 'house' ? 'grove' : ctx.kind === 'cannon' ? 'map'
-    : def.arenaX ? (inArena ? (def.finalFight ? 'final' : `fight:${def.name}`) : def.finalFight ? 'castle' : 'tower')
+    : def.arenaX ? (inArena ? (def.finalFight ? 'final' : `fight:${def.name}`) : def.castle ? 'castle' : 'tower')
     : `world${(ctx.index != null && LF.LEVELS[ctx.index] ? LF.LEVELS[ctx.index].world : 0) % 9}`;
   function tone(f1, f2, dur, type = 'square', vol = .05, delay = 0) {
     if (!ac || muted) return;
@@ -788,7 +788,7 @@
       <ul class="keys">
         <li>Map: <kbd>←</kbd><kbd>↑</kbd><kbd>→</kbd><kbd>↓</kbd> walk along the paths (the little arrows show the ways on) · <kbd>Enter</kbd> play · crossroads open more than one level</li>
         <li><kbd>←</kbd><kbd>→</kbd> walk · <kbd>Space</kbd> jump (hold for height) · <kbd>↓</kbd> drop through planks</li>
-        <li>Every level has a 100-second clock (a tower’s boss arena adds 100 more when you reach it, the castle’s 200); come back at a lantern and the clock reads what it did when you lit it (at least 30 seconds): at 50 seconds left a hurry-up tune plays and the music speeds up; when it runs out you die (Fruit Groves have their own 10 seconds)</li>
+        <li>Every level has a clock, longer for longer levels (a tower’s boss arena adds 100 seconds when you reach it, a castle’s 200); come back at a lantern and the clock reads what it did when you lit it, less a tenth of the level’s time for each time you’ve come back there (never under 30 seconds): at 50 seconds left a hurry-up tune plays and the music speeds up; when it runs out you die (Fruit Groves have their own 10 seconds)</li>
         <li>Push into a wall to slide down it · jump off walls to climb</li>
         <li><kbd>E</kbd> fire: tap for one shot, hold for autofire; shots splash 1 block · <kbd>X</kbd> explosive round (2 ammo, 3-block blast) · <kbd>A</kbd> kill shot (3 ammo): kills whatever it hits in one go, golems and carts too (a boss takes it as one hit) · every shot counts as one hit (a grenade one per blast, up to three), so golems take 3 and TNT carts 5 (stomps count too); a TNT blast kills everything near it but you · <kbd>Q</kbd> bouncing grenade (3 ammo) · <kbd>D</kbd> dynamite (4 ammo): thrown, it falls and sits where it lands, and after a 3-second fuse kills everything within 5 blocks, golems and carts too (a boss takes it as one hit; it never hurts you) · <kbd>Shift</kbd>+<kbd>D</kbd> big dynamite (8 ammo, 10 blocks) · hold any of them to keep firing · hold <kbd>Shift</kbd> for a big shot: 2× size and blast, 2× ammo · ammo crates are hidden through each level; big crates hold 10, huge ones 25; enemies drop 1–5 ammo when killed, more for tougher ones (TNT carts drop none)</li>
         <li>Keys open the locked-door blocks you touch, one block at a time; you keep the key</li>
@@ -836,7 +836,12 @@
   }
   const chapterIndex = i => { const names = [...new Set(LF.LEVELS.map(l => l.chapter))]; return names.indexOf(LF.LEVELS[i].chapter); };
 
-  const LEVEL_CLOCK = 100;
+  // A level's clock: about 40 seconds plus 0.6 a column across and 0.9 a row up (a tower's
+  // arena not counted), rounded to 10, between 80 and 300.
+  const clockFor = def => {
+    const rows = def.map.length, cols = def.arenaX || Math.max(...def.map.map(r => r.length));
+    return Math.max(80, Math.min(300, Math.round((40 + cols * .6 + rows * .9) / 10) * 10));
+  };
   function play(def, ctx) {
     playDef = def; playCtx = ctx;
     // (While you're in a story level, the save says so: see leftMidLevel.)
@@ -856,9 +861,10 @@
       if (!mw || mw.index !== ctx.index) store.set('midway', null);
     }
     if (ctx.kind === 'practice') withPowers = { ...withPowers, carryAmmo: 40 };
-    // Every level but a timed one (a Fruit Grove) has a 100-second clock, and a tower's boss
-    // arena adds 100 more (the castle's, 200); not in practice or when testing in the editor.
-    if (!def.timeLimit && ctx.kind !== 'practice' && ctx.kind !== 'test') withPowers = { ...withPowers, deadline: LEVEL_CLOCK, bossTime: def.arenaX ? (def.finalFight ? 200 : 100) : 0 };
+    // Every level but a timed one (a Fruit Grove) has a clock set by how long it is (see
+    // clockFor), and a tower's boss arena adds 100 seconds more (a castle's, 200); not in
+    // practice or when testing in the editor.
+    if (!def.timeLimit && ctx.kind !== 'practice' && ctx.kind !== 'test') withPowers = { ...withPowers, deadline: clockFor(def), bossTime: def.arenaX ? (def.castle ? 200 : 100) : 0 };
     if (LF.music) LF.music.hurry(false);
     W = LF.createWorld(hardcore && ctx.kind !== 'test' ? hardcoreDef(withPowers) : withPowers);
     for (const k in input) input[k] = false;

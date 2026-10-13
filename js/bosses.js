@@ -568,6 +568,33 @@
     signs: [{ x: 2, y: 9.4, t: 'THE MELON BRUTE · it rolls till it hits a wall · stomp it while it’s cracked' }],
   });
 
+  // The castles: one at the end of every world but the last (whose castle is the Last
+  // Dark's), each with its own keeper (see stepKeeper in engine.js). A castle's arena is a
+  // hall with planks to get above its keeper; fliers hover high, walkers stand on the floor.
+  const CASTLES = [
+    { world: 'The Hollow Spire', name: 'Candle Keep', giant: 'Γ', sign: 'THE CANDLE KING · mind the wax and the flames · stomp him when he melts after a hop' },
+    { world: 'The Lighthouse', name: 'Lighthouse Castle', giant: 'Δ', sign: 'THE LIGHTHOUSE CRAB · it scuttles into walls · stomp it while it’s stuck' },
+    { world: 'The Powder Works', name: 'Clockwork Castle', giant: 'Ξ', sign: 'THE CLOCKWORK KNIGHT · jump his gears · stomp him while he winds down' },
+    { world: 'The Neo Ledges', name: 'Storm Castle', giant: 'Λ', fly: true, sign: 'THE STORM ROC · it swoops low · stomp it when it lands to rest' },
+    { world: 'The Soot Canals', name: 'Rat Castle', giant: 'Π', sign: 'THE RAT KING · dodge his dash · stomp him on his throne' },
+    { world: 'The Melon Patch', name: 'Pumpkin Castle', giant: 'Φ', sign: 'THE PUMPKIN KNIGHT · his bombs land where they’re marked · stomp him when he’s dizzy' },
+    { world: 'The Bell Foundry', name: 'Smog Castle', giant: 'Ψ', fly: true, sign: 'THE SMOG DRAGON · it breathes fire across the floor · stomp it when it lands' },
+    { world: 'The Cinder Mines', name: 'Crystal Castle', giant: 'Σ', sign: 'THE CRYSTAL MOLE · it bursts up where the floor glows · stomp it while it’s stunned' },
+  ];
+  function castleOf(k) {
+    const c = CASTLES[k];
+    const def = {
+      name: c.name, dark: .7, giant: c.giant, bossHits: 4,
+      map: hall(48, 16, ({ r, s }) => {
+        r(8, 10, 13, 10, '='); s(10, 9, 'a'); r(34, 10, 39, 10, '='); s(36, 9, 'a');
+        r(20, 7, 27, 7, '='); s(30, c.fly ? 4 : 12, '0');
+      }),
+      signs: [{ x: 2, y: 9.4, t: c.sign }],
+    };
+    return { ...tower(def, 900 + k * 17, true), chapter: c.world, boss: true, castleOf: k, since: 10 };
+  }
+  const castleAfter = Object.fromEntries(CASTLES.map((c, k) => [c.world, k]));
+
   // The Sky Spire, the Sky Roads' tower: no floor, just the long drop under a climb of
   // islands, turn blocks, crumbling stone, a wheel and blinking blocks, then a run of
   // islands across the sky.
@@ -763,7 +790,7 @@
     }
     const out = {
       // No guns in a tower: the boss falls to 3 stomps, and flies into a fury after each.
-      ...def, map: g.map(row => row.join('')), noDoor: true, bossEnds: true, arenaX: arena.x, noAmmo: true, bossFury: true, bossHits: castle ? 5 : 3,
+      ...def, map: g.map(row => row.join('')), noDoor: true, bossEnds: true, arenaX: arena.x, noAmmo: true, bossFury: true, bossHits: def.bossHits ?? (castle ? 5 : 3), castle: !!castle,
       signs: [
         { x: climbAt.x + 2, y: climbAt.y + parts[0].length - 4.6, t: castle ? 'THE CASTLE · climb, floor after floor · no guns here' : 'CLIMB THE TOWER ↑ · no guns here: stomp' },
         { x: runAt.x + 2, y: runAt.y + parts[1].length - 6.6, t: 'along the battlements →' },
@@ -782,16 +809,22 @@
     const n = i + 1, chapter = lv.chapter;
     if (n % 10 === 0 && FIGHTS[n / 10 - 1]) out.push({ ...tower(arena(n / 10 - 1, Math.floor((n / 10 - 1) / 5)), 300 + n), chapter, boss: true });
     else if (n % 10 === 5 && GIANT_FIGHTS[(n - 5) / 10]) out.push({ ...tower(giantArena((n - 5) / 10), 300 + n), chapter, boss: true });
-    if (chapter === 'The Powder Works' && regular[i + 1] && regular[i + 1].chapter !== chapter) {
+    const chapterEnds = regular[i + 1] && regular[i + 1].chapter !== chapter;
+    // A world's last chapter ends at its castle.
+    if (chapterEnds && castleAfter[chapter] != null) out.push(castleOf(castleAfter[chapter]));
+    if (chapter === 'The Powder Works' && chapterEnds) {
       out.push(...(LF.SKY_LEVELS || []));
-      // ...ending at the Sky Spire, where the Soot Queen nests above the clouds.
+      // ...ending at the Sky Spire, where the Soot Queen nests above the clouds, then the
+      // Sky Roads' castle.
       out.push({ ...tower(voidDef(), 777, false, true), chapter: 'The Neo Ledges', boss: true, sky: true, since: 6 });
+      out.push(castleOf(castleAfter['The Neo Ledges']));
     }
     // And the Melon Patch (levels-13.js) closes the Garden Market.
-    if (chapter === 'The Ember Gardens' && regular[i + 1] && regular[i + 1].chapter !== chapter) {
+    if (chapter === 'The Ember Gardens' && chapterEnds) {
       out.push(...(LF.MELON_LEVELS || []));
-      // ...ending at the Melon Vault, the Melon Brute's tower.
+      // ...ending at the Melon Vault, the Melon Brute's tower, then the Garden Market's castle.
       out.push({ ...tower(melonDef(), 778, false, false, 40), chapter: 'The Melon Patch', boss: true, since: 7 });
+      out.push(castleOf(castleAfter['The Melon Patch']));
     }
   });
   // ---- The final boss ----

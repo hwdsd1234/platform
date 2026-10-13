@@ -125,6 +125,16 @@
     // Bosses of their own: the Void (the Sky Spire's) and the Melon Brute (the Melon Patch's).
     'Ø': { name: 'The Void', w: 64, h: 64, stomp: false, fly: true, hits: 3 },
     'Ɱ': { name: 'The Melon Brute', w: 76, h: 60, stomp: false, hits: 3 },
+    // The castle keepers, one at the end of each world (see stepKeeper). Like most giants,
+    // they can only be stomped while dazed.
+    'Γ': { name: 'The Candle King', w: 54, h: 72, stomp: false, hits: 4 },
+    'Δ': { name: 'The Lighthouse Crab', w: 92, h: 46, stomp: false, hits: 4 },
+    'Ξ': { name: 'The Clockwork Knight', w: 48, h: 70, stomp: false, hits: 4 },
+    'Λ': { name: 'The Storm Roc', w: 84, h: 52, stomp: false, fly: true, hits: 4 },
+    'Π': { name: 'The Rat King', w: 62, h: 56, stomp: false, hits: 4 },
+    'Φ': { name: 'The Pumpkin Knight', w: 56, h: 66, stomp: false, hits: 4 },
+    'Ψ': { name: 'The Smog Dragon', w: 100, h: 58, stomp: false, fly: true, hits: 4 },
+    'Σ': { name: 'The Crystal Mole', w: 66, h: 48, stomp: false, hits: 4 },
   };
   for (const [c, g] of Object.entries(GIANTS)) {
     const base = LF.ENEMIES[c];
@@ -372,8 +382,8 @@
     e.scale = s.k || 1; e.reach = -TS;
     const cx = tx * TS + TS / 2, cy = ty * TS + TS / 2;
     if (s.fly || c === 'f' || c === 'Ω') { e.x = cx - e.w / 2; e.y = cy - e.h / 2; }
-    // The Melon Brute stands on the floor under its spot.
-    if (c === 'Ɱ') { e.x = cx - e.w / 2; e.y = (ty + 1) * TS - e.h; }
+    // The Melon Brute and the castle keepers that walk stand on the floor under their spot.
+    if (c === 'Ɱ' || (KEEPERS.has(key) && !s.fly)) { e.x = cx - e.w / 2; e.y = (ty + 1) * TS - e.h; }
     // Swimmers and the Magma Heart: find their pool's surface and sides.
     if (c === 'U' || c === 'Y' || c === 'N' || c === '*') {
       measurePool(W, e, tx, ty);
@@ -547,6 +557,9 @@
   }
 
   function respawn(W) {
+    // Coming back at a checkpoint costs a tenth of the level's time (at least 10 seconds)
+    // off what the clock read when you lit it, every time.
+    if (W.def.deadline && W.cpLeft != null) W.cpLeft = Math.max(CLOCK_MIN, W.cpLeft - Math.max(10, Math.round(W.def.deadline * .1)));
     // In the story, dying always sends you back to the map (the lanterns you lit are kept
     // for your next go at this level: see def.resume).
     if (W.def.toMapOnDeath) { W.lost = true; W.emit('lost'); return; }
@@ -1458,6 +1471,14 @@
     '%+': ['Dark Tide', (W) => { const y = W.player.y + W.player.h - 12; shot(W, arenaLeft(W) + 10, y, 230, 0, { kind: 'void', w: 14, h: 14 }); shot(W, arenaRight(W) - 10, y - TS * 2, -230, 0, { kind: 'void', w: 14, h: 14 }); }],
     'Ω+': ['Eclipse', (W, e) => { W.dark = Math.min(.95, W.dark + .08); ring8(W, e.x + e.w / 2, e.y + e.h / 2, 20, 150); minionsNear(W, e, 'G', 2); }],
     'Ø+': ['Singularity', (W, e) => { const ex = e.x + e.w / 2, ey = e.y + e.h / 2; for (let k = 0; k < 10; k++) { const a = k / 10 * TAU; const r = TS * 7; shot(W, ex + Math.cos(a) * r, ey + Math.sin(a) * r, -Math.cos(a) * 140 + Math.sin(a) * 60, -Math.sin(a) * 140 - Math.cos(a) * 60, { kind: 'void', w: 14, h: 14, life: 3 }); } }],
+    'Γ+': ['Wax Flood', (W, e) => { e.flip = !e.flip; acrossArena(W, 8, (x, k) => { if (k % 2 === (e.flip ? 1 : 0)) warnAt(W, x, fy => ({ kind: 'flame', x: x - 7, y: fy - 18, w: 14, h: 18, vx: 0, vy: 0, life: 2.4 })); }); }],
+    'Δ+': ['Bubble Storm', (W) => acrossArena(W, 9, x => W.projectiles.push({ kind: 'bubble', x: x - 8, y: floorY(W, x) - 18, w: 16, h: 16, vx: 0, vy: -70, life: 6 }))],
+    'Ξ+': ['Gear Storm', (W) => { const y = floorY(W, W.player.x) - 20; for (const d of [-1, 1]) for (const k of [0, 1]) W.projectiles.push({ kind: 'gear', x: (d < 0 ? arenaRight(W) - 24 : arenaLeft(W) + 6) , y: y - k * TS * 2, w: 18, h: 18, vx: -d * (220 + k * 60), vy: 0, life: 5 }); }],
+    'Λ+': ['Feather Gale', (W) => acrossArena(W, 10, x => W.projectiles.push({ kind: 'feather', x: x - 5, y: ceilingOver(W, x, W.player.y) + 6, w: 10, h: 10, vx: 60, vy: 120, g: 250, life: 5 }))],
+    'Π+': ['Rat Swarm', (W) => { for (const d of [-1, 1]) for (const k of [0, 1]) if (minions(W) < 6) { const m = spawnMinion(W, 'B', d < 0 ? arenaLeft(W) + TS * (2 + k * 2) : arenaRight(W) - TS * (2 + k * 2), W.player.y); m.face = -d; } }],
+    'Φ+': ['Pumpkin Patch', (W) => acrossArena(W, 5, x => W.projectiles.push({ kind: 'bomb', fury: true, x: x - 6, y: ceilingOver(W, x, W.player.y) + 8, w: 12, h: 12, vx: 0, vy: 0, g: 700, life: 4 }))],
+    'Ψ+': ['Firestorm', (W, e) => { ring8(W, e.x + e.w / 2, e.y + e.h / 2, 16, 170); minionsNear(W, e, 'F', 2); }],
+    'Σ+': ['Crystal Spikes', (W) => acrossArena(W, 7, x => warnAt(W, x, fy => ({ kind: 'crystal', x: x - 6, y: fy - 14, w: 12, h: 12, vx: 0, vy: -560, g: 900, life: 2 })))],
     'Ɱ+': ['Seed Storm', (W, e) => { const ex = e.x + e.w / 2; for (let k = -3; k <= 3; k++) W.projectiles.push({ kind: 'seed', x: ex - 4, y: e.y + 6, w: 8, h: 8, vx: k * 80, vy: -480 + Math.abs(k) * 30, g: 900, life: 3 }); }],
   };
   function stepFury(W, e, dt) {
@@ -1796,12 +1817,189 @@
     }
   }
 
+  // The castle keepers. Each works through its own round of moves (acts), and each has a
+  // moment it's dazed and open to a stomp: the Candle King melts after a hop, the crab gets
+  // stuck in a wall, the knight winds down, the roc and the dragon land to rest, the Rat
+  // King sits back on his throne, the Pumpkin Knight reels after every other leap, and the
+  // mole is stunned when it bursts back up out of the floor.
+  const KEEPERS = new Set(['Γ+', 'Δ+', 'Ξ+', 'Λ+', 'Π+', 'Φ+', 'Ψ+', 'Σ+']);
+  function stepKeeper(W, e, dt, live, px, py, rage, toward) {
+    const ex = e.x + e.w / 2, ey = e.y + e.h / 2, fast = rage ? 1.25 : 1, fly = LF.ENEMIES[e.type].fly;
+    const daze = (t, state = 'dazed') => { e.state = state; e.dazed = e.wait = t * DAZE; };
+    const lo = arenaLeft(W), hi = arenaRight(W) - e.w;
+    const clampX = () => { e.x = Math.max(lo, Math.min(hi, e.x)); };
+    const land = fly ? 0 : bossFall(W, e, dt);
+    const lob = (kind, n, spread, extra) => { for (let k = 0; k < n; k++) W.projectiles.push({ kind, x: ex - 6, y: e.y + 8, w: 12, h: 12, vx: toward * (120 + k * spread), vy: -460 - (k % 2) * 60, g: 900, life: 3.5, ...extra }); };
+    const leap = () => { e.state = 'leap'; e.vy = -800; e.ground = false; e.vx = Math.max(-280, Math.min(280, (px - ex) * 1.2)); W.emit('jump'); };
+    const next = acts => acts[(e.moves = (e.moves || 0) + 1) % acts.length];
+    // (Fliers: rest on the floor below, then rise back up to where they hover.)
+    if (fly) {
+      if (e.state === 'descend') {
+        const hit = moveY(W, e, 320 * dt, false);
+        if (hit && hit.dir === 'down') { W.shake = Math.max(W.shake, .3); W.emit('slam'); burst(W, ex, e.y + e.h, 16, ['#CFC6E8', '#9A8FBF'], 160, 300, 3); daze(2, 'tired'); W.floaters.push({ x: ex, y: e.y - 14, t: 'it’s resting!', life: 1.2, c: '#FFE2A8' }); }
+        return;
+      }
+      if (e.state === 'tired') { if ((e.wait -= dt) <= 0) e.state = 'ascend'; return; }
+      if (e.state === 'ascend') { e.y -= 200 * dt; if (e.y <= e.oy) { e.y = e.oy; e.state = 'idle'; e.wait = .8 / fast; } return; }
+    }
+    // (Walkers: a leap lands with a shockwave each way.)
+    if (e.state === 'leap') {
+      moveX(W, e, e.vx * dt); clampX();
+      if (land) {
+        shock(W, e, rage ? [[-1, 300], [1, 300], [-1, 180], [1, 180]] : [[-1, 260], [1, 260]]); W.shake = Math.max(W.shake, .35); W.emit('slam');
+        e.leaps = (e.leaps || 0) + 1;
+        if (e.type === 'Γ+') { daze(1.6, 'melted'); W.floaters.push({ x: ex, y: e.y - 14, t: 'it’s melting!', life: 1.2, c: '#FFE2A8' }); }
+        else if (e.type === 'Φ+' && e.leaps % 2 === 0) { daze(1.8, 'dizzy'); W.floaters.push({ x: ex, y: e.y - 14, t: 'dizzy!', life: 1.2, c: '#FFE2A8' }); }
+        else { e.state = 'idle'; e.wait = .8 / fast; }
+      }
+      return;
+    }
+    if (e.dazed > 0 && e.state !== 'idle') { if ((e.wait -= dt) <= 0) { e.state = 'idle'; e.wait = .7 / fast; } return; }
+    switch (e.type) {
+      case 'Γ+': {
+        // The Candle King: a great living candle. Flings wax, sets the floor alight round
+        // you (marked first), and hops at you, melting a little when he lands.
+        e.face = toward;
+        if (e.ground) moveX(W, e, toward * 50 * fast * dt), clampX();
+        if ((e.wait -= dt) > 0 || !live || !e.ground) break;
+        const act = next(['wax', 'flare', 'hop', 'wax', 'hop']);
+        if (act === 'wax') { lob('wax', 3, 70); e.wait = 1.2 / fast; W.emit('spit'); }
+        else if (act === 'flare') { fireAround(W); warnAt(W, px, fy => ({ kind: 'flame', x: px - 7, y: fy - 18, w: 14, h: 18, vx: 0, vy: 0, life: 2.2 })); e.wait = 1.4 / fast; W.emit('roar'); }
+        else leap();
+        break;
+      }
+      case 'Δ+': {
+        // The Lighthouse Crab: scuttles sideways at you till it slams into a wall (and sticks
+        // there a moment), blows bubbles that drift at you, and snaps forward with a claw.
+        if (e.state === 'scuttle' || e.state === 'snap') {
+          if ((e.state === 'snap' && (e.wait -= dt) <= 0)) { e.state = 'idle'; e.wait = .9 / fast; break; }
+          if (moveX(W, e, e.vx * dt) || e.x <= lo + 1 || e.x >= hi - 1) {
+            clampX();
+            if (e.state === 'scuttle') {
+              W.shake = Math.max(W.shake, .45); W.emit('slam'); rockRain(W, 3, 5);
+              burst(W, ex + Math.sign(e.vx) * e.w / 2, ey, 18, ['#E5484D', '#FFE2A8'], 200, 400, 3);
+              e.vx = 0; daze(1.8, 'stuck'); W.floaters.push({ x: ex, y: e.y - 14, t: 'stuck!', life: 1.2, c: '#FFE2A8' });
+            } else { e.state = 'idle'; e.wait = .9 / fast; }
+          }
+          break;
+        }
+        e.face = toward;
+        if ((e.wait -= dt) > 0 || !live || !e.ground) break;
+        const act = next(['scuttle', 'bubbles', 'snap', 'scuttle', 'bubbles']);
+        if (act === 'scuttle') { e.state = 'scuttle'; e.vx = toward * 380 * fast; W.emit('snort'); }
+        else if (act === 'snap') { e.state = 'snap'; e.vx = toward * 520 * fast; e.wait = .35; W.emit('snort'); }
+        else { for (let k = 0; k < 5; k++) W.projectiles.push({ kind: 'bubble', x: ex - 8, y: e.y + 6, w: 16, h: 16, vx: toward * (50 + k * 25), vy: -30 - k * 18, life: 5.5 }); e.wait = 1.4 / fast; W.emit('spit'); }
+        break;
+      }
+      case 'Ξ+': {
+        // The Clockwork Knight: marches at you, rolls gears along the floor, leaps, and every
+        // so often runs down and has to wind himself up again.
+        e.face = toward;
+        if (e.ground) moveX(W, e, toward * 70 * fast * dt), clampX();
+        if ((e.wait -= dt) > 0 || !live || !e.ground) break;
+        const act = next(['gears', 'leap', 'gears', 'wind']);
+        if (act === 'gears') { for (const sp of [260, 170]) W.projectiles.push({ kind: 'gear', x: ex - 9, y: e.y + e.h - 20, w: 18, h: 18, vx: toward * sp * fast, vy: 0, life: 4 }); e.wait = 1.1 / fast; W.emit('clank'); }
+        else if (act === 'leap') leap();
+        else { daze(2, 'winding'); W.floaters.push({ x: ex, y: e.y - 14, t: 'winding down…', life: 1.4, c: '#FFE2A8' }); }
+        break;
+      }
+      case 'Λ+':
+      case 'Ψ+': {
+        // The Storm Roc: hovers over you, drops feathers, swoops low across the arena, and lands
+        // to rest. The Smog Dragon: hovers, sweeps a stream of fire across the floor, calls soot
+        // bats, and lands to catch its breath.
+        const roc = e.type === 'Λ+';
+        if (e.state === 'swoop') {
+          e.st += dt; const T = 1.5, fy = floorY(W, ex) - e.h - 6;
+          e.x = e.sx + e.dir * e.st * 380 * fast; clampX();
+          e.y = e.oy + Math.sin(Math.min(1, e.st / T) * Math.PI) * Math.max(0, fy - e.oy);
+          if (e.st >= T) { e.y = e.oy; e.state = 'idle'; e.wait = .8 / fast; }
+          break;
+        }
+        if (e.state === 'breath') {
+          e.st += dt;
+          if ((e.bt -= dt) <= 0) { e.bt = .09; const a = Math.PI / 2 - e.dir * (1 - e.st / 1.3) * 1.1; shot(W, ex + e.dir * e.w * .4, e.y + e.h * .7, Math.cos(a) * 300, Math.sin(a) * 300, { life: 3 }); }
+          if (e.st >= 1.3) { e.state = 'idle'; e.wait = 1 / fast; }
+          break;
+        }
+        // Hover over you, bobbing.
+        const tx = Math.max(lo, Math.min(hi, px - e.w / 2));
+        e.x += Math.sign(tx - e.x) * Math.min(Math.abs(tx - e.x), 90 * fast * dt);
+        e.y += (e.oy + Math.sin(e.t * 2.4) * 8 - e.y) * Math.min(1, dt * 3);
+        e.face = toward;
+        if ((e.wait -= dt) > 0 || !live) break;
+        const act = next(roc ? ['feathers', 'swoop', 'feathers', 'swoop', 'land'] : ['breath', 'bats', 'breath', 'land']);
+        if (act === 'feathers') { for (let k = -2; k <= 2; k++) W.projectiles.push({ kind: 'feather', x: ex - 5 + k * 14, y: e.y + e.h - 6, w: 10, h: 10, vx: k * 50, vy: 240, g: 150, life: 4 }); e.wait = 1.1 / fast; W.emit('spit'); }
+        else if (act === 'swoop') { e.state = 'swoop'; e.st = 0; e.sx = e.x; e.dir = (ex < (lo + hi + e.w) / 2) ? 1 : -1; W.emit('roar'); }
+        else if (act === 'breath') { e.state = 'breath'; e.st = 0; e.bt = 0; e.dir = toward; W.emit('roar'); }
+        else if (act === 'bats') { minionsNear(W, e, 'F', 2); e.wait = 1.2 / fast; }
+        else { e.state = 'descend'; }
+        break;
+      }
+      case 'Π+': {
+        // The Rat King: dashes at you, sweeps his tail (shockwaves both ways), and calls his
+        // rats (beetles, here) before sitting back on his throne to watch.
+        if (e.state === 'dash') {
+          if ((e.wait -= dt) <= 0 || moveX(W, e, e.vx * dt) || e.x <= lo + 1 || e.x >= hi - 1) { clampX(); e.vx = 0; e.state = 'idle'; e.wait = .7 / fast; }
+          break;
+        }
+        e.face = toward;
+        if ((e.wait -= dt) > 0 || !live || !e.ground) break;
+        const act = next(['dash', 'sweep', 'dash', 'summon']);
+        if (act === 'dash') { e.state = 'dash'; e.vx = toward * 430 * fast; e.wait = .75; W.emit('snort'); }
+        else if (act === 'sweep') { shock(W, e, [[-1, 300], [1, 300]]); W.shake = Math.max(W.shake, .3); W.emit('slam'); e.wait = 1 / fast; }
+        else { if (minions(W) < 4) for (const d of [-1, 1]) spawnMinion(W, 'B', ex + d * e.w * .8, e.y + e.h - 4); daze(2, 'throne'); W.floaters.push({ x: ex, y: e.y - 14, t: 'he sits back…', life: 1.2, c: '#FFE2A8' }); }
+        break;
+      }
+      case 'Φ+': {
+        // The Pumpkin Knight: lobs pumpkin bombs (their landing spots marked) and leaps at you;
+        // every other landing leaves him dizzy.
+        e.face = toward;
+        if ((e.wait -= dt) > 0 || !live || !e.ground) break;
+        const act = next(['bombs', 'leap', 'bombs', 'leap']);
+        if (act === 'bombs') {
+          for (const off of [-TS * 2, TS * 2]) { const t = 1.1, g = 900, tx = px + off; W.projectiles.push({ kind: 'bomb', fury: true, x: ex - 6, y: e.y - 6, w: 12, h: 12, vx: (tx - ex) / t, vy: (py - e.y) / t - g * t / 2, g, life: 4 }); }
+          e.wait = 1.2 / fast; W.emit('lob');
+        } else leap();
+        break;
+      }
+      case 'Σ+': {
+        // The Crystal Mole: throws crystal shards, and burrows: it slips under the floor (you
+        // can't touch it there), tunnels under you, and bursts up (the spot glows first),
+        // spraying shards, stunned for a moment by the light.
+        if (e.state === 'under') {
+          e.phased = true;
+          const tx = Math.max(lo, Math.min(hi, px - e.w / 2));
+          e.x += Math.sign(tx - e.x) * Math.min(Math.abs(tx - e.x), 300 * fast * dt);
+          if (Math.random() < .5) burst(W, ex, e.y + e.h, 2, ['#7FB0E0', '#5E5173'], 90, 300, 2);
+          if ((e.wait -= dt) <= 0) { e.state = 'rising'; e.wait = .8; warnAt(W, ex, fy => ({ kind: 'crystal', x: ex - 6, y: fy - 14, w: 12, h: 12, vx: 0, vy: -520, g: 900, life: 2 })); }
+          break;
+        }
+        if (e.state === 'rising') {
+          if ((e.wait -= dt) <= 0) {
+            e.phased = false;
+            for (let k = -3; k <= 3; k++) if (k) W.projectiles.push({ kind: 'crystal', x: ex - 6, y: e.y, w: 12, h: 12, vx: k * 70, vy: -520 + Math.abs(k) * 40, g: 900, life: 3 });
+            W.shake = Math.max(W.shake, .35); W.emit('slam'); daze(1.8, 'stunned'); W.floaters.push({ x: ex, y: e.y - 14, t: 'stunned!', life: 1.2, c: '#FFE2A8' });
+          }
+          break;
+        }
+        e.face = toward;
+        if ((e.wait -= dt) > 0 || !live || !e.ground) break;
+        const act = next(['shards', 'burrow', 'shards', 'burrow']);
+        if (act === 'shards') { lob('crystal', 4, 55); e.wait = 1.1 / fast; W.emit('spit'); }
+        else { e.state = 'under'; e.wait = 1.3; burst(W, ex, e.y + e.h, 16, ['#7FB0E0', '#5E5173'], 160, 300, 3); W.emit('slam'); }
+        break;
+      }
+    }
+  }
+
   // A boss's left wall: the level's edge, or in a tower the arena's own left wall.
   const arenaLeft = W => ((W.def.arenaX || 0) + 1) * TS;
 
   // The giants. Each has an attack or two and a moment where it's dazed (stompable whatever
   // it is); most call in a few of their small cousins.
   function stepGiant(W, e, dt, live, px, py, rage, toward) {
+    if (KEEPERS.has(e.type)) return stepKeeper(W, e, dt, live, px, py, rage, toward);
     const ex = e.x + e.w / 2, ey = e.y + e.h / 2;
     const daze = (t, state = 'dazed') => { e.state = state; e.dazed = e.wait = t * DAZE; };
     // Keep inside the level.

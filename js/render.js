@@ -450,6 +450,96 @@
       ctx.restore();
     }
 
+    // The castle keepers' looks (hurt: flashing pale).
+    const ell = (x, y, rx, ry, c, a = 0) => { ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, a, 0, TAU); ctx.fill(); };
+    const eyes = (x, y, gap, f, c = '#FF6B3D', r = 4) => { for (const d of [-1, 1]) ell(x + d * gap + f * 3, y, r, r, c); };
+    const KEEPER_ART = {
+      'Γ+': (e, cx, cy, hurt) => {
+        // The Candle King: a tall candle with dripping wax, a gold crown, and his own flame.
+        const melt = e.state === 'melted' ? .85 : 1, top = e.y + e.h * (1 - melt), w = e.w * .7;
+        ctx.fillStyle = hurt ? '#FFFFFF' : '#F3E6C8'; ctx.fillRect(cx - w / 2, top + 14, w, e.y + e.h - top - 14);
+        ctx.fillStyle = hurt ? '#FFFFFF' : '#E2CFA4'; for (const [dx, l] of [[-.35, 16], [-.05, 26], [.25, 12]]) { ctx.fillRect(cx + dx * w, top + 14, 6, l); ell(cx + dx * w + 3, top + 14 + l, 3, 4, ctx.fillStyle); }
+        ctx.fillStyle = '#E0A526'; ctx.beginPath(); ctx.moveTo(cx - w / 2, top + 16); for (let k = 0; k <= 4; k++) ctx.lineTo(cx - w / 2 + k * w / 4, top + (k % 2 ? 4 : 0)); ctx.lineTo(cx + w / 2, top + 16); ctx.fill();
+        const fl = reduced ? 1 : 1 + Math.sin(clock * 14) * .12;
+        ell(cx, top - 8, 7, 12 * fl, '#FF9A2E'); ell(cx, top - 5, 3.5, 7 * fl, '#FFF1CF');
+        eyes(cx, top + 34, 9, e.face || 1, e.state === 'melted' ? '#9A8FBF' : '#FF6B3D');
+        ctx.fillStyle = '#7A2E1C'; ctx.fillRect(cx - 8 + (e.face || 1) * 3, top + 46, 16, 3);
+      },
+      'Δ+': (e, cx, cy, hurt) => {
+        // The Lighthouse Crab: a red shell, two big claws, eyes on stalks, legs scuttling.
+        const f = e.face || 1, body = hurt ? '#FFFFFF' : '#C0392B', by = e.y + e.h;
+        ctx.strokeStyle = '#7A2E1C'; ctx.lineWidth = 4;
+        for (let k = 0; k < 3; k++) for (const d of [-1, 1]) { const lx = cx + d * (14 + k * 10), kick = reduced ? 0 : Math.sin(clock * 16 + k) * (e.state === 'scuttle' ? 5 : 1); ctx.beginPath(); ctx.moveTo(lx, cy + 6); ctx.lineTo(lx + d * 10, cy + 12 + kick); ctx.lineTo(lx + d * 12, by); ctx.stroke(); }
+        ell(cx, cy + 4, e.w * .36, e.h * .34, body);
+        ell(cx, cy - 2, e.w * .26, e.h * .16, hurt ? '#FFFFFF' : '#E5484D');
+        const snap = e.state === 'snap' ? .5 : 0;
+        for (const d of [-1, 1]) { const x = cx + d * e.w * .42 + (d === f ? f * snap * 16 : 0); ell(x, cy - 6, 13, 10, body); ctx.fillStyle = '#211C3F'; ctx.fillRect(x - 2 + d * 6, cy - 8, 8 * d, 3); }
+        ctx.strokeStyle = body; ctx.lineWidth = 3; for (const d of [-1, 1]) { ctx.beginPath(); ctx.moveTo(cx + d * 8, cy - 10); ctx.lineTo(cx + d * 10, e.y + 2); ctx.stroke(); ell(cx + d * 10, e.y + 2, 5, 5, '#FFF1CF'); ell(cx + d * 10 + f * 2, e.y + 2, 2.5, 2.5, e.state === 'stuck' ? '#9A8FBF' : '#211C3F'); }
+      },
+      'Ξ+': (e, cx, cy, hurt) => {
+        // The Clockwork Knight: brass-trimmed armour, a slit visor glowing, a wind-up key on his back.
+        const f = e.face || 1, steel = hurt ? '#FFFFFF' : '#8F8AA6', dark = '#4A4560', run = e.state === 'winding';
+        ctx.fillStyle = steel; ctx.fillRect(cx - e.w * .4, e.y + 24, e.w * .8, e.h - 40);
+        ctx.fillStyle = dark; ctx.fillRect(cx - e.w * .32, e.y + e.h - 16, 10, 16); ctx.fillRect(cx + e.w * .32 - 10, e.y + e.h - 16, 10, 16);
+        ctx.fillStyle = '#E0A526'; ctx.fillRect(cx - e.w * .4, e.y + 40, e.w * .8, 4);
+        ell(cx, e.y + 14, e.w * .3, 15, steel); ctx.fillStyle = dark; ctx.fillRect(cx - 12 + f * 3, e.y + 12, 24, 5);
+        ctx.fillStyle = run ? '#463C6B' : '#FF6B3D'; ctx.fillRect(cx - 10 + f * 3, e.y + 13, 20, 3);
+        ctx.save(); ctx.translate(cx - f * e.w * .45, e.y + 36); ctx.rotate(reduced ? 0 : clock * (run ? 8 : 2)); ctx.fillStyle = '#E0A526'; ctx.fillRect(-12, -3, 24, 6); ctx.fillRect(-3, -12, 6, 24); ctx.restore();
+        ctx.save(); ctx.translate(cx + f * e.w * .42, cy + 4); ctx.rotate(reduced ? 0 : clock); ctx.fillStyle = '#6E6186'; for (let k = 0; k < 8; k++) { ctx.rotate(TAU / 8); ctx.fillRect(-3, -14, 6, 6); } ell(0, 0, 10, 10, '#6E6186'); ell(0, 0, 4, 4, dark); ctx.restore();
+      },
+      'Λ+': (e, cx, cy, hurt) => {
+        // The Storm Roc: a great slate-blue bird, wings beating, a hooked beak and a lightning eye.
+        const f = e.face || 1, c = hurt ? '#FFFFFF' : '#5B6E9A', flap = reduced || e.state === 'tired' ? .2 : Math.sin(clock * 9);
+        for (const d of [-1, 1]) { ctx.fillStyle = hurt ? '#FFFFFF' : '#3E4C73'; ctx.beginPath(); ctx.moveTo(cx + d * 10, cy - 4); ctx.lineTo(cx + d * e.w * .55, cy - 10 - flap * 20); ctx.lineTo(cx + d * e.w * .4, cy + 8); ctx.fill(); }
+        ell(cx, cy + 4, e.w * .28, e.h * .34, c);
+        ell(cx + f * e.w * .24, cy - 10, 13, 12, c);
+        ctx.fillStyle = '#E0A526'; ctx.beginPath(); ctx.moveTo(cx + f * (e.w * .24 + 10), cy - 12); ctx.lineTo(cx + f * (e.w * .24 + 24), cy - 6); ctx.lineTo(cx + f * (e.w * .24 + 9), cy - 3); ctx.fill();
+        ell(cx + f * (e.w * .24 + 3), cy - 13, 3.5, 3.5, e.state === 'tired' ? '#9A8FBF' : '#FFE066');
+        ctx.fillStyle = '#3E4C73'; for (const d of [-1, 1]) ctx.fillRect(cx + d * 8 - 2, e.y + e.h - 10, 4, 10);
+      },
+      'Π+': (e, cx, cy, hurt) => {
+        // The Rat King: a fat grey-brown rat in a crown, a long tail, red eyes.
+        const f = e.face || 1, c = hurt ? '#FFFFFF' : '#6B5A4C';
+        ctx.strokeStyle = '#C9A28A'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(cx - f * e.w * .4, cy + 12); ctx.quadraticCurveTo(cx - f * e.w * .8, cy + 30, cx - f * e.w * .7, cy - 10); ctx.stroke();
+        ell(cx, cy + 6, e.w * .42, e.h * .4, c);
+        ell(cx + f * e.w * .3, cy - 8, 16, 13, c); ell(cx + f * (e.w * .3 + 15), cy - 6, 4, 4, '#E5949A');
+        for (const d of [-8, 8]) ell(cx + f * e.w * .3 + d, cy - 22, 7, 8, '#C9A28A');
+        ctx.fillStyle = '#E0A526'; ctx.beginPath(); ctx.moveTo(cx + f * e.w * .3 - 12, cy - 22); for (let k = 0; k <= 4; k++) ctx.lineTo(cx + f * e.w * .3 - 12 + k * 6, cy - (k % 2 ? 26 : 34)); ctx.lineTo(cx + f * e.w * .3 + 12, cy - 22); ctx.fill();
+        ell(cx + f * (e.w * .3 + 5), cy - 10, 3, 3, e.state === 'throne' ? '#9A8FBF' : '#FF4D3D');
+      },
+      'Φ+': (e, cx, cy, hurt) => {
+        // The Pumpkin Knight: a jack-o'-lantern head, carved face glowing, on dark armour.
+        const f = e.face || 1, glow = e.state === 'dizzy' ? '#9A8FBF' : '#FFE066';
+        ctx.fillStyle = hurt ? '#FFFFFF' : '#2E2A40'; ctx.fillRect(cx - e.w * .35, e.y + 34, e.w * .7, e.h - 34);
+        ctx.fillStyle = '#4C4062'; ctx.fillRect(cx - e.w * .35, e.y + e.h - 12, e.w * .7, 4);
+        ell(cx, e.y + 20, e.w * .42, 20, hurt ? '#FFFFFF' : '#E87A1E');
+        ctx.strokeStyle = '#B4570F'; ctx.lineWidth = 2; for (const d of [-.2, .2]) { ctx.beginPath(); ctx.ellipse(cx + d * e.w, e.y + 20, 6, 19, 0, 0, TAU); ctx.stroke(); }
+        ctx.fillStyle = '#4E7A2E'; ctx.fillRect(cx - 3, e.y - 4, 6, 8);
+        ctx.fillStyle = glow; for (const d of [-1, 1]) { ctx.beginPath(); ctx.moveTo(cx + d * 10 + f * 3, e.y + 12); ctx.lineTo(cx + d * 4 + f * 3, e.y + 20); ctx.lineTo(cx + d * 16 + f * 3, e.y + 20); ctx.fill(); }
+        ctx.beginPath(); ctx.moveTo(cx - 12 + f * 3, e.y + 26); for (let k = 0; k <= 6; k++) ctx.lineTo(cx - 12 + k * 4 + f * 3, e.y + 26 + (k % 2 ? 6 : 0)); ctx.lineTo(cx + 12 + f * 3, e.y + 30); ctx.lineTo(cx - 12 + f * 3, e.y + 30); ctx.fill();
+      },
+      'Ψ+': (e, cx, cy, hurt) => {
+        // The Smog Dragon: a soot-black dragon trailing smoke, wings spread, embers for eyes.
+        const f = e.face || 1, c = hurt ? '#FFFFFF' : '#2E2A40', flap = reduced || e.state === 'tired' ? .1 : Math.sin(clock * 6);
+        ctx.fillStyle = 'rgba(90,80,110,.45)'; for (let k = 0; k < 5; k++) { const a = clock * 1.5 + k; ell(cx - f * (e.w * .4 + k * 8), cy + Math.sin(a) * 6, 8 + k, 7 + k, ctx.fillStyle); }
+        for (const d of [-1, 1]) { ctx.fillStyle = hurt ? '#FFFFFF' : '#463C6B'; ctx.beginPath(); ctx.moveTo(cx + d * 6, cy - 6); ctx.lineTo(cx + d * e.w * .5, cy - 22 - flap * 18); ctx.lineTo(cx + d * e.w * .3, cy + 4); ctx.fill(); }
+        ell(cx, cy + 6, e.w * .3, e.h * .3, c);
+        ctx.strokeStyle = c; ctx.lineWidth = 10; ctx.beginPath(); ctx.moveTo(cx + f * 10, cy); ctx.quadraticCurveTo(cx + f * e.w * .3, cy - 18, cx + f * e.w * .4, cy - 6); ctx.stroke();
+        ell(cx + f * e.w * .42, cy - 4, 15, 10, c);
+        ell(cx + f * (e.w * .42 + 2), cy - 8, 3, 3, e.state === 'tired' ? '#9A8FBF' : '#FF6B3D');
+        if (e.state === 'breath') ell(cx + f * (e.w * .42 + 14), cy, 6, 4, '#FFB547');
+      },
+      'Σ+': (e, cx, cy, hurt) => {
+        // The Crystal Mole: a plump mole with glowing crystals growing from its back.
+        const f = e.face || 1, c = hurt ? '#FFFFFF' : '#5A4A6A';
+        for (let k = -2; k <= 2; k++) { ctx.fillStyle = k % 2 ? '#9FD8FF' : '#7FB0E0'; ctx.beginPath(); ctx.moveTo(cx + k * 12 - 6, cy - 4); ctx.lineTo(cx + k * 12, e.y - 12 + Math.abs(k) * 6); ctx.lineTo(cx + k * 12 + 6, cy - 4); ctx.fill(); }
+        ell(cx, cy + 4, e.w * .46, e.h * .42, c);
+        ell(cx + f * e.w * .38, cy + 2, 8, 6, '#E5949A');
+        for (const d of [-1, 1]) { ctx.fillStyle = '#E2CFA4'; ctx.fillRect(cx + d * e.w * .3 - 6, e.y + e.h - 6, 12, 6); }
+        ell(cx + f * e.w * .24, cy - 4, 3, 2, e.state === 'stunned' ? '#9A8FBF' : '#211C3F');
+      },
+    };
+
     // Giant bosses. Creature giants are their small cousin's drawing, scaled up; the rest are
     // drawn here. Dazed giants get stars over their heads.
     function drawGiant(e) {
@@ -529,6 +619,10 @@
           for (const d of [-1, 1]) { ctx.beginPath(); ctx.ellipse(cx + d * R0 * .32, cy - R0 * .1, 5, pulling ? 3 : 6, 0, 0, TAU); ctx.fill(); }
         }
         ctx.restore();
+      } else if (KEEPER_ART[e.type]) {
+        // A castle keeper (under the floor, the mole is just a moving mound of earth).
+        if (e.phased) { ctx.fillStyle = '#5E5173'; ctx.beginPath(); ctx.ellipse(cx, e.y + e.h, e.w * .45, 10, 0, Math.PI, 0); ctx.fill(); }
+        else { ctx.save(); KEEPER_ART[e.type](e, cx, cy, e.hurt > 0); ctx.restore(); }
       } else if (e.type === 'Ɱ+') {
         // The Melon Brute: a striped watermelon with angry eyes; it turns as it rolls, and
         // cracks open (red inside) when it hits a wall.
@@ -1343,6 +1437,30 @@
           g.addColorStop(0, 'rgba(143,129,171,.7)'); g.addColorStop(1, 'rgba(143,129,171,0)');
           ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 13, 0, TAU); ctx.fill();
           ctx.fillStyle = '#05040E'; ctx.beginPath(); ctx.arc(x, y, 6, 0, TAU); ctx.fill();
+          continue;
+        }
+        if (b.kind === 'bubble') {
+          const x = b.x + b.w / 2, y = b.y + b.h / 2;
+          ctx.strokeStyle = '#9FD8FF'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, b.w / 2, 0, TAU); ctx.stroke();
+          ctx.fillStyle = 'rgba(159,216,255,.25)'; ctx.fill(); ctx.fillStyle = '#FFFFFF'; ctx.fillRect(x - 4, y - 5, 3, 3);
+          continue;
+        }
+        if (b.kind === 'gear') {
+          ctx.save(); ctx.translate(b.x + b.w / 2, b.y + b.h / 2); ctx.rotate(reduced ? 0 : clock * 10 * Math.sign(b.vx || 1));
+          ctx.fillStyle = '#A9A3BF'; for (let k = 0; k < 6; k++) { ctx.rotate(TAU / 6); ctx.fillRect(-2.5, -b.w / 2 - 2, 5, 5); }
+          ctx.beginPath(); ctx.arc(0, 0, b.w / 2 - 2, 0, TAU); ctx.fill(); ctx.fillStyle = '#4A4560'; ctx.beginPath(); ctx.arc(0, 0, 3, 0, TAU); ctx.fill();
+          ctx.restore(); continue;
+        }
+        if (b.kind === 'feather') {
+          ctx.save(); ctx.translate(b.x + b.w / 2, b.y + b.h / 2); ctx.rotate(Math.atan2(b.vy, b.vx));
+          ctx.fillStyle = '#DCE8FF'; ctx.beginPath(); ctx.ellipse(0, 0, 9, 3.5, 0, 0, TAU); ctx.fill();
+          ctx.strokeStyle = '#5B6E9A'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-9, 0); ctx.lineTo(9, 0); ctx.stroke(); ctx.restore();
+          continue;
+        }
+        if (b.kind === 'crystal') {
+          const x = b.x + b.w / 2, y = b.y + b.h / 2;
+          ctx.fillStyle = '#9FD8FF'; ctx.beginPath(); ctx.moveTo(x, y - 8); ctx.lineTo(x + 5, y); ctx.lineTo(x, y + 8); ctx.lineTo(x - 5, y); ctx.fill();
+          ctx.fillStyle = '#FFFFFF'; ctx.fillRect(x - 1, y - 4, 2, 4);
           continue;
         }
         if (b.kind === 'seed') {

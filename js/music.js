@@ -25,7 +25,7 @@
     // Towers: the climb and battlements (spooky); the castle's climb (grand, an organ and
     // brass march). (Each boss's own fight music is made from its name: see fightTrack. The
     // final boss has its own.)
-    tower: { mode: 'harmonic', root: 57, bpm: 108, feel: 'spooky', seed: 31 },
+    tower: { mode: 'minor', root: 57, bpm: 108, feel: 'spooky', seed: 31 },
     castle: { mode: 'harmonic', root: 50, bpm: 100, feel: 'grand', seed: 41 },
     final: { mode: 'harmonic', root: 50, bpm: 160, feel: 'fight', seed: 99 },
     world0: { mode: 'major', root: 62, bpm: 104, feel: 'drive', seed: 1 },      // Old Town
@@ -67,9 +67,11 @@
     [[0, 7], [2, 4], [4, 2], [6, 4], [8, 0]],
   ];
   const CADENCE = [[0, 4], [3, 2], [6, 0]];
-  function composeFight(t, R) {
+  // The towers' chords: all minor (natural minor's i, iv and v, with ♭VI for colour).
+  const TOWER_PROGS = [[0, 3, 4, 0], [0, 3, 0, 4], [0, 4, 3, 0], [0, 5, 3, 4]];
+  function composeFight(t, R, progs = FIGHT_PROGS) {
     const scale = SCALES[t.mode], pitch = d => t.root + scale[((d % 7) + 7) % 7] + 12 * Math.floor(d / 7);
-    const prog = FIGHT_PROGS[Math.floor(R() * FIGHT_PROGS.length)];
+    const prog = progs[Math.floor(R() * progs.length)];
     const hook = HOOKS[Math.floor(R() * HOOKS.length)].map(([s, d], k) => [s, d + (k && R() < .2 ? (R() < .5 ? 1 : -1) : 0)]);
     const answer = ANSWERS[Math.floor(R() * ANSWERS.length)];
     // (Chords high in the scale take the hook down an octave, to keep the tune in one range.)
@@ -130,7 +132,7 @@
     if (t.feel === 'spooky') {
       // A tower: the hook, but under it a bass creeping down a semitone every bar (back up at
       // the top), plucked on the beat and a tritone above.
-      const bars = composeFight(t, R);
+      const bars = composeFight(t, R, TOWER_PROGS);
       bars.forEach((b, k) => {
         const root = t.root - 24 - (k % 4);
         b.bass = Array(16).fill(null);
