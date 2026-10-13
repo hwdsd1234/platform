@@ -20,6 +20,7 @@
     const lanterns = [], platStand = new Set();
     // Passage doors: walking into the k-th j (counting left to right) takes you to the k-th n.
     const passIn = [], passOut = [];
+    let linkIn = null, linkOut = null;   // (a lengthened level's section doors, ĵ to ň)
     const key = (x, y) => y * w + x;
 
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -29,6 +30,8 @@
       else if (c === 'L') lanterns.push({ x, y });
       else if (c === 'j') passIn.push({ x, y });
       else if (c === 'n') passOut.push({ x, y });
+      else if (c === 'ĵ') (linkIn ||= []).push({ x, y });
+      else if (c === 'ň') (linkOut ||= []).push({ x, y });
       else if (KEY_GATE[c]) keys.push({ x, y, gate: KEY_GATE[c] });
       else if (c === 'M') {
         let l = x, r = x;
@@ -54,6 +57,7 @@
     }
     if (!start) problems.push('Place a start (P).');
     passIn.sort((a, b) => a.x - b.x); passOut.sort((a, b) => a.x - b.x);
+    if (linkIn) { passIn.push(...linkIn.sort((a, b) => a.x - b.x)); passOut.push(...(linkOut || []).sort((a, b) => a.x - b.x)); }
     // (A boss level ends when the boss falls, so it needs no door: def.noDoor.)
     if (!doors && !def.noDoor) problems.push('Place a door (D).');
     if (doors > 1) problems.push('There is more than one door (D).');

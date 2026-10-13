@@ -778,7 +778,8 @@
     const c = CASTLES[k];
     const def = {
       name: c.name, dark: .7, giant: c.giant, bossHits: 4,
-      course: R => c.course.map((k, n) => COURSES[k](R, n === 0)),
+      // (Four times as long: its own two challenges, then six more of the others'.)
+      course: R => [...c.course, ...CASTLE_MORE.filter(m => !c.course.includes(m)).slice(k % 3, k % 3 + 9)].map((m, n) => COURSES[m](R, n === 0)),
       map: hall(48, 16, ({ r, s }) => {
         r(8, 10, 13, 10, '='); s(10, 9, 'a'); r(34, 10, 39, 10, '='); s(36, 9, 'a');
         r(20, 7, 27, 7, '='); s(30, c.fly ? 4 : 12, '0');
@@ -787,6 +788,7 @@
     };
     return { ...tower(def, 900 + k * 17, true), chapter: c.world, boss: true, castleOf: k, since: 10 };
   }
+  const CASTLE_MORE = ['lavaHops', 'crumbleLava', 'liftsSpikes', 'conveyCrush', 'blinkLava', 'crumbleSpikes', 'pendulums', 'springLava', 'bubblePits', 'icePits', 'lavaTide', 'lavaWaves', 'iceSteps'];
   const castleAfter = Object.fromEntries(CASTLES.map((c, k) => [c.world, k]));
 
   // The Sky Spire, the Sky Roads' tower: no floor, just the long drop under a climb of
@@ -964,7 +966,20 @@
     const climb = sky ? skyClimb() : castle ? castleClimb(R) : CLIMBS[t % CLIMBS.length](R, cv);
     const run = sky ? skyRun() : castle ? castleWalls(R) : RUNS[(t + Math.floor(t / RUNS.length)) % RUNS.length](R, Math.floor(t / RUNS.length) % 3);
     if (!castle && !sky) { harden(climb, R, false); harden(run, R, true); }
-    const parts = def.course ? [...def.course(R), arenaRows] : [castle || sky || cv % 2 === 0 ? climb : mirror(climb), run, arenaRows];
+    // Towers are four times as long (counting open tiles, the arena too): this tower's own
+    // climb and run, then more of the others' designs (each starting at an entry, not the
+    // start) till it's long enough.
+    const more = [];
+    const asEntry = g => g.map(row => row.map(c => (c === 'P' ? 'n' : c)));
+    const room = parts => parts.reduce((n, g) => n + g.reduce((m, row) => m + row.filter(c => c !== '#').length, 0), 0);
+    const want = room([climb, run, arenaRows]) * 4;
+    if (!def.course && !castle) for (let k = 1; k <= 12 && room([climb, run, arenaRows, ...more]) < want; k++) {
+      if (sky) { more.push(asEntry(mirror(skyClimb())), skyRun()); continue; }
+      const u = t + k * 5, c2 = asEntry(CLIMBS[u % CLIMBS.length](R, Math.floor(u / CLIMBS.length) % 3)), r2 = RUNS[(u + k) % RUNS.length](R, k % 3);
+      harden(c2, R, false); harden(r2, R, true);
+      more.push(k % 2 ? mirror(c2) : c2, r2);
+    }
+    const parts = def.course ? [...def.course(R), arenaRows] : [castle || sky || cv % 2 === 0 ? climb : mirror(climb), run, ...more, arenaRows];
     const h = Math.max(...parts.map(p => p.length));
     const w = parts.reduce((s, p) => s + p[0].length, 0) + GAP * (parts.length - 1);
     const g = grid(w, h, '#'), at = [];

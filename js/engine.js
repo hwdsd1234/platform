@@ -221,6 +221,10 @@
       // counting left to right, leads to the k-th n). They join the parts of a tower.
       else if (c === 'j') { W.passages.push({ tx: x, ty: y, x: x * TS, y: (y - 1) * TS + 4, w: 32, h: 60, open: true, glow: 1 }); tiles[y][x] = ' '; }
       else if (c === 'n') { W.entries.push({ tx: x, ty: y }); tiles[y][x] = ' '; }
+      // ĵ and ň: the doors joining a lengthened level's sections (see lengthen.js), paired
+      // among themselves left to right, after the level's own passages.
+      else if (c === 'ĵ') { (W.linkOut ||= []).push({ tx: x, ty: y, x: x * TS, y: (y - 1) * TS + 4, w: 32, h: 60, open: true, glow: 1 }); tiles[y][x] = ' '; }
+      else if (c === 'ň') { (W.linkIn ||= []).push({ tx: x, ty: y }); tiles[y][x] = ' '; }
       // The Last Dark's chase (def.finalChase): Ħ is the wall that breaks open when it begins,
       // Ŧ the TNT cart waiting at the end of the run.
       else if (c === 'Ħ') { (W.chaseGate ||= []).push([x, y]); tiles[y][x] = '#'; }
@@ -269,6 +273,7 @@
     // In a tower or castle the sections run left to right, each door (j) leading into the
     // next section's entry (n): pair them by column.
     if (def.arenaX) { W.passages.sort((a, b) => a.tx - b.tx); W.entries.sort((a, b) => a.tx - b.tx); }
+    if (W.linkOut) { W.passages.push(...W.linkOut.sort((a, b) => a.tx - b.tx)); W.entries.push(...(W.linkIn || []).sort((a, b) => a.tx - b.tx)); }
     // Moving lava (def.flows): see stepFlows.
     W.flows = (def.flows || []).map(f => ({ ...f, s: (f.mode === 'fall' ? f.hi : f.lo) * TS, on: f.trigger == null, t: 0 }));
     W.lavaTop = [];
@@ -357,8 +362,8 @@
       const { ammo } = W.player;
       Object.assign(W.player, makePlayer(W.checkpoint), { ammo, shield: W.player.shield, ...LF.powerFlags(W.player), held: W.player.held });
       if (W.door && W.lanterns.every(l => l.lit) && !W.enemies.some(isBoss)) W.door.open = true;
-      // (The clock picks up where it was when you lit that lantern: see setClock.)
-      if (def.deadline && def.resume.left != null) { W.cpLeft = def.resume.left; W.cpBoss = W.bossClock = !!def.resume.boss; setClock(W, W.cpLeft); }
+      // (The clock is what that checkpoint gives you: see cpClock.)
+      if (def.deadline) { W.cpBoss = W.bossClock = !!def.resume.boss; setClock(W, LF.cpClock(W)); }
     }
     // def.noSpawnInv (Hardcore): no invincible second at the start or after respawning.
     if (def.noSpawnInv) W.player.inv = 0;
@@ -537,6 +542,16 @@
     if (W.hurried && left > (W.def.hurry || HURRY)) W.emit('calm');
     W.hurried = false;
   }
+  // The clock you come back to depends on the checkpoint: the share of the level still ahead
+  // of it (by how far along it is: across, or up for a level that climbs; in a tower or
+  // castle, of the way to the boss), plus 30 seconds, at least a minute, never more than
+  // the full clock; and if you'd reached the boss, its time on top. No checkpoint: the full clock.
+  LF.cpClock = W => {
+    const cp = W.checkpoint, d = W.def;
+    if (!cp || !W.lanternLit) return d.deadline + (W.cpBoss ? d.bossTime || 0 : 0);
+    const along = d.arenaX ? Math.min(1, cp.tx / d.arenaX) : W.w >= W.h ? cp.tx / W.w : 1 - cp.ty / W.h;
+    return Math.min(d.deadline, Math.max(60, Math.round((d.deadline * (1 - along) + 30) / 5) * 5)) + (W.cpBoss ? d.bossTime || 0 : 0);
+  };
   LF.timeLeft = W => W.def.deadline - (W.time - (W.clockFrom || 0));
   // Practice: set a checkpoint where you stand (Z), or take the latest one away (X).
   LF.setMark = W => {
@@ -566,9 +581,6 @@
   }
 
   function respawn(W) {
-    // Coming back at a checkpoint costs a tenth of the level's time (at least 10 seconds)
-    // off what the clock read when you lit it, every time.
-    if (W.def.deadline && W.cpLeft != null) W.cpLeft = Math.max(CLOCK_MIN, W.cpLeft - Math.max(10, Math.round(W.def.deadline * .1)));
     // In the story, dying always sends you back to the map (the lanterns you lit are kept
     // for your next go at this level: see def.resume).
     if (W.def.toMapOnDeath) { W.lost = true; W.emit('lost'); return; }
@@ -578,9 +590,8 @@
     Object.assign(W.player, makePlayer(W.checkpoint), { ammo: 0, keys });
     for (const f of W.flows) if (f.trigger != null) Object.assign(f, { s: (f.mode === 'fall' ? f.hi : f.lo) * TS, on: false, t: 0 });
     for (const e of W.enemies) if (e.alive && e.chase) { e.chase.x = W.player.x - TS * 14; e.chase.t = 1; }
-    // The clock goes back to what it read when you lit your checkpoint's lantern (the time it
-    // took you to get there is gone), or to the full clock if you haven't lit one.
-    if (W.def.deadline) { W.bossClock = !!W.cpBoss; setClock(W, W.cpLeft ?? W.def.deadline); }
+    // The clock goes back to what your checkpoint gives you (see cpClock).
+    if (W.def.deadline) { W.bossClock = !!W.cpBoss; setClock(W, LF.cpClock(W)); }
     for (const a of W.ammo) a.taken = false;
     // Practice: back at the latest checkpoint you set, if any.
     const mark = W.marks[W.marks.length - 1];
@@ -2995,8 +3006,8 @@
     for (const l of W.lanterns) {
       if (l.lit || Math.abs(cx - l.x) > 22 || Math.abs(cy - l.y) > 26) continue;
       l.lit = true; l.pop = 1; W.lanternLit = true;
-      const cpY = findFloorBelow(W, l);
-      if (cpY !== null) { W.checkpoint = { tx: l.tx, ty: cpY }; if (W.def.deadline) { W.cpLeft = LF.timeLeft(W); W.cpBoss = !!W.bossClock; } }
+      const cp = checkpointAt(W, l);
+      if (cp) { W.checkpoint = cp; W.cpBoss = !!W.bossClock; }
       burst(W, l.x, l.y, 22, WARM, 150, 120, 2.5);
       const lit = W.lanterns.filter(q => q.lit).length;
       W.floaters.push({ x: l.x, y: l.y - 22, t: `${lit}/${W.total}`, life: 1, c: '#FFB547' });
@@ -3089,13 +3100,23 @@
   }
 
   // Checkpoint: the first safe standing tile at or below the lantern; null keeps the old checkpoint.
-  function findFloorBelow(W, l) {
-    for (let y = l.ty; y < Math.min(W.h - 1, l.ty + 5); y++) {
-      const here = tile(W, l.tx, y);
-      if (isSolid(here) || here === '^' || here === '~') return null;
-      const below = tile(W, l.tx, y + 1);
-      if (below === '#' || below === '=' || below === 'O') return y;
+  // Where you come back at a lantern: on firm ground under it, or the nearest firm ground
+  // to either side a little lower down (not crumbling stone or blinking blocks, which might
+  // not be there).
+  // Failing that, blinking or crumbling ground; failing that (a lantern over falling
+  // shingles, say), right at the lantern.
+  const firm = c => (isSolid(c) && c !== 'C' && c !== 'T' && c !== 'H') || c === '=' || c === 'O';
+  const footing = c => isSolid(c) || c === '=';
+  function checkpointAt(W, l) {
+    const dxs = [0]; for (let d = 1; d <= 10; d++) dxs.push(-d, d);
+    for (const ok of [firm, footing]) for (const dx of dxs) {
+      const tx = l.tx + dx;
+      for (let y = l.ty - (dx ? 2 : 0); y < Math.min(W.h - 1, l.ty + 14); y++) {
+        const here = tile(W, tx, y);
+        if (isSolid(here) || here === '^' || here === '~' || here === '!') break;
+        if (ok(tile(W, tx, y + 1)) && !isSolid(tile(W, tx, y - 1))) return { tx, ty: y };
+      }
     }
-    return null;
+    return { tx: l.tx, ty: l.ty };
   }
 })();
