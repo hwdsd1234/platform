@@ -752,6 +752,15 @@
       x0 += p[0].length + GAP;
     }
     const arena = at[at.length - 1], climbAt = at[0], runAt = at[1];
+    // A lantern just before the boss's door (the last passage before the arena): a
+    // checkpoint right outside the fight.
+    for (let y = h - 1; y >= 0; y--) {
+      const jx = g[y].lastIndexOf('j', arena.x - 1);
+      if (jx < runAt.x) continue;
+      const spot = [jx - 2, jx - 1, jx + 1].find(x => g[y][x] === '.' && LF.isSolid(g[y + 1]?.[x]));
+      if (spot != null) g[y][spot] = 'L';
+      break;
+    }
     const out = {
       // No guns in a tower: the boss falls to 3 stomps, and flies into a fury after each.
       ...def, map: g.map(row => row.join('')), noDoor: true, bossEnds: true, arenaX: arena.x, noAmmo: true, bossFury: true, bossHits: castle ? 5 : 3,

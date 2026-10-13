@@ -338,6 +338,8 @@
       const { ammo } = W.player;
       Object.assign(W.player, makePlayer(W.checkpoint), { ammo, shield: W.player.shield, ...LF.powerFlags(W.player), held: W.player.held });
       if (W.door && W.lanterns.every(l => l.lit) && !W.enemies.some(isBoss)) W.door.open = true;
+      // (The clock picks up where it was when you lit that lantern: see setClock.)
+      if (def.deadline && def.resume.left != null) { W.cpLeft = def.resume.left; W.cpBoss = W.bossClock = !!def.resume.boss; setClock(W, W.cpLeft); }
     }
     // def.noSpawnInv (Hardcore): no invincible second at the start or after respawning.
     if (def.noSpawnInv) W.player.inv = 0;
@@ -507,7 +509,15 @@
   }
 
   LF.kill = kill;
-  const HURRY = LF.HURRY = 50;
+  const HURRY = LF.HURRY = 50, CLOCK_MIN = 30;
+  // Set the clock to read `left` seconds (never less than CLOCK_MIN, so a checkpoint can't
+  // leave you no time at all), and let the hurry-up come again if it's under HURRY.
+  function setClock(W, left) {
+    left = Math.max(CLOCK_MIN, left);
+    W.clockFrom = W.time - (W.def.deadline - left);
+    if (W.hurried && left > HURRY) W.emit('calm');
+    W.hurried = false;
+  }
   LF.timeLeft = W => W.def.deadline - (W.time - (W.clockFrom || 0));
   // Practice: set a checkpoint where you stand (Z), or take the latest one away (X).
   LF.setMark = W => {
@@ -544,6 +554,9 @@
     // never be left out of reach.
     const { keys } = W.player;
     Object.assign(W.player, makePlayer(W.checkpoint), { ammo: 0, keys });
+    // The clock goes back to what it read when you lit your checkpoint's lantern (the time it
+    // took you to get there is gone), or to the full clock if you haven't lit one.
+    if (W.def.deadline) { W.bossClock = !!W.cpBoss; setClock(W, W.cpLeft ?? W.def.deadline); }
     for (const a of W.ammo) a.taken = false;
     // Practice: back at the latest checkpoint you set, if any.
     const mark = W.marks[W.marks.length - 1];
@@ -631,7 +644,7 @@
       if (left <= HURRY && !W.hurried) { W.hurried = true; W.emit('hurry'); }
       if (left <= 0) {
         W.floaters.push({ x: p.x + p.w / 2, y: p.y - 18, t: 'time’s up!', life: 1.6, c: '#FF6B3D' });
-        W.emit('timeup'); kill(W); W.clockFrom = W.time; W.hurried = false;
+        W.emit('timeup'); kill(W);
       }
     }
     if (playing && !W.cleared) {
@@ -2699,7 +2712,7 @@
       if (l.lit || Math.abs(cx - l.x) > 22 || Math.abs(cy - l.y) > 26) continue;
       l.lit = true; l.pop = 1; W.lanternLit = true;
       const cpY = findFloorBelow(W, l);
-      if (cpY !== null) W.checkpoint = { tx: l.tx, ty: cpY };
+      if (cpY !== null) { W.checkpoint = { tx: l.tx, ty: cpY }; if (W.def.deadline) { W.cpLeft = LF.timeLeft(W); W.cpBoss = !!W.bossClock; } }
       burst(W, l.x, l.y, 22, WARM, 150, 120, 2.5);
       const lit = W.lanterns.filter(q => q.lit).length;
       W.floaters.push({ x: l.x, y: l.y - 22, t: `${lit}/${W.total}`, life: 1, c: '#FFB547' });

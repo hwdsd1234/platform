@@ -26,7 +26,7 @@
     // brass march). (Each boss's own fight music is made from its name: see fightTrack. The
     // final boss has its own.)
     tower: { mode: 'harmonic', root: 57, bpm: 108, feel: 'spooky', seed: 31 },
-    castle: { mode: 'harmonic', root: 50, bpm: 96, feel: 'grand', seed: 41 },
+    castle: { mode: 'harmonic', root: 50, bpm: 100, feel: 'grand', seed: 41 },
     final: { mode: 'harmonic', root: 50, bpm: 160, feel: 'fight', seed: 99 },
     world0: { mode: 'major', root: 62, bpm: 104, feel: 'drive', seed: 1 },      // Old Town
     world1: { mode: 'mixo', root: 60, bpm: 98, feel: 'drive', seed: 2 },        // the Waterfront
@@ -97,12 +97,36 @@
     });
   }
 
+  // The castle has a tune of its own, written out rather than made up: D minor, dark and
+  // grand, after the Mario castle themes. A phrase over i–♭VI–iv–V that hangs on the V, the
+  // same again turning off through ♭II (E♭) before coming home. Notes are [step, MIDI].
+  const CASTLE = [
+    { ch: [62, 65, 69], root: 38, lead: [[0, 74], [3, 69], [6, 74], [8, 76], [9, 77], [11, 76], [12, 74]], stab: [3, 11] },
+    { ch: [58, 62, 65], root: 34, lead: [[0, 77], [3, 74], [6, 77], [8, 79], [9, 81], [11, 79], [12, 77]], stab: [3, 11] },
+    { ch: [55, 58, 62], root: 31, lead: [[0, 79], [3, 82], [5, 81], [6, 79], [8, 77], [10, 76], [12, 74]], stab: [3, 11], fill: true },
+    { ch: [57, 61, 64], root: 33, lead: [[0, 73], [4, 76], [8, 69]], hit: [12, 14] },
+    { ch: [62, 65, 69], root: 38, lead: [[0, 74], [3, 69], [6, 74], [8, 76], [9, 77], [11, 76], [12, 74]], stab: [3, 11] },
+    { ch: [55, 58, 63], root: 39, lead: [[0, 75], [3, 79], [6, 82], [8, 81], [9, 79], [11, 77], [12, 75]], stab: [3, 11] },
+    { ch: [57, 61, 64], root: 33, lead: [[0, 76], [3, 73], [6, 76], [8, 79], [10, 77], [12, 76], [14, 73]], stab: [3, 11] },
+    { ch: [62, 65, 69], root: 38, lead: [[0, 74], [8, 69], [10, 70], [12, 73]], hit: [0], toms: true },
+  ];
+  function castleBars() {
+    return CASTLE.map(c => {
+      const lead = Array(16).fill(null), len = Array(16).fill(0), bass = Array(16).fill(null);
+      c.lead.forEach(([st, n], k) => { lead[st] = n; len[st] = Math.min(8, (c.lead[k + 1] || [16])[0] - st); });
+      // (The bass pulses in eighths, an octave leap and a semitone's shudder in each bar.)
+      [0, 0, 12, 0, 0, 12, 1, 0].forEach((d, k) => { bass[k * 2] = c.root + d; });
+      return { lead, len, bass, chord: c.ch, stab: c.stab || [], hit: c.hit || [], fill: !!c.fill, toms: !!c.toms };
+    });
+  }
+
   const cache = {};
   function compose(name) {
     if (cache[name]) return cache[name];
     const t = name.startsWith('fight:') ? fightTrack(name.slice(6)) : TRACKS[name] || TRACKS.map, R = LF.rng(t.seed * 7919 + 13), scale = SCALES[t.mode];
     // (Fights, the towers and the castle are all built on a hook, so they stick.)
-    if (t.feel === 'fight' || t.feel === 'grand') return cache[name] = { ...t, bars: composeFight(t, R) };
+    if (t.feel === 'grand') return cache[name] = { ...t, bars: castleBars() };
+    if (t.feel === 'fight') return cache[name] = { ...t, bars: composeFight(t, R) };
     if (t.feel === 'spooky') {
       // A tower: the hook, but under it a bass creeping down a semitone every bar (back up at
       // the top), plucked on the beat and a tritone above.
@@ -228,11 +252,13 @@
       return;
     }
     if (tr.feel === 'grand') {
-      // The castle: a pipe organ holding the chords, a brass tune over it, octave bass,
-      // timpani on the beat (rolling into each half's end), a marching snare and cymbals.
+      // The castle: a pipe organ holding the chords, its tune on brass with an organ an
+      // octave up, a bass pulsing in eighths, timpani on the beat (rolling into each half's
+      // end), a marching snare, cymbals, and a great bell tolling at the top of each half.
       if (s === 0 || s === 8) for (const n of b.chord) for (const o of [-12, 0, 12]) voice(hz(n + o), t, spb * 8.5, o ? 'sine' : 'square', o ? .012 : .008, .04);
-      if (b.lead[s]) { const d = spb * b.len[s] * .95 + .04; voice(hz(b.lead[s]), t, d, 'sawtooth', .022, .02); voice(hz(b.lead[s] + 12), t, d, 'square', .007, .02); }
-      if (b.bass[s] && s % 4 === 0) { voice(hz(b.bass[s]), t, spb * 3.5, 'triangle', .1, .01); voice(hz(b.bass[s] - 12), t, spb * 3.5, 'sine', .06, .01); }
+      if (b.lead[s]) { const d = spb * b.len[s] * .95 + .04; voice(hz(b.lead[s]), t, d, 'sawtooth', .026, .02); voice(hz(b.lead[s] - 12), t, d, 'sawtooth', .012, .02); voice(hz(b.lead[s] + 12), t, d, 'sine', .01, .02); }
+      if (b.bass[s]) { voice(hz(b.bass[s]), t, spb * 1.8, 'triangle', .09, .006); voice(hz(b.bass[s] + 12), t, spb * 1.2, 'square', .01, .006); }
+      if (s === 0 && bar % 4 === 0) { voice(hz(b.chord[0] - 24), t, spb * 20, 'sine', .06, .005); voice(hz(b.chord[0] - 24) * 2.76, t, spb * 8, 'sine', .02, .005); voice(hz(b.chord[0] - 24) * 5.4, t, spb * 4, 'sine', .01, .005); }
       if (s === 0 || s === 8 || ((b.fill || b.toms) && s >= 12)) tom(t, hz(b.chord[0] - 24) * 2, .26);
       if (s === 4 || s === 12) noise(t, .05, .1, 'bandpass', 2200);
       if (s === 14 && bar % 2) noise(t, .03, .06, 'bandpass', 2200);
