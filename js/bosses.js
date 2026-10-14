@@ -965,7 +965,8 @@
     return rows;
   }
   // The drain room: a walled shaft like a tower's, full of lava, entered high on the left.
-  // Shingles big and small hang over the lava at all sorts of heights; the lava only drains
+  // Shingles big and small hang over the lava at all sorts of heights, and more lie sunk in it,
+  // coming up as it goes down; the lava only drains
   // while you're out over it, so you hop from shingle to shingle (they fall, and grow back)
   // till it's gone, then drop to the floor and out of the door at the bottom. A lantern at
   // the way in.
@@ -976,6 +977,8 @@
     put(g, 0, 0, 1, 10, '#'); put(g, 0, 13, 1, h - 1, '#'); g[12][0] = 'n';
     put(g, 2, 13, 3, 13, '#'); g[12][3] = 'L'; g.keepLamp = true;
     for (const [x, y, c] of [[5, 13, 'đ'], [9, 11, 'd'], [12, 14, 'đ'], [16, 10, 'd'], [18, 12, 'đ'], [22, 9, 'd'], [20, 15, 'd'], [7, 9, 'd'], [14, 8, 'đ'], [3, 10, 'd']]) g[y][x] = c;
+    // (More down in the lava, that come up out of it as it drains.)
+    for (const [x, y, c] of [[10, 17, 'd'], [4, 19, 'd'], [15, 18, 'đ'], [8, 21, 'đ'], [20, 20, 'd'], [12, 23, 'd'], [17, 24, 'đ'], [5, 25, 'd'], [22, 26, 'd']]) g[y][x] = c;
     g[h - 4][w - 3] = 'j';
     g.flows = [{ mode: 'fall', x0: 2, x1: w - 2, hi: 16, lo: h - 3, bottom: h - 3, speed: .8, whileOver: true }];   // (draining only while you're on a shingle or in the air: see stepFlows)
     return g;

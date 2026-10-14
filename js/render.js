@@ -347,6 +347,7 @@
         hubs.add(p.cx + ',' + p.cy); spinArrow(p.cx, p.cy, 16, Math.sign(p.spin), -Math.PI / 2 - Math.sign(p.spin) * .95);
       }
       for (const p of W.plats) {
+        if (p.sunk) continue;   // (under the lava)
         if (p.kind === 'wheel') {
           ctx.fillStyle = '#3A3350'; ctx.fillRect(p.x + 4, p.y + 10, p.w - 8, 3);
           ctx.fillStyle = '#7F6FA8'; ctx.fillRect(p.x, p.y, p.w, 10);

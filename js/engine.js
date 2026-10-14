@@ -771,7 +771,13 @@
   function stepPlats(W, dt) {
     for (const pl of W.plats) {
       pl.prevY = pl.y; pl.dx = 0; pl.dy = 0;
-      if (pl.kind === 'fall') { stepShingle(W, pl, dt); continue; }
+      if (pl.kind === 'fall') {
+        // A shingle under moving lava is sunk out of sight (and out of reach) till the lava
+        // drains down past it.
+        pl.sunk = W.flows.some(f => pl.ox + pl.w / 2 >= f.x0 * TS && pl.ox + pl.w / 2 <= (f.x1 + 1) * TS && pl.oy + 2 >= LF.flowSurface(W, f, pl.ox + pl.w / 2) && pl.oy <= (f.bottom + 1) * TS);
+        if (pl.sunk) { pl.state = 'idle'; pl.t = 0; pl.y = pl.prevY = pl.oy; continue; }
+        stepShingle(W, pl, dt); continue;
+      }
       if (pl.kind === 'wheel') { const ox = pl.x, oy = pl.y; pl.a += pl.spin * dt; wheelAt(pl); pl.dx = pl.x - ox; pl.dy = pl.y - oy; continue; }
       const sp = pl.v * dt * pl.dir;
       if (pl.axis === 'x') {
@@ -2916,7 +2922,7 @@
 
     if (!p.onGround && p.vy >= 0 && !dropping) {
       for (const pl of W.plats) {
-        if (pl.state === 'gone') continue;
+        if (pl.state === 'gone' || pl.sunk) continue;
         if (p.x + p.w > pl.x + 2 && p.x < pl.x + pl.w - 2 && pb <= Math.max(pl.prevY, pl.y) + 1 && p.y + p.h >= pl.y) {
           p.y = pl.y - p.h; p.vy = 0; p.onGround = true; p.onPlat = pl;
           if (pl.kind === 'fall' && pl.state === 'idle') { pl.state = 'shake'; pl.t = 0; }
