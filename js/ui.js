@@ -737,6 +737,15 @@
     LF.kill(W);
     if (playCtx.kind === 'story') flash('You gave up: your powers and ammo are gone');
   }
+  // Hard restart (Shift+R): the whole level from the very start, every lantern out. It counts
+  // as a death like giving up (in the story your powers and ammo are gone); not in a grove.
+  function hardRestart() {
+    if (playCtx.kind === 'house') return;
+    if (playCtx.kind === 'story' && !hardcore) { carry = null; store.set('powers', null); store.set('ammo', 0); }
+    store.set('midway', null);
+    play(playDef, playCtx);
+    flash(playCtx.kind === 'story' ? 'Back to the start: lanterns out, powers and ammo gone' : 'Back to the start');
+  }
 
   // ---------- inventory ----------
   // Fruit you've gathered (in Fruit Groves), up to INV_MAX of each. Tab opens it, on the map
@@ -809,7 +818,7 @@
         <li>Lanterns are checkpoints (one a level, two in a tower, three in the castle): dying sends you back to the map, but go into the same level again and you start at the lantern you lit; play another level first and it's put out</li>
         <li>Towers: climb, then the battlements, then the boss; beating the boss ends the level</li>
         <li>Practice mode (on the map): every level open, nothing counts · <kbd>Z</kbd> set a checkpoint · <kbd>X</kbd> remove the latest · <kbd>C</kbd> explosive round</li>
-        <li>Dying loses all your ammo (and your fruit powers) · <kbd>R</kbd> give up: you die (back to the map; lit lanterns are kept) · <kbd>Esc</kbd> pause · <kbd>M</kbd> sound ${muted ? 'off' : 'on'} · <kbd>N</kbd> music ${store.get('music', true) ? 'on' : 'off'}</li>
+        <li>Dying loses all your ammo (and your fruit powers) · <kbd>R</kbd> give up: you die (back to the map; lit lanterns are kept) · <kbd>Shift</kbd>+<kbd>R</kbd> restart the whole level from the start, lanterns out (also a death: powers and ammo gone) · <kbd>Esc</kbd> pause · <kbd>M</kbd> sound ${muted ? 'off' : 'on'} · <kbd>N</kbd> music ${store.get('music', true) ? 'on' : 'off'}</li>
       </ul>
       ${hardcore ? '<p class="lede hc-note">Hardcore is on: no lanterns, no ammo, no fruit, no invincibility after respawning. The door is already open, but there are no checkpoints: every fall sends you back to the start, in the dark. Water turns to lava.</p>' : ''}
       <div class="menu"><button class="go" data-act="menu">Back to the map</button></div>`);
@@ -899,7 +908,7 @@
       ${keyFor(playCtx) ? `<p class="lede">Level key <b class="lvl-key">${keyFor(playCtx)}</b> · <span class="key-link">${esc(keyLink(keyFor(playCtx)))}</span>${playCtx.kind === 'custom' ? '<br><small>Your own levels’ keys only work in this browser. To share one, use Copy play link in the editor’s Share code.</small>' : ''}</p>` : ''}
       <div class="menu">
         <button class="go" data-act="resume">Resume</button>
-        ${playCtx.kind === 'house' ? '' : '<button class="alt" data-act="giveUp">Give up · R</button>'}
+        ${playCtx.kind === 'house' ? '' : '<button class="alt" data-act="giveUp">Give up · R</button><button class="alt" data-act="hardRestart">Restart level · Shift+R</button>'}
         ${playCtx.kind === 'test' ? '<button class="alt" data-act="backToEditor">Back to editor</button>' : ''}
         ${playCtx.kind === 'random' ? '<button class="alt" data-act="editRandom">Open in editor</button>' : ''}
         ${playCtx.kind !== 'test' && playCtx.kind !== 'story' ? '<button class="alt" data-act="copyToEditor">Copy to editor</button>' : ''}
@@ -1155,6 +1164,7 @@
     resume: () => { screen = 'play'; setVisible({ hud: true, touch: true }); if (LF.music) LF.music.duck(false); },
     restart: () => play(playDef, playCtx),
     giveUp: () => { ACTIONS.resume(); giveUp(); },
+    hardRestart: () => { ACTIONS.resume(); hardRestart(); },
     backToEditor: () => { screen = 'editor'; setVisible({}); editor.resume(); },
     editRandom: () => openEditor({ ...playDef }),
     rerollRandom: () => { const o = { ...playCtx.opts, seed: Math.floor(Math.random() * 1e6) }; play(LF.generate(o), { kind: 'random', opts: o }); },
@@ -1211,7 +1221,7 @@
       }
       // R gives up: it's a death like any other (back to the map, your lit lanterns kept), and
       // in the story you lose everything you were carrying too: fruit powers and ammo.
-      if (e.code === 'KeyR' && !e.repeat && !W.player.dead && !W.cleared && playCtx.kind !== 'house') giveUp();
+      if (e.code === 'KeyR' && !e.repeat && !W.cleared && playCtx.kind !== 'house') { if (e.shiftKey) hardRestart(); else if (!W.player.dead) giveUp(); }
       if (e.code === 'Escape' && playCtx.kind === 'test') ACTIONS.backToEditor();
       else if (e.code === 'Escape' || e.code === 'KeyP') pause();
       if (e.code === 'KeyM') { muted = !muted; store.set('muted', muted); if (LF.music) LF.music.setMuted(muted); flash(muted ? 'Sound off' : 'Sound on'); }

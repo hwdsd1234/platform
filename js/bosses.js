@@ -575,17 +575,17 @@
   // the same width so any can sit on any other. A stage stands on the floor below it and
   // ends at a floor of its own (row 0 of its rows), a plank in it over the stage's last
   // ledge to jump up through. Rows below row 0 are the stage's air, its last row just over
-  // the floor it starts from. Fruit lies about on the ledges; a flier now and then.
+  // the floor it starts from. An apple in every stage; a flier now and then.
   const SW = 24, SPANS = [[14, 21], [8, 13], [2, 7], [8, 13]];
-  const FRUIT = ['a', 'o', 'b', 'm', 's', 'ç', 'ƀ'];
   function stage(H) {
     const g = grid(SW, H);
     for (const row of g) { row[0] = '#'; row[SW - 1] = '#'; }
     put(g, 1, 0, SW - 2, 0, '#');
-    return { g, H, hole: null, marks: [], flows: [] };
+    return { g, H, hole: null, marks: [], flows: [], spots: [] };
   }
   const finish = (st, x0, x1) => { put(st.g, Math.max(1, x0), 0, Math.min(SW - 2, x1), 0, '='); st.hole = [x0, x1]; return st; };
-  const fruitOn = (st, R, x, y, p = .6) => { if (R() < p && st.g[y] && st.g[y][x] === '.') st.g[y][x] = FRUIT[Math.floor(R() * FRUIT.length)]; };
+  // (Spots a stage offers for its apple: stageClimb puts one apple in every stage.)
+  const fruitOn = (st, R, x, y) => { if (st.g[y] && st.g[y][x] === '.') st.spots.push([x, y]); };
   const flyer = (st, R, x, y, p = .35) => { if (R() < p && st.g[y] && st.g[y][x] === '.') st.g[y][x] = 'FZW'[Math.floor(R() * 3)]; };
   // Ledges three rows apart, zigzagging, each made of `tile(k)`.
   const zigzag = tile => (R, k0 = 0) => {
@@ -672,6 +672,8 @@
     // (Each stage knows where the plank below it is, so as not to block it.)
     const sts = [];
     names.forEach((n, k) => sts.push(STAGES[n](R, k, k ? sts[k - 1].hole : null)));
+    // An apple in every stage.
+    for (const st of sts) { const sp = st.spots.filter(([x, y]) => st.g[y][x] === '.'); if (sp.length) { const [x, y] = sp[Math.floor(R() * sp.length)]; st.g[y][x] = 'a'; } }
     const top = grid(SW, 5);
     put(top, 0, 0, SW - 1, 0, '#'); for (const row of top) { row[0] = '#'; row[SW - 1] = '#'; }
     const lastHole = sts[sts.length - 1].hole, doorX = (lastHole[0] + lastHole[1]) / 2 > SW / 2 ? 2 : SW - 3;
@@ -931,13 +933,15 @@
   }
   // Courses side by side as one long hall: the walls between them knocked through, only the
   // first's start (or entry) and the last's door kept, every lantern taken out but one by the
-  // door (if `lamp`), and fruit scattered along the way.
+  // door (if `lamp`), and an apple in every section.
   // (Parts line up along their tops; a taller part, like the drain room, hangs down below
   // the rest, solid rock under them. A part can keep its own lantern: keepLamp.)
   function joinRuns(parts, R, lamp) {
     const h = Math.max(...parts.map(g => g.length)), last = parts.length - 1, rows = Array.from({ length: h }, () => []), flows = [];
+    const mids = [];
     parts.forEach((g, k) => {
       const x0 = rows[0].length - (k ? 1 : 0), gw = g[0].length;
+      mids.push([x0 + 1, x0 + gw - 2]);
       for (const f of g.flows || []) flows.push({ ...f, x0: f.x0 + x0, x1: f.x1 + x0, trigger: f.trigger != null ? f.trigger + x0 : undefined });
       for (let y = 0; y < h; y++) {
         const row = g[y] || Array(gw).fill('#');
@@ -947,9 +951,14 @@
     });
     const w = rows[0].length;
     if (lamp) { const jy = rows.findIndex(r => r.includes('j')), jx = rows[jy].indexOf('j'); if (rows[jy][jx - 3] === '.') rows[jy][jx - 3] = 'L'; }
-    for (let x = 4; x < w - 4; x += 4) {
-      if (R() > .75) continue;
-      for (let y = 1; y < h - 1; y++) if (rows[y][x] === '.' && '#=iC<>'.includes(rows[y + 1][x])) { if (!flows.some(f => x >= f.x0 && x <= f.x1)) rows[y][x] = FRUIT[Math.floor(R() * FRUIT.length)]; break; }
+    // An apple in every section: on the first open footing nearest its middle (not over moving lava).
+    for (const [a, b] of mids) {
+      const mid = Math.floor((a + b) / 2);
+      let placed = false;
+      for (let d = 0; d <= (b - a) / 2 && !placed; d++) for (const x of [mid - d, mid + d]) {
+        if (placed || x <= a || x >= b || flows.some(f => x >= f.x0 && x <= f.x1)) continue;
+        for (let y = 1; y < h - 1; y++) if (rows[y][x] === '.' && '#=iC<>'.includes(rows[y + 1][x])) { rows[y][x] = 'a'; placed = true; break; }
+      }
     }
     rows.flows = flows;
     return rows;
