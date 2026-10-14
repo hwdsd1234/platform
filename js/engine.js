@@ -538,7 +538,7 @@
   }
 
   LF.kill = kill;
-  const HURRY = LF.HURRY = 50, CLOCK_MIN = 30;
+  const HURRY = LF.HURRY = 50, CLOCK_MIN = 30, CP_MIN = 150;
   // Set the clock to read `left` seconds (never less than CLOCK_MIN, so a checkpoint can't
   // leave you no time at all), and let the hurry-up come again if it's under HURRY.
   function setClock(W, left) {
@@ -549,13 +549,13 @@
   }
   // The clock you come back to depends on the checkpoint: the share of the level still ahead
   // of it (by how far along it is: across, or up for a level that climbs; in a tower or
-  // castle, of the way to the boss), plus 30 seconds, at least a minute, never more than
+  // castle, of the way to the boss), plus 30 seconds, never under CP_MIN, never more than
   // the full clock; and if you'd reached the boss, its time on top. No checkpoint: the full clock.
   LF.cpClock = W => {
     const cp = W.checkpoint, d = W.def;
     if (!cp || !W.lanternLit) return d.deadline + (W.cpBoss ? d.bossTime || 0 : 0);
     const along = d.arenaX ? Math.min(1, cp.tx / d.arenaX) : W.w >= W.h ? cp.tx / W.w : 1 - cp.ty / W.h;
-    return Math.min(d.deadline, Math.max(60, Math.round((d.deadline * (1 - along) + 30) / 5) * 5)) + (W.cpBoss ? d.bossTime || 0 : 0);
+    return Math.min(d.deadline, Math.max(CP_MIN, Math.round((d.deadline * (1 - along) + 30) / 5) * 5)) + (W.cpBoss ? d.bossTime || 0 : 0);
   };
   LF.timeLeft = W => W.def.deadline - (W.time - (W.clockFrom || 0));
   // Practice: set a checkpoint where you stand (Z), or take the latest one away (X).
