@@ -9,6 +9,7 @@
       'Fixed: getting hit could leave you flickering in lava, safe for a moment. Lava (still or moving) now kills you even right after a hit.',
       'After the pear’s spin you float down slowly, even slower than a glide and without holding anything, like NSMBU’s acorn.',
       'Pear controls: Space in mid-air does the spin; Up only glides, so letting go of Up and pressing it again keeps you gliding.',
+      'After the pear’s spin you can’t glide, and you fall at up to 600 px/s (not the full 900) till you land or touch a wall.',
       'Story levels run on with no doors between their sections: each part opens straight into the next.',
       'Passage doors look different now: a ring of stone round a swirling, glowing portal, with rings flashing out where you go in and where you come out.',
       'Two sunken castles: Sunken Keep in the Waterfront and Drowned Castle in the Canal District. Each is a set of flooded halls to swim through, and a flooded hall where its keeper swims after you: the Drowned King and the Tide Serpent.',
