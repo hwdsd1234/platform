@@ -661,7 +661,8 @@
     // Lava rising up a run of ledges: climb before it gets you.
     flood: R => {
       const st = STAGES.ledges(R);
-      st.flows.push({ mode: 'rise', x0: 1, x1: SW - 2, lo: st.H, hi: 1, bottom: st.H, speed: .55, triggerY: st.H - 1, local: true });
+      for (const row of st.g) for (let x = 0; x < SW; x++) if ('FZW'.includes(row[x])) row[x] = '.';   // (no fliers while you're racing the lava)
+      st.flows.push({ mode: 'rise', x0: 1, x1: SW - 2, lo: st.H, hi: 1, bottom: st.H, speed: .4, triggerY: st.H - 1, local: true });
       return st;
     },
   };
@@ -1270,13 +1271,13 @@
     signs: [{ x: 2, y: 14.4, t: 'THE LAST DARK · 4 stomps · stomp it when it dives to the floor · after the third: RUN →' }],
   };
   out.push({ ...tower(finalDef, 999, true), chapter: 'The Last Night', boss: true, finalFight: true });
-  // The newer fruit (strawberry, cherry, blueberry) grow in the story levels too: every
+  // The newer fruit (strawberry, cherry, blueberry, pear) grow in the story levels too: every
   // third apple outside the towers and the Sky Roads becomes one of them, in turn.
-  const NEW_FRUIT = ['s', 'ç', 'ƀ'];
+  const NEW_FRUIT = ['s', 'ç', 'ƀ', 'p'];
   let apples = 0;
   for (const d of out) {
     if (d.boss || d.sky || !Array.isArray(d.map)) continue;
-    d.map = d.map.map(row => row.replace(/a/g, () => (apples++ % 3 === 1 ? NEW_FRUIT[Math.floor(apples / 3) % 3] : 'a')));
+    d.map = d.map.map(row => row.replace(/a/g, () => (apples++ % 3 === 1 ? NEW_FRUIT[Math.floor(apples / 3) % NEW_FRUIT.length] : 'a')));
   }
   L.length = 0; L.push(...out);
 })();

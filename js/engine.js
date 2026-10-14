@@ -4,6 +4,7 @@
   const TS = LF.TS = 32;
   const G = 2100, MAXFALL = 900, RUN = 250, JUMP = 700, SPRING = 1080;
   const FAST = 1.4;
+  const GLIDE_FALL = 95, GLIDE_LIFT = 430;   // the pear: the slowest you fall gliding, the lift of its spin
   const WALL_SLIDE = 110, WALL_KICK = 330, BOOST = 1.22, REGROW = 12, SINK = 55;
 
   // Per-level player settings, set in the editor's Player dialog (def.player).
@@ -47,12 +48,13 @@
     o: { name: 'Orange', power: 'Jump boost', color: '#FF9A2E', note: 'higher jumps, until you die' },
     b: { name: 'Banana', power: 'Double jump', color: '#FFE066', note: 'jump again in mid-air, until you die' },
     m: { name: 'Watermelon', power: 'Speed', color: '#4CAF50', note: 'run faster, until you die' },
+    p: { name: 'Pear', power: 'Glide', color: '#C5D94A', note: 'hold jump while falling to glide down slowly, and jump again once in mid-air for a little lift, until you die' },
     s: { name: 'Strawberry', power: 'Wall grip', color: '#F0506E', note: 'slide down walls at a third of the speed, until you die' },
     'ç': { name: 'Cherry', power: 'Ammo magnet', color: '#B3123A', note: 'ammo crates within 4 blocks fly to you, until you die' },
     'ƀ': { name: 'Blueberry', power: 'Night eyes', color: '#5B6EE1', note: 'your light reaches twice as far, until you die' },
   };
   // Every fruit but the apple gives a power that's on or off: the player's flag for each.
-  const POWERS = LF.POWERS = { o: 'boost', b: 'dbl', m: 'fast', s: 'grip', 'ç': 'magnet', 'ƀ': 'glow' };
+  const POWERS = LF.POWERS = { o: 'boost', b: 'dbl', m: 'fast', p: 'glide', s: 'grip', 'ç': 'magnet', 'ƀ': 'glow' };
   const FLAGS = Object.values(POWERS);
   LF.powerFlags = p => Object.fromEntries(FLAGS.map(k => [k, p[k] ? 1 : 0]));
   LF.hasPowers = p => FLAGS.some(k => p[k]);
@@ -2762,9 +2764,9 @@
     // Walls: touching one in the air allows a wall jump; pushing into it while falling slides slowly.
     p.wall = p.onGround ? 0 : wallBeside(W, p, -1) ? -1 : wallBeside(W, p, 1) ? 1 : p.spinWallT > 0 ? p.spinWallSide : 0;
     const airJumps = T.airJumps + (p.dbl > 0 ? 1 : 0);
-    if (p.wall) { p.wallDir = p.wall; p.wallCoyote = .1; p.airJumps = airJumps; }
+    if (p.wall) { p.wallDir = p.wall; p.wallCoyote = .1; p.airJumps = airJumps; p.spun = false; }
     else p.wallCoyote -= dt;
-    if (p.onGround || wet) p.airJumps = airJumps;
+    if (p.onGround || wet) { p.airJumps = airJumps; p.spun = false; }
     p.sliding = !!p.wall && dir === p.wall && p.vy > 0;
 
     // Jump speed scales with sqrt(height x gravity) so the height setting is exact at any gravity.
@@ -2796,6 +2798,13 @@
       ring(W, p.x + p.w / 2, p.y + p.h, 26, '255,224,102', .3);
       p.trail = .25; p.trailC = '255,224,102';
       W.emit('djump');
+    } else if (p.buffer > 0 && p.glide && !p.onGround && !p.spun && !wet) {
+      // The pear's spin: once a jump, a little lift in mid-air (after the acorn of the Mario
+      // games).
+      p.vy = Math.min(p.vy, -GLIDE_LIFT); p.spun = true; p.buffer = 0; p.jumping = false; p.sx = 1.2; p.sy = .85;
+      burst(W, p.x + p.w / 2, p.y + p.h / 2, 12, ['#C5D94A', '#E4F08A'], 120, 60, 2.5);
+      ring(W, p.x + p.w / 2, p.y + p.h / 2, 24, '197,217,74', .3);
+      W.emit('djump');
     }
     if (p.jumping && !input.jump && p.vy < 0) { p.vy *= .45; p.jumping = false; }
     if (p.vy >= 0) p.jumping = false;
@@ -2803,6 +2812,9 @@
       p.vy = Math.min(SINK, p.vy + grav * .45 * dt);
       if (Math.random() < .05) W.particles.push({ x: p.x + p.w / 2 + p.face * 4, y: p.y + 4, vx: 0, vy: -40, life: .6, max: .6, c: '#9FD8FF', size: 2, g: -60 });
     } else p.vy = Math.min(MAXFALL * Math.sqrt(T.gravity), p.vy + grav * dt * (p.vy > 0 ? 1.15 : 1));
+    // The pear's glide: holding jump while falling, you float down slowly.
+    p.gliding = !!(p.glide && !p.onGround && !wet && !p.sliding && input.jump && p.vy > 0);
+    if (p.gliding) { p.vy = Math.min(p.vy, GLIDE_FALL); if (Math.random() < .15) W.particles.push({ x: p.x + p.w / 2 + (Math.random() - .5) * 20, y: p.y, vx: 0, vy: -30, life: .4, max: .4, c: '#C5D94A', size: 2, g: 0 }); }
     if (p.sliding) {
       p.vy = Math.min(p.vy, WALL_SLIDE * T.wallSlide / (p.grip ? 3 : 1));
       if (Math.random() < .12) W.particles.push({ x: p.wall > 0 ? p.x + p.w : p.x, y: p.y + p.h - 4, vx: -p.wall * 20, vy: -30, life: .35, max: .35, c: '#9A8FBF', size: 2, g: 200 });

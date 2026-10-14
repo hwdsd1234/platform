@@ -979,6 +979,12 @@
         ctx.fillStyle = '#A5D6A7'; ctx.beginPath(); ctx.arc(0, -2, 7, 0, Math.PI); ctx.fill();
         ctx.fillStyle = '#E5484D'; ctx.beginPath(); ctx.arc(0, -2, 6, 0, Math.PI); ctx.fill();
         ctx.fillStyle = '#211C3F'; ctx.fillRect(-3, 0, 1.4, 2); ctx.fillRect(0, 1.5, 1.4, 2); ctx.fillRect(3, 0, 1.4, 2);
+      } else if (f.type === 'p') {
+        // A pear: a small top on a round bottom, with a stalk and a leaf.
+        ctx.fillStyle = '#C5D94A'; ctx.beginPath(); ctx.arc(0, 3, 6, 0, TAU); ctx.arc(0, -3, 3.8, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#E4F08A'; ctx.fillRect(-3.5, 0, 2.2, 2.5);
+        ctx.strokeStyle = '#6B452C'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(1, -10); ctx.stroke();
+        ctx.fillStyle = '#5FBF5A'; ctx.beginPath(); ctx.ellipse(4, -9, 3.2, 1.6, -.4, 0, TAU); ctx.fill();
       } else if (f.type === 's') {
         // A strawberry: a red heart point down, pale seeds, a green crown.
         ctx.fillStyle = '#F0506E'; ctx.beginPath(); ctx.moveTo(-6.5, -2); ctx.quadraticCurveTo(-6, 7, 0, 8); ctx.quadraticCurveTo(6, 7, 6.5, -2); ctx.quadraticCurveTo(0, -5, -6.5, -2); ctx.fill();
@@ -1167,6 +1173,15 @@
       if (p.dead) return;
       if (p.inv > 0) ctx.globalAlpha = reduced ? .5 : Math.floor(p.inv * 16) % 2 ? .25 : .8;
       const f = p.face, bx = p.x + p.w / 2, by = p.y + p.h, fl = LF.flamePos(p);
+      // Gliding on the pear's power: a broad leaf held up overhead like a canopy.
+      if (p.gliding) {
+        const sway = reduced ? 0 : Math.sin(clock * 9) * .08;
+        ctx.save(); ctx.translate(bx, p.y - 8); ctx.rotate(sway);
+        ctx.fillStyle = '#7FB33A'; ctx.beginPath(); ctx.ellipse(0, 0, 18, 6, 0, Math.PI, 0); ctx.fill();
+        ctx.strokeStyle = '#4E7A2E'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(-16, 0); ctx.lineTo(16, 0); for (const x of [-9, 0, 9]) { ctx.moveTo(x, 0); ctx.lineTo(x + 3, -4); } ctx.stroke();
+        ctx.strokeStyle = '#6B452C'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 8); ctx.stroke();
+        ctx.restore();
+      }
       ctx.strokeStyle = '#9A6A45'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(bx + f * 3, by - 10); ctx.lineTo(fl.x, fl.y + 3); ctx.stroke();
       ctx.save(); ctx.translate(bx, by); ctx.scale(p.sx, p.sy);
@@ -1259,41 +1274,25 @@
       }
       ctx.globalCompositeOperation = 'source-over';
 
-      // Lava is drawn over the darkness so it glows: still lava tile by tile, moving lava
-      // slice by slice wherever it isn't behind rock.
-      const vis = visibleRange(W, cam);
+      // Lava is drawn over the darkness so it glows.
       if (W.lavaTop.length) {
-        // Still lava: clip to its tiles (the top ones from their wavy surface down), fill once.
-        const surfOf = tx => (reduced ? 0 : Math.sin(clock * 2.6 + tx * .9) * 2) + 7;
-        let any = false, ymin = Infinity;
-        ctx.save(); ctx.beginPath();
-        for (let ty = vis.y0; ty <= vis.y1; ty++) for (let tx = vis.x0; tx <= vis.x1; tx++) {
+        const { x0, x1, y0, y1 } = visibleRange(W, cam);
+        for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
           if (W.tiles[ty][tx] !== '!') continue;
-          const top = LF.tile(W, tx, ty - 1) !== '!', ys = ty * TS + (top ? surfOf(tx) : 0);
-          ctx.rect(tx * TS, ys, TS, (ty + 1) * TS - ys); any = true; ymin = Math.min(ymin, ys);
+          const x = tx * TS, y = ty * TS, top = LF.tile(W, tx, ty - 1) !== '!';
+          const wave = top && !reduced ? Math.sin(clock * 2.6 + tx * .9) * 2 : 0, y0p = top ? y + 7 + wave : y;
+          const g = ctx.createLinearGradient(0, y0p, 0, y + TS);
+          g.addColorStop(0, top ? '#FF8A2E' : '#D8481C'); g.addColorStop(1, '#A82A14');
+          ctx.fillStyle = g; ctx.fillRect(x, y0p, TS, y + TS - y0p);
+          if (top) {
+            ctx.fillStyle = '#FFE2A8'; ctx.fillRect(x, y0p, TS, 2);
+            const b = reduced ? 0 : (clock * 1.3 + tx * .37) % 1;
+            ctx.fillStyle = `rgba(255,226,168,${.7 * (1 - b)})`;
+            ctx.beginPath(); ctx.arc(x + 8 + (tx * 7) % 16, y0p + 6 - b * 6, 1.5 + b * 2.5, 0, TAU); ctx.fill();
+          } else if (!reduced) {
+            ctx.fillStyle = 'rgba(255,181,71,.25)'; ctx.fillRect(x + (tx * 11 + ty * 5) % 24, y + 10 + Math.sin(clock + tx + ty) * 4, 5, 2);
+          }
         }
-        if (any) { ctx.clip(); lavaFill(vis.x0 * TS, (vis.x1 + 1) * TS, vis.y0 * TS, (vis.y1 + 1) * TS, ymin); }
-        ctx.restore();
-        for (let ty = vis.y0; ty <= vis.y1; ty++) for (let tx = vis.x0; tx <= vis.x1; tx++) {
-          if (W.tiles[ty][tx] !== '!' || LF.tile(W, tx, ty - 1) === '!') continue;
-          const ys = ty * TS + surfOf(tx), ys2 = ty * TS + surfOf(tx + 1);
-          lavaCrust(tx * TS, TS, x => (x <= tx * TS ? ys : ys2 * ((x - tx * TS) / TS) + ys * (1 - (x - tx * TS) / TS)), tx * 7);
-        }
-      }
-      for (const f of W.flows || []) {
-        const fx0 = Math.max(f.x0, vis.x0) * TS, fx1 = (Math.min(f.x1, vis.x1) + 1) * TS, bot = (f.bottom + 1) * TS;
-        if (fx1 <= fx0) continue;
-        const surf = x => LF.flowSurface(W, f, x) + (reduced ? 0 : Math.sin(clock * 3 + x * .05) * 1.5);
-        // Clip to the open tiles it covers, and to below its surface; fill once.
-        let ymin = Infinity; for (let x = fx0; x <= fx1; x += 8) ymin = Math.min(ymin, surf(x));
-        ctx.save(); ctx.beginPath();
-        for (let ty = Math.max(vis.y0, Math.floor(ymin / TS)); ty <= Math.min(vis.y1, f.bottom); ty++) for (let tx = Math.floor(fx0 / TS); tx < fx1 / TS; tx++) if (!LF.isSolid(W.tiles[ty][tx]) && W.tiles[ty][tx] !== '!') ctx.rect(tx * TS, ty * TS, TS, TS);
-        ctx.clip();
-        ctx.beginPath(); ctx.moveTo(fx0, bot); for (let x = fx0; x <= fx1; x += 8) ctx.lineTo(x, surf(x)); ctx.lineTo(fx1, surf(fx1)); ctx.lineTo(fx1, bot); ctx.closePath(); ctx.clip();
-        lavaFill(fx0, fx1, ymin, bot, ymin);
-        ctx.restore();
-        // (The crust, where it's in open air.)
-        for (let x = fx0; x < fx1; x += 8) { const ys = surf(x + 4), c = W.tiles[Math.floor(ys / TS)]?.[Math.floor(x / TS)]; if (c != null && !LF.isSolid(c)) lavaCrust(x, 8, surf, Math.floor(x / 8)); }
       }
       for (const l of W.lanterns) {
         if (l.lit) {
@@ -1623,47 +1622,22 @@
       }
     }
 
-    // Lava: a molten body, orange at the top deepening to dark red, with dark crust drifting
-    // across it and bright veins; on top a glowing crust where bubbles swell and pop, and
-    // heat glowing up off it. lavaBody fills x..x+w from a to b (its surface at ys);
-    // lavaCrust draws the top along surf(x).
-    // Fill the current clip with lava over x0..x1, y0..y1 (ys: the top of the lava, for the
-    // colour): one gradient, then crust drifting and veins wandering in world space, so pools
-    // and flows read as one body with no seams.
-    function lavaFill(x0, x1, y0, y1, ys) {
-      const g = ctx.createLinearGradient(0, ys, 0, ys + TS * 2.5);
-      g.addColorStop(0, '#FFA347'); g.addColorStop(.12, '#F26A2A'); g.addColorStop(.55, '#C2361B'); g.addColorStop(1, '#7E1F10');
-      ctx.fillStyle = g; ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
-      if (reduced) return;
-      const t = clock;
-      ctx.fillStyle = 'rgba(80,16,8,.3)';
-      for (let gy = Math.floor(y0 / 26) * 26; gy < y1; gy += 26) for (let gx = Math.floor(x0 / 44) * 44 - 44; gx < x1 + 44; gx += 44) {
-        const h = ((gx * 73856093) ^ (gy * 19349663)) >>> 0, px = gx + ((h % 44) + t * (6 + h % 5)) % 44, py = gy + (h >> 5) % 20 + Math.sin(t * .6 + h) * 2;
-        ctx.beginPath(); ctx.ellipse(px, py, 7 + h % 5, 2.6 + (h >> 3) % 2, Math.sin(t * .3 + h) * .25, 0, TAU); ctx.fill();
-      }
-      ctx.strokeStyle = 'rgba(255,214,140,.32)'; ctx.lineWidth = 1.3;
-      for (let vy = Math.floor(y0 / 30) * 30 + 15; vy < y1; vy += 30) {
-        ctx.beginPath();
-        for (let x = x0; x <= x1; x += 8) { const y = vy + Math.sin(x * .045 + t * .9 + vy) * 4 + Math.sin(x * .013 - t * .4) * 3; x === x0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
+    // Moving lava: its surface traced across, filled down to its bottom, a bright crust.
+    function drawFlows(W) {
+      for (const f of W.flows || []) {
+        // (A flood that hasn't started yet stays out of sight below its floor.)
+        if (!f.on && f.mode === 'rise') continue;
+        const x0 = f.x0 * TS, x1 = (f.x1 + 1) * TS, bot = (f.bottom + 1) * TS;
+        ctx.beginPath(); ctx.moveTo(x0, bot);
+        for (let x = x0; x <= x1; x += 8) ctx.lineTo(x, LF.flowSurface(W, f, Math.min(x, x1)));
+        ctx.lineTo(x1, LF.flowSurface(W, f, x1)); ctx.lineTo(x1, bot); ctx.closePath();
+        const top = Math.min(LF.flowSurface(W, f, x0), LF.flowSurface(W, f, x1)) - TS, g = ctx.createLinearGradient(0, top, 0, bot);
+        g.addColorStop(0, '#FF6B3D'); g.addColorStop(.25, '#E0452B'); g.addColorStop(1, '#7A2E1C');
+        ctx.fillStyle = g; ctx.fill();
+        ctx.strokeStyle = '#FFB547'; ctx.lineWidth = 3; ctx.beginPath();
+        for (let x = x0; x <= x1; x += 8) { const y = LF.flowSurface(W, f, x) + (reduced ? 0 : Math.sin(clock * 5 + x * .1) * 1.5); x === x0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
         ctx.stroke();
       }
-    }
-    function lavaCrust(x, w, surf, seed) {
-      const y0 = surf(x), y1 = surf(x + w);
-      // Heat glowing up off it.
-      if (!reduced) {
-        const ym = Math.min(y0, y1), hg = ctx.createLinearGradient(0, ym - 26, 0, ym);
-        hg.addColorStop(0, 'rgba(255,140,60,0)'); hg.addColorStop(1, 'rgba(255,140,60,.28)');
-        ctx.fillStyle = hg; ctx.fillRect(x, ym - 26, w, 26);
-      }
-      // The crust: a bright line and a hot rim below it.
-      ctx.strokeStyle = '#FFE7B0'; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x + w, y1); ctx.stroke();
-      ctx.strokeStyle = 'rgba(255,170,70,.75)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x, y0 + 3); ctx.lineTo(x + w, y1 + 3); ctx.stroke();
-      if (reduced || w < TS && seed % 4) return;
-      // A bubble now and then: it swells up out of the crust and pops in a ring.
-      const b = (clock * .7 + seed * .37) % 1, bx = x + w / 2, by = (y0 + y1) / 2;
-      if (b < .8) { const r = 1 + 5 * (b / .8); ctx.fillStyle = '#FF8A3A'; ctx.beginPath(); ctx.arc(bx, by, r, Math.PI, 0); ctx.fill(); ctx.strokeStyle = '#FFE2A8'; ctx.lineWidth = 1; ctx.stroke(); }
-      else { const q = (b - .8) / .2; ctx.strokeStyle = `rgba(255,226,168,${1 - q})`; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(bx, by - 2, 6 + q * 6, Math.PI, 0); ctx.stroke(); ctx.fillStyle = `rgba(255,200,120,${1 - q})`; for (const d of [-1, 1]) ctx.fillRect(bx + d * (4 + q * 8), by - 4 - q * 10, 2, 2); }
     }
     R.render = (W, cam, opts = {}, dt = 0) => {
       clock += dt;
@@ -1675,6 +1649,7 @@
         for (const s of W.def.signs) ctx.fillText(s.t, s.x * TS, s.y * TS);
         ctx.textBaseline = 'alphabetic';
       }
+      drawFlows(W);
       drawTiles(W, cam, opts);
       drawPlats(W);
       drawDoor(W.door); if (W.secretSeen || opts.edit) drawDoor(W.secret);
