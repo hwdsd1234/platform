@@ -361,8 +361,10 @@
             ctx.strokeRect(p.ox + 1.5, p.oy + .5, p.w - 3, p.h); ctx.setLineDash([]); continue;
           }
           const j = p.state === 'shake' && !reduced ? (Math.random() - .5) * 3 : 0;
-          ctx.fillStyle = '#7A4A3A'; ctx.fillRect(p.x + 1 + j, p.y, p.w - 2, 10);
-          ctx.fillStyle = '#A8604A'; ctx.fillRect(p.x + 1 + j, p.y, p.w - 2, 2.5);
+          // (A cracked shingle, gone for good once it falls, is a paler grey with a crack.)
+          ctx.fillStyle = p.once ? '#7D7088' : '#7A4A3A'; ctx.fillRect(p.x + 1 + j, p.y, p.w - 2, 10);
+          ctx.fillStyle = p.once ? '#A99CB8' : '#A8604A'; ctx.fillRect(p.x + 1 + j, p.y, p.w - 2, 2.5);
+          if (p.once) { ctx.strokeStyle = '#3A3350'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(p.x + 6 + j, p.y + 1); ctx.lineTo(p.x + 12 + j, p.y + 6); ctx.lineTo(p.x + 9 + j, p.y + 10); ctx.moveTo(p.x + 12 + j, p.y + 6); ctx.lineTo(p.x + 20 + j, p.y + 4); ctx.stroke(); }
           ctx.fillStyle = '#5A3428';
           for (let ox = 0; ox < p.w; ox += TS) { ctx.fillRect(p.x + ox + 10 + j, p.y + 3, 1.5, 7); ctx.fillRect(p.x + ox + 21 + j, p.y + 3, 1.5, 7); }
           ctx.beginPath(); ctx.moveTo(p.x + 1 + j, p.y + 10); for (let ox = 0; ox < p.w; ox += TS) ctx.lineTo(p.x + ox + 16 + j, p.y + 14); ctx.lineTo(p.x + p.w - 1 + j, p.y + 10); ctx.fill();

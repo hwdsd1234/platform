@@ -257,11 +257,12 @@
           wheelAt(pl); pl.prevY = pl.y; W.plats.push(pl);
         }
         tiles[y][x] = ' ';
-      } else if (c === 'd' || c === 'đ') {
+      } else if (c === 'd' || c === 'đ' || c === 'ð') {
         // Falling shingle: shakes when stood on, drops, then grows back. đ is a big one, three
-        // tiles wide (it takes up the two to its right too), that holds out longer.
+        // tiles wide (it takes up the two to its right too), that holds out longer. ð is a
+        // cracked one: it falls the same, but it's gone for good.
         const big = c === 'đ';
-        W.plats.push({ kind: 'fall', big, state: 'idle', t: 0, vy: 0, x: x * TS, y: y * TS, ox: x * TS, oy: y * TS, w: TS * (big ? 3 : 1), h: 12, dx: 0, dy: 0, prevY: y * TS });
+        W.plats.push({ kind: 'fall', big, once: c === 'ð', state: 'idle', t: 0, vy: 0, x: x * TS, y: y * TS, ox: x * TS, oy: y * TS, w: TS * (big ? 3 : 1), h: 12, dx: 0, dy: 0, prevY: y * TS });
         tiles[y][x] = ' ';
       } else if (c === '0' && def.giant) {
         const liquid = ['~', '!'].find(l => rows[y - 1]?.[x] === l || rows[y + 1]?.[x] === l || rows[y][x - 1] === l || rows[y][x + 1] === l);
@@ -593,6 +594,8 @@
     const { keys } = W.player;
     Object.assign(W.player, makePlayer(W.checkpoint), { ammo: 0, keys });
     for (const f of W.flows) if (f.trigger != null || f.triggerY != null) Object.assign(f, { s: (f.mode === 'fall' ? f.hi : f.lo) * TS, on: false, t: 0 });
+    // (Cracked shingles you'd broken are back, for another go.)
+    for (const pl of W.plats) if (pl.once && pl.state === 'gone') Object.assign(pl, { state: 'idle', t: 0, y: pl.oy, prevY: pl.oy });
     for (const e of W.enemies) if (e.alive && e.chase) { e.chase.x = W.player.x - TS * 14; e.chase.t = 1; }
     // The clock goes back to what your checkpoint gives you (see cpClock).
     if (W.def.deadline) { W.bossClock = !!W.cpBoss; setClock(W, LF.cpClock(W)); }
@@ -647,13 +650,6 @@
       if (!f.on) {
         const cx = p.x + p.w / 2, there = f.triggerY != null ? cx >= f.x0 * TS && cx <= (f.x1 + 1) * TS && p.y + p.h <= f.triggerY * TS : p.x >= f.trigger * TS;
         if (there && !p.dead) f.on = true; else continue;
-      }
-      // (A drain that only drains while you're out over it on the shingles, or in the air
-      // between them: not standing on stone, or clinging to a wall.)
-      if (f.whileOver) {
-        const over = p.x + p.w / 2 >= f.x0 * TS && p.x + p.w / 2 <= (f.x1 + 1) * TS;
-        const onShingle = p.onGround && p.onPlat && p.onPlat.kind === 'fall';
-        if (p.dead || !over || p.sliding || (p.onGround && !onShingle)) continue;
       }
       f.t += dt;
       if (f.mode === 'rise') f.s = Math.max(f.hi * TS, f.s - f.speed * TS * dt);
@@ -1130,7 +1126,7 @@
     else if (pl.state === 'fall') {
       pl.vy = Math.min(700, pl.vy + G * .6 * dt); pl.dy = pl.vy * dt; pl.y += pl.dy;
       if (pl.y > W.h * TS + 40 || pl.t > 2.5) { pl.state = 'gone'; pl.t = 0; }
-    } else if (pl.state === 'gone' && pl.t > 3) {
+    } else if (pl.state === 'gone' && pl.t > 3 && !pl.once) {
       const box = { x: pl.ox, y: pl.oy - 4, w: pl.w, h: pl.h + 4 };
       if (W.player.dead || !overlap(W.player, box)) { pl.state = 'idle'; pl.y = pl.prevY = pl.oy; pl.t = 0; }
     }

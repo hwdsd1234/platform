@@ -1,7 +1,7 @@
-// Lanternfall: story levels four times as long. Each level (not the towers and castles,
+// Lanternfall: story levels twice as long. Each level (not the towers and castles,
 // which are built long in bosses.js) is followed by more sections, joined by section
 // doors (its door becomes a ĵ, each next section starts at an ň; the last keeps the door),
-// as many as it takes to make it at least four times as long:
+// as many as it takes to make it at least twice as long:
 // - most levels: sections from the level generator, the same shape and size as the level
 //   and as hard as its world;
 // - Sky Roads levels: the level again, mirrored, then as it was, and so on (no floors to
@@ -12,7 +12,7 @@
 // same every time. Load after gen.js and worlds.js.
 (() => {
   const LF = window.LF;
-  const GAP = 2, LONGER = 4.5;   // (a little over 4, as sections swapped in after a check can be smaller)
+  const GAP = 2, LONGER = 2.25;   // (a little over 2, as sections swapped in after a check can be smaller)
   const cache = new Map();
   const hash = s => { let h = 7; for (const ch of s) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return h; };
   // Mirror a map left to right (belts, turn blocks and wheels turn the other way).
@@ -51,7 +51,7 @@
     // (Sections till it's at least LONGER times the level, counting the open tiles.)
     const room = rows => rows.reduce((n, r) => n + r.replace(/#/g, '').length, 0);
     const parts = [base];
-    for (let k = 1, total = room(base); (total < room(base) * LONGER || parts.length < 4) && k < 12; k++) { const p = pick(k); parts.push(p); total += room(p); }
+    for (let k = 1, total = room(base); total < room(base) * LONGER && k < 12; k++) { const p = pick(k); parts.push(p); total += room(p); }
     // (A level the checker already finds fault with is lengthened all the same.)
     const strict = LF.analyze(def).ok;
     let out = null;
@@ -62,8 +62,8 @@
       // (A section that won't do: swap the last generated one for the level mirrored.)
       else parts[parts.findLastIndex(p => p !== base && p !== mirrored)] = mirrored;
     }
-    // (Still short of four times, after a swap? Add the level again, as it was or mirrored.)
-    for (let k = 0; out && room(out.map) < room(base) * 4 && k < 6; k++) {
+    // (Still short of twice, after a swap? Add the level again, as it was or mirrored.)
+    for (let k = 0; out && room(out.map) < room(base) * 2 && k < 6; k++) {
       parts.push(k % 2 ? base : mirrored);
       const cand = { ...def, map: join(parts.map((p, n) => asSection(p, n === 0, n === parts.length - 1))), lengthened: true };
       if (!strict || LF.analyze(cand).ok) out = cand; else parts.pop();

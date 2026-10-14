@@ -604,7 +604,7 @@
     shingles: R => {
       const st = stage(15);
       let last;
-      [12, 9, 6, 3].forEach((y, k) => { const [x0] = SPANS[k % 4]; for (let x = x0 + 1; x <= x0 + 5; x += 2) st.g[y][x] = 'd'; last = [x0 + 1, x0 + 5]; });
+      [12, 9, 6, 3].forEach((y, k) => { const [x0] = SPANS[k % 4]; for (let x = x0 + 1; x <= x0 + 5; x += 2) st.g[y][x] = x === x0 + 3 ? 'ð' : 'd'; last = [x0 + 1, x0 + 5]; });
       fruitOn(st, R, 3, 14); fruitOn(st, R, 20, 14);
       return finish(st, ...last);
     },
@@ -662,7 +662,7 @@
     flood: R => {
       const st = STAGES.ledges(R);
       for (const row of st.g) for (let x = 0; x < SW; x++) if ('FZW'.includes(row[x])) row[x] = '.';   // (no fliers while you're racing the lava)
-      st.flows.push({ mode: 'rise', x0: 1, x1: SW - 2, lo: st.H, hi: 1, bottom: st.H, speed: .4, triggerY: st.H - 1, local: true });
+      st.flows.push({ mode: 'rise', x0: 1, x1: SW - 2, lo: st.H, hi: 1, bottom: st.H, speed: .4, triggerY: st.H - 3, local: true });   // (it starts once you're up on its first ledge)
       return st;
     },
   };
@@ -695,7 +695,7 @@
     rows.flows = flows.map(({ local, ...f }) => f);
     return rows;
   }
-  LF.towerKit = { STAGES, stageClimb, joinRuns: (...a) => joinRuns(...a), COURSES: () => COURSES, drainRoom: () => drainRoom() };   // (for testing the stages one by one)
+  LF.towerKit = { STAGES, stageClimb, joinRuns: (...a) => joinRuns(...a), COURSES: () => COURSES, drainClimb: (...a) => drainClimb(...a) };   // (for testing the stages one by one)
   // Each tower's stages: every kind once in its first shaft, in an order of its own, then
   // again (with different fruit and fliers) in its second; floods only up high in the
   // later towers.
@@ -703,7 +703,8 @@
   function towerStages(R, t, half) {
     const order = KINDS.slice();
     for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
-    if (half === 1 && t >= 12) order.splice(order.length - 2, 0, 'flood');
+    // (The rising lava comes right after the door into the second shaft.)
+    if (half === 1 && t >= 12) order.unshift('flood');
     return order;
   }
 
@@ -882,25 +883,6 @@
     },
   };
 
-  // A shaft that floods: the lava starts rising the moment you step in. Climb!
-  function floodShaft(R) {
-    const g = shaft(R), h = g.length, w = g[0].length;
-    for (const row of g) for (let x = 0; x < w; x++) if (row[x] === 'P') row[x] = 'n';
-    g.flows = [{ mode: 'rise', x0: 1, x1: w - 2, lo: h - 2, hi: 7, bottom: h - 2, speed: .7, trigger: 5 }];
-    return g;
-  }
-  // Drop onto a row of falling shingles over a lake of lava, and keep hopping from shingle
-  // to shingle while it drains away, till you can get down to the door.
-  function shingleDrain() {
-    const w = 40, h = 22, g = grid(w, h);
-    put(g, 0, 0, w - 1, 0, '#'); put(g, 0, 0, 0, h - 1, '#'); put(g, w - 1, 0, w - 1, h - 1, '#'); put(g, 0, h - 3, w - 1, h - 1, '#');
-    put(g, 1, 3, 4, 3, '#'); g[2][2] = 'n';
-    for (let x = 7; x <= w - 8; x += 2) g[8][x] = 'd';
-    g[h - 4][w - 3] = 'j'; g[h - 4][w - 6] = 'L';
-    g.flows = [{ mode: 'fall', x0: 5, x1: w - 2, hi: 10, lo: h - 2, bottom: h - 2, speed: .45, trigger: 6 }];
-    return g;
-  }
-
   // The castles: one at the end of every world but the last (whose castle is the Last
   // Dark's), each with its own keeper (see stepKeeper in engine.js). A castle's arena is a
   // hall with planks to get above its keeper; fliers hover high, walkers stand on the floor.
@@ -964,24 +946,30 @@
     rows.flows = flows;
     return rows;
   }
-  // The drain room: a walled shaft like a tower's, full of lava, entered high on the left.
-  // Shingles big and small hang over the lava at all sorts of heights, and more lie sunk in it,
-  // coming up as it goes down; the lava only drains
-  // while you're out over it, so you hop from shingle to shingle (they fall, and grow back)
-  // till it's gone, then drop to the floor and out of the door at the bottom. A lantern at
-  // the way in.
-  function drainRoom() {
-    const w = 26, h = 32, g = grid(w, h);
-    put(g, 1, 0, w - 1, 0, '#'); put(g, w - 1, 0, w - 1, h - 1, '#'); put(g, 0, h - 3, w - 1, h - 1, '#');
-    // (Column 0 goes when the room's joined on; column 1 is its left wall, open at the way in.)
-    put(g, 0, 0, 1, 10, '#'); put(g, 0, 13, 1, h - 1, '#'); g[12][0] = 'n';
-    put(g, 2, 13, 3, 13, '#'); g[12][3] = 'L'; g.keepLamp = true;
-    for (const [x, y, c] of [[5, 13, 'đ'], [9, 11, 'd'], [12, 14, 'đ'], [16, 10, 'd'], [18, 12, 'đ'], [22, 9, 'd'], [20, 15, 'd'], [7, 9, 'd'], [14, 8, 'đ'], [3, 10, 'd']]) g[y][x] = c;
-    // (More down in the lava, that come up out of it as it drains.)
-    for (const [x, y, c] of [[10, 17, 'd'], [4, 19, 'd'], [15, 18, 'đ'], [8, 21, 'đ'], [20, 20, 'd'], [12, 23, 'd'], [17, 24, 'đ'], [5, 25, 'd'], [22, 26, 'd']]) g[y][x] = c;
-    g[h - 4][w - 3] = 'j';
-    g.flows = [{ mode: 'fall', x0: 2, x1: w - 2, hi: 16, lo: h - 3, bottom: h - 3, speed: .8, whileOver: true }];   // (draining only while you're on a shingle or in the air: see stepFlows)
-    return g;
+  // The drain room, at the foot of the final castle's climb, straight through the door: you
+  // come in on a big shingle over a room full of lava. It drains away whatever you do, but
+  // there's no stone to stand on: just shingles (cracked ones gone for good once they fall,
+  // the rest growing back), more of them coming up out of the lava as it goes down, and the
+  // walls, which you slide down far faster than it drains. Once it's empty, out by the
+  // tunnel at the bottom into the shaft and up.
+  function drainClimb(R, names) {
+    const shaft = stageClimb(R, names, false, false), H = shaft.length, w = 26, h = 32, room = grid(w, h);
+    put(room, 0, 0, w - 1, 0, '#'); put(room, 0, 0, 0, h - 1, '#'); put(room, w - 1, 0, w - 1, h - 1, '#'); put(room, 0, h - 3, w - 1, h - 1, '#');
+    room[11][5] = 'n'; room[12][4] = 'đ';
+    for (const [x, y, c] of [[9, 10, 'ð'], [12, 13, 'đ'], [16, 10, 'd'], [18, 12, 'đ'], [22, 9, 'ð'], [20, 14, 'd'], [7, 8, 'd'], [14, 8, 'ð'], [2, 9, 'd']]) room[y][x] = c;
+    for (const [x, y, c] of [[10, 17, 'd'], [4, 19, 'ð'], [15, 18, 'đ'], [8, 21, 'đ'], [20, 20, 'd'], [12, 23, 'ð'], [17, 24, 'đ'], [5, 25, 'd'], [22, 26, 'd']]) room[y][x] = c;
+    const off = H - h, rows = [];
+    for (let y = 0; y < H; y++) {
+      const r = y - off < 0 ? Array(w).fill('#') : room[y - off].slice();
+      const sr = shaft[y].map(c => (c === 'n' ? '.' : c));
+      rows.push([...r, ...sr]);
+    }
+    // (The tunnel: through the room's right wall and the shaft's left, along the bottom.)
+    for (const y of [H - 6, H - 5, H - 4]) rows[y][w - 1] = '.';
+    for (const y of [H - 6, H - 5, H - 4, H - 3]) rows[y][w] = '.';
+    rows.flows = [{ mode: 'fall', x0: 1, x1: w - 2, hi: 15 + off, lo: h - 3 + off, bottom: h - 3 + off, speed: .6 },
+      ...(shaft.flows || []).map(f => ({ ...f, x0: f.x0 + w, x1: f.x1 + w }))];
+    return rows;
   }
   const CASTLE_MORE = ['lavaHops', 'crumbleLava', 'liftsSpikes', 'conveyCrush', 'blinkLava', 'crumbleSpikes', 'pendulums', 'springLava', 'bubblePits', 'icePits', 'lavaTide', 'lavaWaves', 'iceSteps'];
   const castleAfter = Object.fromEntries(CASTLES.map((c, k) => [c.world, k]));
@@ -1268,8 +1256,8 @@
     // belts, ice) ending in the drain room, a door, and a tall climb of every kind of stage
     // with the lava flooding up twice, to the Last Dark's door.
     course: R => [
-      joinRuns(['lavaTide', 'lavaWaves', 'crumbleLava', 'springLava', 'lavaHops', 'bubblePits', 'crumbleSpikes', 'blinkLava', 'liftsLava', 'pendulums', 'conveyCrush', 'liftsSpikes', 'icePits', 'iceSteps'].map((m, n) => COURSES[m](R, n === 0)).concat([drainRoom()]), R, false),
-      stageClimb(R, ['ledges', 'springs', 'crumbles', 'flood', 'lifts', 'blinks', 'chimney', 'ice', 'pillars', 'flood', 'wheel', 'belts', 'turns', 'shingles', 'crumbles', 'ledges', 'blinks', 'ice'], false, false),
+      joinRuns(['lavaTide', 'lavaWaves', 'crumbleLava', 'springLava', 'lavaHops', 'bubblePits', 'crumbleSpikes', 'blinkLava', 'liftsLava', 'pendulums', 'conveyCrush', 'liftsSpikes', 'icePits', 'iceSteps'].map((m, n) => COURSES[m](R, n === 0)), R, true),
+      drainClimb(R, ['flood', 'ledges', 'springs', 'crumbles', 'lifts', 'blinks', 'chimney', 'ice', 'pillars', 'wheel', 'belts', 'turns', 'shingles', 'crumbles', 'ledges', 'blinks', 'ice', 'pillars']),
     ],
     signs: [{ x: 2, y: 14.4, t: 'THE LAST DARK · 4 stomps · stomp it when it dives to the floor · after the third: RUN →' }],
   };

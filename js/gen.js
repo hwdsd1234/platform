@@ -66,7 +66,7 @@
     // Water is swimmable: you can jump from anywhere in it.
     const wet = c => c === '~' || !!(LF.SWIMMERS && LF.SWIMMERS[c]);
     const stand = (x, y) => x >= 0 && x < w && y >= 0 && y < h && (wet(T(x, y)) || !solid(T(x, y)) && !hazard(T(x, y)) &&
-      (solid(T(x, y + 1)) || T(x, y + 1) === '=' || T(x, y + 1) === 'd' || platStand.has(key(x, y))));
+      (solid(T(x, y + 1)) || T(x, y + 1) === '=' || T(x, y + 1) === 'd' || T(x, y + 1) === 'ð' || platStand.has(key(x, y))));
 
     let seen = new Uint8Array(w * h), noGround = false;
     const flood = () => {
