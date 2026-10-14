@@ -886,8 +886,8 @@
   };
 
   // ---- The sunken castles ----
-  // Two castles under the water, one in the Waterfront and one in the Canal District, before
-  // each world's own castle: flooded halls you swim through (two of them, a door between),
+  // The Waterfront's and the Canal District's castles are under the water (one castle a
+  // world, these two sunken): flooded halls you swim through (two of them, a door between),
   // then a flooded hall where its keeper swims after you.
   const flood = g => { for (let y = 1; y < g.length - 3; y++) for (let x = 1; x < g[0].length - 1; x++) if (g[y][x] === '.') g[y][x] = '~'; return g; };
   const SUNKEN_COURSES = {
@@ -917,7 +917,7 @@
   };
   const SUNKEN = [
     { after: 'The Lighthouse', name: 'Sunken Keep', giant: 'Θ', sign: 'THE DROWNED KING · he rams the walls · stomp him while he’s stunned', courses: ['maze', 'reef', 'spikes', 'reef'] },
-    { after: 'The Soot Canals', name: 'Drowned Castle', giant: 'Ж', sign: 'THE TIDE SERPENT · it surges at you in waves · stomp it when it hits a wall', courses: ['reef', 'spikes', 'maze', 'spikes'] },
+    { after: 'The Pear Cliffs', name: 'Drowned Castle', giant: 'Ж', sign: 'THE TIDE SERPENT · it surges at you in waves · stomp it when it hits a wall', courses: ['reef', 'spikes', 'maze', 'spikes'] },
   ];
   const sunkenAfter = Object.fromEntries(SUNKEN.map((c, k) => [c.after, k]));
   function sunkenOf(k) {
@@ -939,10 +939,8 @@
   // hall with planks to get above its keeper; fliers hover high, walkers stand on the floor.
   const CASTLES = [
     { world: 'The Hollow Spire', name: 'Candle Keep', giant: 'Γ', course: ['lavaHops', 'lavaWaves'], sign: 'THE CANDLE KING · mind the wax and the flames · stomp him when he melts after a hop' },
-    { world: 'The Lighthouse', name: 'Lighthouse Castle', giant: 'Δ', course: ['swim', 'liftsSpikes'], sign: 'THE LIGHTHOUSE CRAB · it scuttles into walls · stomp it while it’s stuck' },
     { world: 'The Powder Works', name: 'Clockwork Castle', giant: 'Ξ', course: ['conveyCrush', 'blinkLava'], sign: 'THE CLOCKWORK KNIGHT · jump his gears · stomp him while he winds down' },
     { world: 'The Neo Ledges', name: 'Storm Castle', giant: 'Λ', fly: true, course: ['skyTurns', 'skyWheels'], sign: 'THE STORM ROC · it swoops low · stomp it when it lands to rest' },
-    { world: 'The Pear Cliffs', name: 'Rat Castle', giant: 'Π', course: ['crumbleSpikes', 'pendulums'], sign: 'THE RAT KING · dodge his dash · stomp him on his throne' },
     { world: 'The Melon Patch', name: 'Pumpkin Castle', giant: 'Φ', course: ['springLava', 'pendulums'], sign: 'THE PUMPKIN KNIGHT · his bombs land where they’re marked · stomp him when he’s dizzy' },
     { world: 'The Bell Foundry', name: 'Smog Castle', giant: 'Ψ', fly: true, course: ['bubblePits', 'lavaTide'], sign: 'THE SMOG DRAGON · it breathes fire across the floor · stomp it when it lands' },
     { world: 'The Cinder Mines', name: 'Crystal Castle', giant: 'Σ', course: ['icePits', 'iceSteps'], sign: 'THE CRYSTAL MOLE · it bursts up where the floor glows · stomp it while it’s stunned' },
@@ -1259,7 +1257,7 @@
     if (n % 10 === 0 && FIGHTS[n / 10 - 1]) out.push({ ...tower(arena(n / 10 - 1, Math.floor((n / 10 - 1) / 5)), 300 + n), chapter, boss: true });
     else if (n % 10 === 5 && GIANT_FIGHTS[(n - 5) / 10]) out.push({ ...tower(giantArena((n - 5) / 10), 300 + n), chapter, boss: true });
     const chapterEnds = regular[i + 1] && regular[i + 1].chapter !== chapter;
-    // A world's last chapter ends at its castle (in two worlds, a sunken castle first).
+    // A world's last chapter ends at its castle (in two worlds, a sunken one).
     if (chapterEnds && sunkenAfter[chapter] != null) out.push(sunkenOf(sunkenAfter[chapter]));
     if (chapterEnds && castleAfter[chapter] != null) out.push(castleOf(castleAfter[chapter]));
     if (chapter === 'The Powder Works' && chapterEnds) {
@@ -1272,7 +1270,7 @@
     // The Pear Cliffs (levels-14.js) close the Canal District, before its castle.
     if (chapter === 'The Soot Canals' && chapterEnds) {
       out.push(...(LF.PEAR_LEVELS || []));
-      out.push(castleOf(castleAfter['The Pear Cliffs']));
+      out.push(sunkenOf(sunkenAfter['The Pear Cliffs']));
     }
     // And the Melon Patch (levels-13.js) closes the Garden Market.
     if (chapter === 'The Ember Gardens' && chapterEnds) {
