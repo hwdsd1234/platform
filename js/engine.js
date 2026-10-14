@@ -2969,8 +2969,9 @@
     // Water at the bottom edge of the map has a floor: you can't sink out of the world.
     if (p.y + p.h > W.h * TS && tile(W, Math.floor((p.x + p.w / 2) / TS), W.h - 1) === '~') { p.y = W.h * TS - p.h; p.vy = Math.min(p.vy, 0); }
     if (p.y > W.h * TS + 60) return kill(W);
-    // Lava kills outright, still or moving; the shield doesn't help.
-    if (p.inv <= 0 && (lavaAt(W, p) || inFlow(W, p))) { p.shield = 0; return kill(W); }
+    // Lava kills outright, still or moving: the shield doesn't help, and nor does being
+    // invincible for a moment after a hit (or you could fall into it and walk out).
+    if (lavaAt(W, p) || inFlow(W, p)) { p.shield = 0; return kill(W); }
     if (hazardHit(W, p, true)) { hurt(W); if (p.dead) return; }
     if (p.inv <= 0 && trapHit(W, p)) { hurt(W); if (p.dead) return; }
     // Crusher sides push you out instead of hurting.
