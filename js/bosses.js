@@ -586,7 +586,7 @@
   const finish = (st, x0, x1) => { put(st.g, Math.max(1, x0), 0, Math.min(SW - 2, x1), 0, '='); st.hole = [x0, x1]; return st; };
   // (Spots a stage offers for its apple: stageClimb puts one apple in every stage.)
   const fruitOn = (st, R, x, y) => { if (st.g[y] && st.g[y][x] === '.') st.spots.push([x, y]); };
-  const flyer = (st, R, x, y, p = .35) => { if (R() < p && st.g[y] && st.g[y][x] === '.') st.g[y][x] = 'FZW'[Math.floor(R() * 3)]; };
+  const flyer = (st, R, x, y, p = .2) => { if (R() < p && st.g[y] && st.g[y][x] === '.') st.g[y][x] = 'FZW'[Math.floor(R() * 3)]; };
   // Ledges three rows apart, zigzagging, each made of `tile(k)`.
   const zigzag = tile => (R, k0 = 0) => {
     const st = stage(15);
@@ -608,21 +608,22 @@
       fruitOn(st, R, 3, 14); fruitOn(st, R, 20, 14);
       return finish(st, ...last);
     },
-    // Springs on the floor and on a plank, each flinging you seven rows up.
+    // Springs on the floor and on a plank, each flinging you seven rows up onto a wide plank
+    // (no fliers about while you're bouncing).
     springs: R => {
       const st = stage(17);
       st.marks.push([5, 'O']);
-      put(st.g, 7, 10, 10, 10, '='); st.g[10][10] = 'O';
-      put(st.g, 12, 3, 15, 3, '=');
-      fruitOn(st, R, 8, 9, .8); fruitOn(st, R, 3, 16); flyer(st, R, 18, 7);
-      return finish(st, 12, 15);
+      put(st.g, 6, 10, 12, 10, '='); st.g[10][12] = 'O';
+      put(st.g, 11, 3, 18, 3, '=');
+      fruitOn(st, R, 8, 9, .8); fruitOn(st, R, 3, 16);
+      return finish(st, 11, 18);
     },
     // A lift up the left side to a ledge.
     lifts: R => {
       const st = stage(15), bot = 13, top = 3;
       st.g[bot][3] = 'V'; for (const c of [3, 4]) { st.g[top - 1][c] = '|'; st.g[bot + 1][c] = '|'; }
       put(st.g, 6, top, 10, top, '#');
-      fruitOn(st, R, 8, top - 1, .8); fruitOn(st, R, 15, 14); flyer(st, R, 15, 8);
+      fruitOn(st, R, 8, top - 1, .8); fruitOn(st, R, 15, 14);
       return finish(st, 6, 10);
     },
     // A narrow chimney: ledges off one wall then the other.
