@@ -255,9 +255,11 @@
           wheelAt(pl); pl.prevY = pl.y; W.plats.push(pl);
         }
         tiles[y][x] = ' ';
-      } else if (c === 'd') {
-        // Falling shingle: shakes when stood on, drops, then grows back.
-        W.plats.push({ kind: 'fall', state: 'idle', t: 0, vy: 0, x: x * TS, y: y * TS, ox: x * TS, oy: y * TS, w: TS, h: 12, dx: 0, dy: 0, prevY: y * TS });
+      } else if (c === 'd' || c === 'đ') {
+        // Falling shingle: shakes when stood on, drops, then grows back. đ is a big one, three
+        // tiles wide (it takes up the two to its right too), that holds out longer.
+        const big = c === 'đ';
+        W.plats.push({ kind: 'fall', big, state: 'idle', t: 0, vy: 0, x: x * TS, y: y * TS, ox: x * TS, oy: y * TS, w: TS * (big ? 3 : 1), h: 12, dx: 0, dy: 0, prevY: y * TS });
         tiles[y][x] = ' ';
       } else if (c === '0' && def.giant) {
         const liquid = ['~', '!'].find(l => rows[y - 1]?.[x] === l || rows[y + 1]?.[x] === l || rows[y][x - 1] === l || rows[y][x + 1] === l);
@@ -275,7 +277,7 @@
     if (def.arenaX) { W.passages.sort((a, b) => a.tx - b.tx); W.entries.sort((a, b) => a.tx - b.tx); }
     if (W.linkOut) { W.passages.push(...W.linkOut.sort((a, b) => a.tx - b.tx)); W.entries.push(...(W.linkIn || []).sort((a, b) => a.tx - b.tx)); }
     // Moving lava (def.flows): see stepFlows.
-    W.flows = (def.flows || []).map(f => ({ ...f, s: (f.mode === 'fall' ? f.hi : f.lo) * TS, on: f.trigger == null, t: 0 }));
+    W.flows = (def.flows || []).map(f => ({ ...f, s: (f.mode === 'fall' ? f.hi : f.lo) * TS, on: f.trigger == null && f.triggerY == null, t: 0 }));
     W.lavaTop = [];
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (tiles[y][x] === '!' && (y === 0 || tiles[y - 1][x] !== '!')) W.lavaTop.push({ tx: x, ty: y });
     // Every lava pool gets lava bubbles, spread evenly and centered along each stretch of
@@ -588,7 +590,7 @@
     // never be left out of reach.
     const { keys } = W.player;
     Object.assign(W.player, makePlayer(W.checkpoint), { ammo: 0, keys });
-    for (const f of W.flows) if (f.trigger != null) Object.assign(f, { s: (f.mode === 'fall' ? f.hi : f.lo) * TS, on: false, t: 0 });
+    for (const f of W.flows) if (f.trigger != null || f.triggerY != null) Object.assign(f, { s: (f.mode === 'fall' ? f.hi : f.lo) * TS, on: false, t: 0 });
     for (const e of W.enemies) if (e.alive && e.chase) { e.chase.x = W.player.x - TS * 14; e.chase.t = 1; }
     // The clock goes back to what your checkpoint gives you (see cpClock).
     if (W.def.deadline) { W.bossClock = !!W.cpBoss; setClock(W, LF.cpClock(W)); }
@@ -629,8 +631,9 @@
   //         about row lo;
   //   rise  floods: creeps up from lo to hi at speed rows a second;
   //   fall  drains: sinks from hi to lo at speed rows a second.
-  // A flow with a trigger column waits until you reach it (and starts again from the
-  // beginning if you come back at a checkpoint).
+  // A flow with a trigger column waits until you reach it, or with a triggerY until you're
+  // up above that row within its columns (and starts again from the beginning if you come
+  // back at a checkpoint).
   LF.flowSurface = (W, f, x) => {
     if (f.mode === 'tide') return (f.lo - (f.lo - f.hi) * (.5 - .5 * Math.cos(f.t / f.period * TAU))) * TS;
     if (f.mode === 'wave') return (f.lo - f.amp * (.5 + .5 * Math.sin((x / TS) / f.len * TAU - f.t / f.period * TAU))) * TS;
@@ -639,7 +642,12 @@
   function stepFlows(W, dt) {
     const p = W.player;
     for (const f of W.flows) {
-      if (!f.on) { if (p.x >= f.trigger * TS) { f.on = true; if (f.mode === 'fall') W.floaters.push({ x: p.x + p.w / 2, y: p.y - 20, t: 'the lava’s draining… wait!', life: 2, c: '#FFB547' }); if (f.mode === 'rise') W.floaters.push({ x: p.x + p.w / 2, y: p.y - 20, t: 'the lava’s rising! climb!', life: 2, c: '#FF6B3D' }); } else continue; }
+      if (!f.on) {
+        const cx = p.x + p.w / 2, there = f.triggerY != null ? cx >= f.x0 * TS && cx <= (f.x1 + 1) * TS && p.y + p.h <= f.triggerY * TS : p.x >= f.trigger * TS;
+        if (there && !p.dead) f.on = true; else continue;
+      }
+      // (A drain that only drains while you're out over it, on the shingles.)
+      if (f.whileOver && !(p.x + p.w / 2 >= f.x0 * TS && p.x + p.w / 2 <= (f.x1 + 1) * TS)) continue;
       f.t += dt;
       if (f.mode === 'rise') f.s = Math.max(f.hi * TS, f.s - f.speed * TS * dt);
       if (f.mode === 'fall') f.s = Math.min(f.lo * TS, f.s + f.speed * TS * dt);
@@ -648,6 +656,7 @@
   }
   const inFlow = (W, p) => W.flows.some(f => {
     const cx = p.x + p.w / 2;
+    if (!f.on && f.mode === 'rise') return false;   // (a flood that hasn't started is still just below its floor)
     return cx >= f.x0 * TS && cx <= (f.x1 + 1) * TS && p.y < (f.bottom + 1) * TS && p.y + p.h > LF.flowSurface(W, f, cx) + 8;
   });
 
@@ -1104,7 +1113,7 @@
 
   function stepShingle(W, pl, dt) {
     pl.t += dt;
-    if (pl.state === 'shake' && pl.t > .4) { pl.state = 'fall'; pl.t = 0; pl.vy = 0; W.emit('crumble'); }
+    if (pl.state === 'shake' && pl.t > (pl.big ? .9 : .4)) { pl.state = 'fall'; pl.t = 0; pl.vy = 0; W.emit('crumble'); }
     else if (pl.state === 'fall') {
       pl.vy = Math.min(700, pl.vy + G * .6 * dt); pl.dy = pl.vy * dt; pl.y += pl.dy;
       if (pl.y > W.h * TS + 40 || pl.t > 2.5) { pl.state = 'gone'; pl.t = 0; }

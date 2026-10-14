@@ -363,8 +363,8 @@
           ctx.fillStyle = '#7A4A3A'; ctx.fillRect(p.x + 1 + j, p.y, p.w - 2, 10);
           ctx.fillStyle = '#A8604A'; ctx.fillRect(p.x + 1 + j, p.y, p.w - 2, 2.5);
           ctx.fillStyle = '#5A3428';
-          ctx.fillRect(p.x + 10 + j, p.y + 3, 1.5, 7); ctx.fillRect(p.x + 21 + j, p.y + 3, 1.5, 7);
-          ctx.beginPath(); ctx.moveTo(p.x + 1 + j, p.y + 10); ctx.lineTo(p.x + 16 + j, p.y + 14); ctx.lineTo(p.x + p.w - 1 + j, p.y + 10); ctx.fill();
+          for (let ox = 0; ox < p.w; ox += TS) { ctx.fillRect(p.x + ox + 10 + j, p.y + 3, 1.5, 7); ctx.fillRect(p.x + ox + 21 + j, p.y + 3, 1.5, 7); }
+          ctx.beginPath(); ctx.moveTo(p.x + 1 + j, p.y + 10); for (let ox = 0; ox < p.w; ox += TS) ctx.lineTo(p.x + ox + 16 + j, p.y + 14); ctx.lineTo(p.x + p.w - 1 + j, p.y + 10); ctx.fill();
           continue;
         }
         ctx.fillStyle = '#6B452C'; ctx.fillRect(p.x + 4, p.y + 10, p.w - 8, 3);

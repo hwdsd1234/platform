@@ -6,7 +6,8 @@
 //   and as hard as its world;
 // - Sky Roads levels: the level again, mirrored, then as it was, and so on (no floors to
 //   add there).
-// Every lengthened level is checked with LF.analyze; a section that won't fit is swapped
+// It keeps one lantern, the one nearest its middle. Every lengthened level is checked with
+// LF.analyze; a section that won't fit is swapped
 // for a mirrored copy of the level. Built when you play a level (it takes a moment), the
 // same every time. Load after gen.js and worlds.js.
 (() => {
@@ -68,6 +69,14 @@
       if (!strict || LF.analyze(cand).ok) out = cand; else parts.pop();
     }
     out ||= def;
+    // One lantern for the whole level, the one nearest its middle (its door opens once that's
+    // lit); the rest go.
+    if (out !== def) {
+      const lamps = [];
+      out.map.forEach((r, y) => { for (let x = r.indexOf('L'); x >= 0; x = r.indexOf('L', x + 1)) lamps.push([x, y]); });
+      const mid = out.map[0].length / 2, keep = lamps.sort((a, b) => Math.abs(a[0] - mid) - Math.abs(b[0] - mid))[0];
+      out = { ...out, map: out.map.map((r, y) => r.replace(/L/g, (m, x) => (keep && x === keep[0] && y === keep[1] ? 'L' : out.map[y - 1]?.[x] === '~' ? '~' : '.'))) };
+    }
     cache.set(def.name, out);
     return out;
   };

@@ -28,6 +28,7 @@
       if (c === 'P') { if (start) problems.push('There is more than one start (P).'); start = { x, y }; }
       else if (c === 'D') { doors++; door = { x, y }; }
       else if (c === 'L') lanterns.push({ x, y });
+      else if (c === 'đ') { for (let sx = x; sx <= x + 2 && sx < w; sx++) platStand.add(key(sx, y - 1)); }
       else if (c === 'j') passIn.push({ x, y });
       else if (c === 'n') passOut.push({ x, y });
       else if (c === 'ĵ') (linkIn ||= []).push({ x, y });

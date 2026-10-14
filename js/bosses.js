@@ -568,6 +568,142 @@
     signs: [{ x: 2, y: 9.4, t: 'THE MELON BRUTE · it rolls till it hits a wall · stomp it while it’s cracked' }],
   });
 
+  // ---- Tower climbs: stacked stages ----
+  // A tower is all climbing: two tall shafts, then the boss's arena. Each shaft is a stack of
+  // stages, each its own kind of jump (zigzag ledges, crumbling, blinking, ice, belts,
+  // springs, lifts, a chimney, pillars, wheels, turn blocks, shingles, flooding lava), all
+  // the same width so any can sit on any other. A stage stands on the floor below it and
+  // ends at a floor of its own (row 0 of its rows), a plank in it over the stage's last
+  // ledge to jump up through. Rows below row 0 are the stage's air, its last row just over
+  // the floor it starts from. Fruit lies about on the ledges; a flier now and then.
+  const SW = 24, SPANS = [[14, 21], [8, 13], [2, 7], [8, 13]];
+  const FRUIT = ['a', 'o', 'b', 'm', 's', 'ç', 'ƀ'];
+  function stage(H) {
+    const g = grid(SW, H);
+    for (const row of g) { row[0] = '#'; row[SW - 1] = '#'; }
+    put(g, 1, 0, SW - 2, 0, '#');
+    return { g, H, hole: null, marks: [], flows: [] };
+  }
+  const finish = (st, x0, x1) => { put(st.g, Math.max(1, x0), 0, Math.min(SW - 2, x1), 0, '='); st.hole = [x0, x1]; return st; };
+  const fruitOn = (st, R, x, y, p = .6) => { if (R() < p && st.g[y] && st.g[y][x] === '.') st.g[y][x] = FRUIT[Math.floor(R() * FRUIT.length)]; };
+  const flyer = (st, R, x, y, p = .35) => { if (R() < p && st.g[y] && st.g[y][x] === '.') st.g[y][x] = 'FZW'[Math.floor(R() * 3)]; };
+  // Ledges three rows apart, zigzagging, each made of `tile(k)`.
+  const zigzag = tile => (R, k0 = 0) => {
+    const st = stage(15);
+    let last;
+    [12, 9, 6, 3].forEach((y, k) => { const [x0, x1] = SPANS[(k + k0) % 4]; put(st.g, x0, y, x1, y, tile(k)); fruitOn(st, R, x0 + 1 + Math.floor(R() * (x1 - x0 - 1)), y - 1); last = [x0, x1]; });
+    flyer(st, R, 11, 5);
+    return finish(st, ...last);
+  };
+  const STAGES = {
+    ledges: zigzag(k => (k % 3 === 2 ? '=' : '#')),
+    crumbles: zigzag(k => (k % 2 ? 'C' : '#')),
+    blinks: zigzag(k => (k % 2 ? 'T' : 'H')),
+    ice: zigzag(() => 'i'),
+    belts: zigzag(k => (SPANS[k % 4][0] > 10 ? '>' : '<')),
+    shingles: R => {
+      const st = stage(15);
+      let last;
+      [12, 9, 6, 3].forEach((y, k) => { const [x0] = SPANS[k % 4]; for (let x = x0 + 1; x <= x0 + 5; x += 2) st.g[y][x] = 'd'; last = [x0 + 1, x0 + 5]; });
+      fruitOn(st, R, 3, 14); fruitOn(st, R, 20, 14);
+      return finish(st, ...last);
+    },
+    // Springs on the floor and on a plank, each flinging you seven rows up.
+    springs: R => {
+      const st = stage(17);
+      st.marks.push([5, 'O']);
+      put(st.g, 7, 10, 10, 10, '='); st.g[10][10] = 'O';
+      put(st.g, 12, 3, 15, 3, '=');
+      fruitOn(st, R, 8, 9, .8); fruitOn(st, R, 3, 16); flyer(st, R, 18, 7);
+      return finish(st, 12, 15);
+    },
+    // A lift up the left side to a ledge.
+    lifts: R => {
+      const st = stage(15), bot = 13, top = 3;
+      st.g[bot][3] = 'V'; for (const c of [3, 4]) { st.g[top - 1][c] = '|'; st.g[bot + 1][c] = '|'; }
+      put(st.g, 6, top, 10, top, '#');
+      fruitOn(st, R, 8, top - 1, .8); fruitOn(st, R, 15, 14); flyer(st, R, 15, 8);
+      return finish(st, 6, 10);
+    },
+    // A narrow chimney: ledges off one wall then the other.
+    chimney: R => {
+      const st = stage(15);
+      put(st.g, 1, 1, 7, 11, '#'); put(st.g, 16, 1, SW - 2, 11, '#');
+      let last;
+      [12, 9, 6, 3].forEach((y, k) => { const [x0, x1] = k % 2 ? [8, 11] : [12, 15]; put(st.g, x0, y, x1, y, '#'); last = [x0, x1]; });
+      fruitOn(st, R, 11, 2, .8); fruitOn(st, R, 3, 14);
+      return finish(st, ...last);
+    },
+    // Stepping stones: little two-wide blocks, each two rows higher than the last, across
+    // the shaft (the floor open below them).
+    // (Going up the other way if the first stone would sit over the plank below.)
+    pillars: (R, k0, below) => {
+      const st = stage(15), flip = below && below[0] <= 4;
+      [[2, 13], [5, 11], [8, 9], [11, 7], [14, 5], [17, 3]].forEach(([x, y]) => { const sx = flip ? SW - 3 - x : x; put(st.g, sx, y, sx + 1, y, '#'); fruitOn(st, R, sx, y - 1, .5); });
+      return flip ? finish(st, 3, 7) : finish(st, 16, 20);
+    },
+    // A wheel to ride up, then off its top to a ledge.
+    wheel: (R, k0 = 0) => {
+      const st = stage(13);
+      st.g[7][9] = k0 % 2 ? ',' : 'x';
+      put(st.g, 15, 3, 19, 3, '#');
+      fruitOn(st, R, 17, 2, .8); fruitOn(st, R, 3, 12);
+      return finish(st, 15, 19);
+    },
+    // Turn blocks turning in the air, one above the other.
+    turns: R => {
+      const st = stage(15);
+      st.g[13][6] = ':'; st.g[10][9] = ';'; st.g[7][12] = ':';
+      put(st.g, 13, 3, 18, 3, '#');
+      fruitOn(st, R, 20, 14); fruitOn(st, R, 16, 2, .8);
+      return finish(st, 13, 18);
+    },
+    // Lava rising up a run of ledges: climb before it gets you.
+    flood: R => {
+      const st = STAGES.ledges(R);
+      st.flows.push({ mode: 'rise', x0: 1, x1: SW - 2, lo: st.H, hi: 1, bottom: st.H, speed: .55, triggerY: st.H - 1, local: true });
+      return st;
+    },
+  };
+  // Stack stages into a shaft: a ceiling and a little room at the top (the door, and a
+  // lantern if `lamp`), the stages from the last down to the first, and the floor with the
+  // start (or the entry from the last part) at the bottom.
+  function stageClimb(R, names, first, lamp) {
+    // (Each stage knows where the plank below it is, so as not to block it.)
+    const sts = [];
+    names.forEach((n, k) => sts.push(STAGES[n](R, k, k ? sts[k - 1].hole : null)));
+    const top = grid(SW, 5);
+    put(top, 0, 0, SW - 1, 0, '#'); for (const row of top) { row[0] = '#'; row[SW - 1] = '#'; }
+    const lastHole = sts[sts.length - 1].hole, doorX = (lastHole[0] + lastHole[1]) / 2 > SW / 2 ? 2 : SW - 3;
+    top[4][doorX] = 'j'; if (lamp) top[4][doorX === 2 ? 4 : SW - 5] = 'L';
+    const floor = [grid(SW, 1, '#')[0], grid(SW, 1, '#')[0]];
+    const rows = [...top];
+    const flows = [];
+    for (let k = sts.length - 1; k >= 0; k--) {
+      const st = sts[k], y0 = rows.length;
+      for (const f of st.flows) flows.push({ ...f, lo: f.lo + y0, hi: f.hi + y0, bottom: f.bottom + y0, triggerY: f.triggerY != null ? f.triggerY + y0 : undefined });
+      rows.push(...st.g);
+    }
+    rows.push(...floor);
+    // Marks a stage puts in the floor it stands on (springs).
+    let y = rows.length - 2;
+    for (let k = 0; k < sts.length; k++) { for (const [x, c] of sts[k].marks) rows[y][x] = c; y -= sts[k].H; }
+    rows[rows.length - 3][2] = first ? 'P' : 'n';
+    rows.flows = flows.map(({ local, ...f }) => f);
+    return rows;
+  }
+  LF.towerKit = { STAGES, stageClimb, joinRuns: (...a) => joinRuns(...a), COURSES: () => COURSES, drainRoom: () => drainRoom() };   // (for testing the stages one by one)
+  // Each tower's stages: every kind once in its first shaft, in an order of its own, then
+  // again (with different fruit and fliers) in its second; floods only up high in the
+  // later towers.
+  const KINDS = ['ledges', 'springs', 'crumbles', 'lifts', 'blinks', 'chimney', 'ice', 'pillars', 'wheel', 'belts', 'turns', 'shingles'];
+  function towerStages(R, t, half) {
+    const order = KINDS.slice();
+    for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
+    if (half === 1 && t >= 12) order.splice(order.length - 2, 0, 'flood');
+    return order;
+  }
+
   // Castle challenges: each world castle is two of these, then its keeper's hall. Every one
   // is a 16-row hall (floor at F, you stand on S) with its entry on the left and its door
   // on the right; `first` puts the start there instead of an entry. Each has a lantern.
@@ -581,13 +717,14 @@
     lavaHops(R, first) {
       const c = course(64, first), { g, F } = c;
       put(g, c.x0, F, c.x1, F + 1, '!');
-      let x = c.x0 + 2, n = 0;
+      // (Each stone at most a row above or below the last, two tiles on.)
+      let x = c.x0 + 2, n = 0, y = F - 1;
       while (x + 2 < c.x1 - 1) {
-        const y = F - 1 - Math.floor(R() * 3);
+        y = Math.max(F - 3, Math.min(F - 1, y + [-1, 0, 1][Math.floor(R() * 3)]));
         put(g, x, y, x + 2, y, '#');
         if (++n === 4) g[y - 1][x + 1] = 'L';
-        if (n % 2 === 0) g[F][x - 2] = '*';
-        x += 6;
+        if (n % 2 === 0) g[F][x - 1] = '*';
+        x += 5;
       }
       return g;
     },
@@ -778,8 +915,12 @@
     const c = CASTLES[k];
     const def = {
       name: c.name, dark: .7, giant: c.giant, bossHits: 4,
-      // (Four times as long: its own two challenges, then six more of the others'.)
-      course: R => [...c.course, ...CASTLE_MORE.filter(m => !c.course.includes(m)).slice(k % 3, k % 3 + 9)].map((m, n) => COURSES[m](R, n === 0)),
+      // (Four times as long: its own two challenges, then nine more of the others', in two
+      // long halls joined by one door, a lantern at the end of the first.)
+      course: R => {
+        const all = [...c.course, ...CASTLE_MORE.filter(m => !c.course.includes(m)).slice(k % 3, k % 3 + 9)].map((m, n) => COURSES[m](R, n === 0));
+        return [joinRuns(all.slice(0, 6), R, true), joinRuns(all.slice(6), R, false)];
+      },
       map: hall(48, 16, ({ r, s }) => {
         r(8, 10, 13, 10, '='); s(10, 9, 'a'); r(34, 10, 39, 10, '='); s(36, 9, 'a');
         r(20, 7, 27, 7, '='); s(30, c.fly ? 4 : 12, '0');
@@ -787,6 +928,47 @@
       signs: [{ x: 2, y: 9.4, t: c.sign }],
     };
     return { ...tower(def, 900 + k * 17, true), chapter: c.world, boss: true, castleOf: k, since: 10 };
+  }
+  // Courses side by side as one long hall: the walls between them knocked through, only the
+  // first's start (or entry) and the last's door kept, every lantern taken out but one by the
+  // door (if `lamp`), and fruit scattered along the way.
+  // (Parts line up along their tops; a taller part, like the drain room, hangs down below
+  // the rest, solid rock under them. A part can keep its own lantern: keepLamp.)
+  function joinRuns(parts, R, lamp) {
+    const h = Math.max(...parts.map(g => g.length)), last = parts.length - 1, rows = Array.from({ length: h }, () => []), flows = [];
+    parts.forEach((g, k) => {
+      const x0 = rows[0].length - (k ? 1 : 0), gw = g[0].length;
+      for (const f of g.flows || []) flows.push({ ...f, x0: f.x0 + x0, x1: f.x1 + x0, trigger: f.trigger != null ? f.trigger + x0 : undefined });
+      for (let y = 0; y < h; y++) {
+        const row = g[y] || Array(gw).fill('#');
+        const r = row.slice(k ? 1 : 0, k < last ? -1 : undefined).map(c => ((c === 'L' && !g.keepLamp) || (k && (c === 'n' || c === 'P')) || (k < last && c === 'j') ? '.' : c));
+        rows[y].push(...r);
+      }
+    });
+    const w = rows[0].length;
+    if (lamp) { const jy = rows.findIndex(r => r.includes('j')), jx = rows[jy].indexOf('j'); if (rows[jy][jx - 3] === '.') rows[jy][jx - 3] = 'L'; }
+    for (let x = 4; x < w - 4; x += 4) {
+      if (R() > .75) continue;
+      for (let y = 1; y < h - 1; y++) if (rows[y][x] === '.' && '#=iC<>'.includes(rows[y + 1][x])) { if (!flows.some(f => x >= f.x0 && x <= f.x1)) rows[y][x] = FRUIT[Math.floor(R() * FRUIT.length)]; break; }
+    }
+    rows.flows = flows;
+    return rows;
+  }
+  // The drain room: a walled shaft like a tower's, full of lava, entered high on the left.
+  // Shingles big and small hang over the lava at all sorts of heights; the lava only drains
+  // while you're out over it, so you hop from shingle to shingle (they fall, and grow back)
+  // till it's gone, then drop to the floor and out of the door at the bottom. A lantern at
+  // the way in.
+  function drainRoom() {
+    const w = 26, h = 32, g = grid(w, h);
+    put(g, 1, 0, w - 1, 0, '#'); put(g, w - 1, 0, w - 1, h - 1, '#'); put(g, 0, h - 3, w - 1, h - 1, '#');
+    // (Column 0 goes when the room's joined on; column 1 is its left wall, open at the way in.)
+    put(g, 0, 0, 1, 10, '#'); put(g, 0, 13, 1, h - 1, '#'); g[12][0] = 'n';
+    put(g, 2, 13, 3, 13, '#'); g[12][3] = 'L'; g.keepLamp = true;
+    for (const [x, y, c] of [[5, 13, 'đ'], [9, 11, 'd'], [12, 14, 'đ'], [16, 10, 'd'], [18, 12, 'đ'], [22, 9, 'd'], [20, 15, 'd'], [7, 9, 'd'], [14, 8, 'đ'], [3, 10, 'd']]) g[y][x] = c;
+    g[h - 4][w - 3] = 'j';
+    g.flows = [{ mode: 'fall', x0: 2, x1: w - 2, hi: 16, lo: h - 3, bottom: h - 3, speed: .8, whileOver: true }];
+    return g;
   }
   const CASTLE_MORE = ['lavaHops', 'crumbleLava', 'liftsSpikes', 'conveyCrush', 'blinkLava', 'crumbleSpikes', 'pendulums', 'springLava', 'bubblePits', 'icePits', 'lavaTide', 'lavaWaves', 'iceSteps'];
   const castleAfter = Object.fromEntries(CASTLES.map((c, k) => [c.world, k]));
@@ -957,29 +1139,28 @@
   // (design: which climb and run, for towers added later, so the rest keep theirs.)
   function tower(def, seed, castle, sky, design) {
     const R = LF.rng(seed);
-    // (The only fruit in an arena is apples: every bit of fruit there becomes one.)
     // (No hordes in boss fights: any horde marker in the arena goes.)
     const arenaRows = reachAll(def.map.map(row => row.replace(/[&%]/g, '.'))).map(row => row.replace(/P/g, 'n').replace(/[Dg]/g, '.').split(''));
-    arenaRows.forEach(row => row.forEach((c, x) => { if (LF.FRUITS[c]) row[x] = 'a'; }));
     // (Each tower its own climb and run: see CLIMBS and RUNS.)
     const t = design ?? (castle || sky ? 0 : towerNo++), cv = Math.floor(t / CLIMBS.length);
     const climb = sky ? skyClimb() : castle ? castleClimb(R) : CLIMBS[t % CLIMBS.length](R, cv);
     const run = sky ? skyRun() : castle ? castleWalls(R) : RUNS[(t + Math.floor(t / RUNS.length)) % RUNS.length](R, Math.floor(t / RUNS.length) % 3);
     if (!castle && !sky) { harden(climb, R, false); harden(run, R, true); }
-    // Towers are four times as long (counting open tiles, the arena too): this tower's own
-    // climb and run, then more of the others' designs (each starting at an entry, not the
-    // start) till it's long enough.
-    const more = [];
-    const asEntry = g => g.map(row => row.map(c => (c === 'P' ? 'n' : c)));
-    const room = parts => parts.reduce((n, g) => n + g.reduce((m, row) => m + row.filter(c => c !== '#').length, 0), 0);
-    const want = room([climb, run, arenaRows]) * 4;
-    if (!def.course && !castle) for (let k = 1; k <= 12 && room([climb, run, arenaRows, ...more]) < want; k++) {
-      if (sky) { more.push(asEntry(mirror(skyClimb())), skyRun()); continue; }
-      const u = t + k * 5, c2 = asEntry(CLIMBS[u % CLIMBS.length](R, Math.floor(u / CLIMBS.length) % 3)), r2 = RUNS[(u + k) % RUNS.length](R, k % 3);
-      harden(c2, R, false); harden(r2, R, true);
-      more.push(k % 2 ? mirror(c2) : c2, r2);
+    // Towers are all climbing: two shafts of stages (see stageClimb), a lantern at the top of
+    // the first; the second ends at the boss's door (whose lantern is put in below).
+    // (At least four times as big as the climb, run and arena a tower used to be: more
+    // stages, in turn, till it is.)
+    let climbs = null;
+    if (!def.course && !castle) {
+      const room = parts => parts.reduce((n, g) => n + g.reduce((m, row) => m + row.filter(c => c !== '#').length, 0), 0);
+      const want = room([climb, run, arenaRows]) * 4, a = towerStages(R, t, 0), b = towerStages(R, t, 1);
+      for (let k = 0; k < 30; k++) {
+        climbs = [stageClimb(R, a, true, true), stageClimb(R, b, false, false)];
+        if (room([...climbs, arenaRows]) >= want) break;
+        (k % 2 ? b : a).push(KINDS[(t + k) % KINDS.length]);
+      }
     }
-    const parts = def.course ? [...def.course(R), arenaRows] : [castle || sky || cv % 2 === 0 ? climb : mirror(climb), run, ...more, arenaRows];
+    const parts = def.course ? [...def.course(R), arenaRows] : climbs ? [...climbs, arenaRows] : [climb, run, arenaRows];
     const h = Math.max(...parts.map(p => p.length));
     const w = parts.reduce((s, p) => s + p[0].length, 0) + GAP * (parts.length - 1);
     const g = grid(w, h, '#'), at = [];
@@ -993,7 +1174,7 @@
     const arena = at[at.length - 1], climbAt = at[0], runAt = at[1];
     // (Moving lava carried by the parts, moved to where each part landed.)
     if (def.map.flows) arenaRows.flows = def.map.flows;
-    const flows = parts.flatMap((p, i) => (p.flows || []).map(f => ({ ...f, x0: f.x0 + at[i].x, x1: f.x1 + at[i].x, hi: f.hi != null ? f.hi + at[i].y : undefined, lo: f.lo + at[i].y, bottom: f.bottom + at[i].y, trigger: f.trigger != null ? f.trigger + at[i].x : undefined })));
+    const flows = parts.flatMap((p, i) => (p.flows || []).map(f => ({ ...f, x0: f.x0 + at[i].x, x1: f.x1 + at[i].x, hi: f.hi != null ? f.hi + at[i].y : undefined, lo: f.lo + at[i].y, bottom: f.bottom + at[i].y, trigger: f.trigger != null ? f.trigger + at[i].x : undefined, triggerY: f.triggerY != null ? f.triggerY + at[i].y : undefined })));
     // A lantern just before the boss's door (the last passage before the arena): a
     // checkpoint right outside the fight.
     for (let y = h - 1; y >= 0; y--) {
@@ -1070,9 +1251,13 @@
   const climbIn = R => castleClimb(R).map(row => row.map(c => (c === 'P' ? 'n' : c)));
   const finalDef = {
     name: 'Final Bossfight', dark: .82, map: finalMap, giant: 'Ω', bossHits: 4, finalChase: true, clock: 400, hurry: 100,
-    course: R => [castleClimb(R), COURSES.lavaTide(R, false), floodShaft(R), COURSES.lavaWaves(R, false), castleWalls(R),
-      shingleDrain(), COURSES.crumbleLava(R, false), climbIn(R), COURSES.lavaHops(R, false), COURSES.bubblePits(R, false),
-      COURSES.blinkLava(R, false), floodShaft(R), COURSES.liftsLava(R, false), climbIn(R), COURSES.conveyCrush(R, false), COURSES.icePits(R, false), COURSES.iceSteps(R, false)],
+    // A long hall of lava (tides, waves, crumbling bridges, hops, bubbles, blinks, lifts,
+    // belts, ice) ending in the drain room, a door, and a tall climb of every kind of stage
+    // with the lava flooding up twice, to the Last Dark's door.
+    course: R => [
+      joinRuns(['lavaTide', 'lavaWaves', 'crumbleLava', 'springLava', 'lavaHops', 'bubblePits', 'crumbleSpikes', 'blinkLava', 'liftsLava', 'pendulums', 'conveyCrush', 'liftsSpikes', 'icePits', 'iceSteps'].map((m, n) => COURSES[m](R, n === 0)).concat([drainRoom()]), R, false),
+      stageClimb(R, ['ledges', 'springs', 'crumbles', 'flood', 'lifts', 'blinks', 'chimney', 'ice', 'pillars', 'flood', 'wheel', 'belts', 'turns', 'shingles', 'crumbles', 'ledges', 'blinks', 'ice'], false, false),
+    ],
     signs: [{ x: 2, y: 14.4, t: 'THE LAST DARK · 4 stomps · stomp it when it dives to the floor · after the third: RUN →' }],
   };
   out.push({ ...tower(finalDef, 999, true), chapter: 'The Last Night', boss: true, finalFight: true });
