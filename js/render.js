@@ -417,6 +417,41 @@
       }
     }
 
+    // A passage door: a round ring of stone blocks round a swirling portal (teal and violet,
+    // its arms turning, sparks drifting into the middle, a pulsing glow), so it never looks
+    // like the level's own door. When you go through, rings flash out where you went in and
+    // where you came out (W.warps).
+    function drawPassage(d) {
+      const cx = d.x + 16, cy = d.y + 30, R0 = 22, t = reduced ? 0 : clock;
+      // The glow behind it.
+      const pulse = reduced ? 1 : 1 + Math.sin(clock * 3) * .12, g = ctx.createRadialGradient(cx, cy, 2, cx, cy, R0 * 1.9 * pulse);
+      g.addColorStop(0, 'rgba(120,230,210,.45)'); g.addColorStop(1, 'rgba(120,230,210,0)');
+      ctx.fillStyle = g; ctx.fillRect(cx - R0 * 2, cy - R0 * 2, R0 * 4, R0 * 4);
+      // The portal: a dark core with turning spiral arms.
+      ctx.fillStyle = '#0E1A2E'; ctx.beginPath(); ctx.arc(cx, cy, R0, 0, TAU); ctx.fill();
+      for (let k = 0; k < 4; k++) {
+        ctx.strokeStyle = k % 2 ? 'rgba(185,166,255,.85)' : 'rgba(120,230,210,.85)'; ctx.lineWidth = 2.5; ctx.beginPath();
+        for (let s = 0; s <= 1.001; s += .05) { const a = t * 2.2 + k * TAU / 4 + s * 4, r = R0 * .95 * (1 - s); s === 0 ? ctx.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r) : ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); }
+        ctx.stroke();
+      }
+      // Sparks drifting in.
+      for (let k = 0; k < 6; k++) { const ph = (t * .6 + k / 6) % 1, a = k * 2.1 + t * .8, r = R0 * (1 - ph); ctx.fillStyle = `rgba(255,255,255,${.9 * (1 - ph)})`; ctx.fillRect(cx + Math.cos(a) * r - 1, cy + Math.sin(a) * r - 1, 2.2, 2.2); }
+      ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.beginPath(); ctx.arc(cx, cy, 3 * pulse, 0, TAU); ctx.fill();
+      // The ring of stone blocks round it, with a keystone on top.
+      for (let k = 0; k < 12; k++) {
+        const a = k / 12 * TAU - Math.PI / 2;
+        ctx.save(); ctx.translate(cx + Math.cos(a) * (R0 + 4), cy + Math.sin(a) * (R0 + 4)); ctx.rotate(a);
+        ctx.fillStyle = k === 0 ? '#C9B8E8' : k % 2 ? '#6E6186' : '#8F81AB'; ctx.fillRect(-4, -6, 8, 12); ctx.restore();
+      }
+    }
+    function drawWarps(W) {
+      for (const w of W.warps || []) {
+        const q = (W.clock - w.t) / .6;
+        if (q < 0 || q > 1) continue;
+        for (const [r, c] of [[1, '159,240,224'], [.6, '185,166,255']]) { ctx.strokeStyle = `rgba(${c},${1 - q})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(w.x, w.y, 8 + q * 60 * r, 0, TAU); ctx.stroke(); }
+      }
+    }
+
     // A cannon on its wheel, barrel up and to the right. It rocks back when it fires, and
     // shows a bouncing ↓ while you're standing at it.
     function drawCannon(W, opts) {
@@ -1522,11 +1557,9 @@
         ctx.globalAlpha = .5 + (reduced ? 0 : Math.sin(clock * 2) * .2); ctx.fillStyle = g; doorPath(s, 3); ctx.fill(); ctx.globalAlpha = 1;
       }
       // Passage doors glow like an open door.
-      for (const pd of W.passages) {
-        const g = ctx.createLinearGradient(0, pd.y, 0, pd.y + pd.h);
-        g.addColorStop(0, '#FFE2A8'); g.addColorStop(1, '#FF6B3D');
-        ctx.fillStyle = g; doorPath(pd, 3); ctx.fill();
-      }
+      // (Passage doors glow through the dark as their swirling portals.)
+      for (const pd of W.passages) drawPassage(pd);
+      drawWarps(W);
       const d = W.door;
       if (d && d.glow > 0) {
         ctx.globalAlpha = d.glow;
@@ -1675,7 +1708,8 @@
       drawTiles(W, cam, opts);
       drawPlats(W);
       drawDoor(W.door); if (W.secretSeen || opts.edit) drawDoor(W.secret);
-      for (const d of W.passages) drawDoor(d);
+      for (const d of W.passages) drawPassage(d);
+      drawWarps(W);
       // Practice checkpoints: little blue flags.
       for (const m of W.marks) {
         ctx.strokeStyle = '#D9D0F0'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(m.x + 9, m.y + 26); ctx.lineTo(m.x + 9, m.y - 6); ctx.stroke();

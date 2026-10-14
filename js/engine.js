@@ -3113,8 +3113,10 @@
     for (const [k, d] of W.passages.entries()) {
       const to = W.entries[k];
       if (!to || !overlap(p, { x: d.x + 8, y: d.y + 10, w: 16, h: d.h - 10 })) continue;
+      // (A flash where you go in and where you come out: see drawPassage.)
+      W.warps = [{ x: d.x + 16, y: d.y + 32, t: W.clock }, { x: to.tx * TS + 16, y: to.ty * TS, t: W.clock }];
       p.x = to.tx * TS + (TS - p.w) / 2; p.y = (to.ty + 1) * TS - p.h; p.vx = p.vy = 0;
-      burst(W, p.x + p.w / 2, p.y + p.h / 2, 20, ['#FFE2A8', '#FFB547'], 160, 100, 2.5);
+      burst(W, p.x + p.w / 2, p.y + p.h / 2, 24, ['#9FF0E0', '#B9A6FF', '#FFFFFF'], 180, 60, 2.5);
       W.emit('warp');
       break;
     }
