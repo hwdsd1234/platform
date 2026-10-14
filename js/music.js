@@ -72,27 +72,35 @@
       notes.forEach(([s, d], k) => { lead[s] = pitch(7 + c + d + lift); len[s] = Math.min(3, (notes[k + 1] || [16])[0] - s); });
       return { lead, len };
     };
-    return Array.from({ length: 8 }, (_, k) => {
-      const c = prog[k % 4], next = prog[(k + 1) % 4], lift = k >= 4 && k % 4 < 2 ? 2 : 0;
-      const { lead, len } = phrase(k % 4 < 2 ? hook : k % 4 === 2 ? answer : CADENCE, c, lift);
+    // Sixteen bars: the hook twice round its chords (the second time a third higher), then a
+    // B half with a second hook of its own over another progression, and a run back up into
+    // the first hook to go round again.
+    const progB = FIGHT_PROGS.filter(q => q !== prog)[Math.floor(R() * (FIGHT_PROGS.length - 1))];
+    const hookB = HOOKS.filter(h => h !== HOOKS[0])[Math.floor(R() * (HOOKS.length - 1))];
+    const answerB = ANSWERS[Math.floor(R() * ANSWERS.length)];
+    return Array.from({ length: 16 }, (_, k) => {
+      const half = k >= 8, pg = half ? progB : prog, h = half ? hookB : hook, an = half ? answerB : answer, q = k % 8;
+      const c = pg[q % 4], next = (k === 15 ? prog : k === 7 ? progB : pg)[(q + 1) % 4], lift = q >= 4 && q % 4 < 2 ? 2 : 0;
+      const { lead, len } = phrase(q % 4 < 2 ? h : q % 4 === 2 ? an : CADENCE, c, lift);
       // (The last bar runs up into the hook to go round again.)
-      if (k === 7) [-4, -3, -2, -1].forEach((d, j) => { lead[12 + j] = pitch(7 + prog[0] + hook[0][1] + d); len[12 + j] = 1; });
+      if (k === 15) [-4, -3, -2, -1].forEach((d, j) => { lead[12 + j] = pitch(7 + prog[0] + hook[0][1] + d); len[12 + j] = 1; });
       const root = pitch(c) - 24, to = pitch(next) - 24 + (pitch(next) < pitch(c) - 4 ? 12 : 0);
       const bass = Array(16).fill(null);
       for (let s = 0; s < 16; s += 2) bass[s] = root + (s % 4 === 2 ? 12 : 0);
       if (k % 2) { bass[12] = to - 3; bass[13] = to - 2; bass[14] = to - 1; bass[15] = null; }
       return {
         lead, len, bass, chord: [0, 2, 4].map(d => pitch(c + d)),
-        stab: k % 4 === 3 ? [] : k % 2 ? [6, 14] : [3, 6],
-        hit: k % 4 === 3 ? [8, 10] : [],
-        toms: k === 7, fill: k === 3,
+        stab: q % 4 === 3 ? [] : k % 2 ? [6, 14] : [3, 6],
+        hit: q % 4 === 3 ? [8, 10] : [],
+        toms: k === 7 || k === 15, fill: q === 3,
       };
     });
   }
 
   // The castle has a tune of its own, written out rather than made up: D minor, dark and
   // grand, after the Mario castle themes. A phrase over i–♭VI–iv–V that hangs on the V, the
-  // same again turning off through ♭II (E♭) before coming home. Notes are [step, MIDI].
+  // same again turning off through ♭II (E♭) before coming home, then a second half climbing
+  // higher. Sixteen bars. Notes are [step, MIDI].
   const CASTLE = [
     { ch: [62, 65, 69], root: 38, lead: [[0, 74], [3, 69], [6, 74], [8, 76], [9, 77], [11, 76], [12, 74]], stab: [3, 11] },
     { ch: [58, 62, 65], root: 34, lead: [[0, 77], [3, 74], [6, 77], [8, 79], [9, 81], [11, 79], [12, 77]], stab: [3, 11] },
@@ -102,6 +110,16 @@
     { ch: [55, 58, 63], root: 39, lead: [[0, 75], [3, 79], [6, 82], [8, 81], [9, 79], [11, 77], [12, 75]], stab: [3, 11] },
     { ch: [57, 61, 64], root: 33, lead: [[0, 76], [3, 73], [6, 76], [8, 79], [10, 77], [12, 76], [14, 73]], stab: [3, 11] },
     { ch: [62, 65, 69], root: 38, lead: [[0, 74], [8, 69], [10, 70], [12, 73]], hit: [0], toms: true },
+    // The second half: up through ♭VI and ♭VII to the home chord and the V, then iv, ♭II and
+    // a long V climbing back to the top.
+    { ch: [58, 62, 65], root: 34, lead: [[0, 77], [3, 74], [6, 70], [8, 72], [10, 74], [12, 77]], stab: [3, 11] },
+    { ch: [60, 64, 67], root: 36, lead: [[0, 79], [3, 76], [6, 72], [8, 74], [10, 76], [12, 79]], stab: [3, 11] },
+    { ch: [62, 65, 69], root: 38, lead: [[0, 81], [2, 79], [3, 77], [6, 74], [8, 77], [11, 76], [12, 74]], stab: [3, 11], fill: true },
+    { ch: [57, 61, 64], root: 33, lead: [[0, 73], [4, 76], [8, 81]], hit: [12, 14] },
+    { ch: [55, 58, 62], root: 31, lead: [[0, 79], [3, 82], [6, 79], [8, 74], [10, 77], [12, 79]], stab: [3, 11] },
+    { ch: [55, 58, 63], root: 39, lead: [[0, 82], [3, 79], [6, 75], [8, 79], [10, 82], [12, 84]], stab: [3, 11] },
+    { ch: [57, 61, 64], root: 33, lead: [[0, 85], [3, 81], [6, 76], [8, 79], [10, 77], [12, 76], [14, 73]], stab: [3, 11] },
+    { ch: [57, 61, 64], root: 33, lead: [[0, 69], [4, 71], [8, 73], [12, 76], [14, 73]], toms: true },
   ];
   function castleBars() {
     return CASTLE.map(c => {
@@ -115,8 +133,8 @@
 
   // The boss theme: one tune for every boss fight (bar the Last Dark's), as the Mario games
   // do it. E minor, fast: a hook that climbs and falls back over i–♭VI–♭VII–V, again a
-  // step higher over ♭VI, a dive down through iv, and a run up into the top. Under it a
-  // galloping bass. Notes are [step, MIDI].
+  // step higher over ♭VI, a dive down through iv, and a run up; then a second half of its
+  // own. Under it a galloping bass. Sixteen bars. Notes are [step, MIDI].
   const BOSS = [
     { ch: [64, 67, 71], root: 40, lead: [[0, 76], [2, 76], [3, 79], [6, 83], [8, 81], [10, 79], [11, 78], [12, 79], [14, 76]] },
     { ch: [60, 64, 67], root: 36, lead: [[0, 79], [2, 79], [3, 84], [6, 83], [8, 79], [10, 76], [12, 72], [14, 76]] },
@@ -126,6 +144,16 @@
     { ch: [60, 64, 67], root: 36, lead: [[0, 79], [3, 84], [6, 88], [8, 86], [10, 84], [11, 83], [12, 79]] },
     { ch: [57, 60, 64], root: 33, lead: [[0, 81], [2, 84], [3, 81], [6, 76], [8, 77], [10, 76], [12, 72], [14, 71]] },
     { ch: [59, 63, 66], root: 35, lead: [[0, 71], [4, 75], [8, 78], [10, 81], [12, 83], [14, 87]], toms: true },
+    // The second half: iv, ♭VI, ♭VII, V, then home and up through III to iv and a last V that
+    // falls back into the top.
+    { ch: [57, 60, 64], root: 33, lead: [[0, 81], [2, 81], [3, 84], [6, 81], [8, 79], [10, 78], [12, 76]] },
+    { ch: [60, 64, 67], root: 36, lead: [[0, 79], [2, 79], [3, 84], [6, 88], [8, 86], [10, 84], [12, 79]] },
+    { ch: [62, 66, 69], root: 38, lead: [[0, 78], [3, 81], [6, 86], [8, 84], [10, 83], [12, 81], [14, 78]], fill: true },
+    { ch: [59, 63, 66], root: 35, lead: [[0, 75], [4, 78], [8, 83], [12, 87]], hit: [12, 14] },
+    { ch: [64, 67, 71], root: 40, lead: [[0, 88], [2, 86], [3, 83], [6, 79], [8, 83], [10, 86], [12, 88]] },
+    { ch: [55, 59, 62], root: 43, lead: [[0, 86], [3, 83], [6, 79], [8, 74], [10, 79], [12, 83]] },
+    { ch: [57, 60, 64], root: 33, lead: [[0, 84], [2, 83], [3, 81], [6, 76], [8, 78], [10, 79], [12, 81]] },
+    { ch: [59, 63, 66], root: 35, lead: [[0, 83], [3, 87], [6, 90], [8, 87], [10, 83], [12, 78], [14, 75]], toms: true },
   ];
   const GALLOP = [0, 0, 12, 0, 0, 0, 12, 0, 0, 0, 12, 0, 0, 12, 0, 12];
   function bossBars() {
@@ -174,10 +202,25 @@
       if (end) { for (let s = 12; s < 16; s++) lead[s] = null; lead[12] = pitch(7 + c); }
       return lead;
     };
+    // A longer song before it comes round: A, A again with a new ending, a B section over
+    // another progression (a little higher), B again with its own ending, A once more
+    // closing on the home chord, and a bridge over iv/IV and v/V leading back to the top.
+    // 24 bars.
+    const others = PROGS[t.mode].filter(q => q !== prog);
+    const progB = others.length ? others[Math.floor(R() * others.length)] : [prog[2], prog[3], prog[0], prog[1]];
+    const progC = [3, 4, 3, 4];
     const A = prog.map((c, k) => bar(c, k === 3));
-    const B = prog.map((c, k) => (k < 2 ? A[k] : bar(c, k === 3)));
-    const bars = [...A, ...B].map((lead, k) => {
-      const c = prog[k % 4];
+    const A2 = prog.map((c, k) => (k < 2 ? A[k] : bar(c, k === 3)));
+    deg += 2;
+    const B = progB.map((c, k) => bar(c, k === 3));
+    const B2 = progB.map((c, k) => (k < 2 ? B[k] : bar(c, k === 3)));
+    deg -= 2;
+    const A3 = prog.map((c, k) => (k < 3 ? A[k] : bar(c, true)));
+    const C = progC.map((c, k) => { const l = bar(c, false); return l.map((n, s) => (s % 4 === 0 || (k === 3 && s >= 8) ? n : null)); });
+    const plan = [[A, prog], [A2, prog], [B, progB], [B2, progB], [A3, prog], [C, progC]];
+    const leads = plan.flatMap(([ph]) => ph), chords = plan.flatMap(([, pg]) => pg);
+    const bars = leads.map((lead, k) => {
+      const c = chords[k];
       const bass = Array(16).fill(null);
       if (t.feel === 'boss') for (let s = 0; s < 16; s += 2) bass[s] = pitch(c) - 24 + (s % 8 === 6 ? 7 : 0);
       else if (t.feel === 'sky') bass[0] = pitch(c) - 24;
