@@ -11,6 +11,7 @@
       'Pear controls: Space in mid-air does the spin; Up only glides, so letting go of Up and pressing it again keeps you gliding.',
       'After the pear’s spin you can’t glide, and you fall at up to 300 px/s: clearly faster than a glide (95), but a third of a normal fall (900), till you land.',
       'Fixed: you could climb any wall forever by spinning (Space) between wall jumps. Wall jumps no longer give the spin back; only landing does.',
+      'Pear Cliffs: a pear right beside every lantern, so you can pick one up the moment you come back there.',
       'Story levels run on with no doors between their sections: each part opens straight into the next.',
       'Passage doors look different now: a ring of stone round a swirling, glowing portal, with rings flashing out where you go in and where you come out.',
       'Two sunken castles: Sunken Keep in the Waterfront and Drowned Castle in the Canal District. Each is a set of flooded halls to swim through, and a flooded hall where its keeper swims after you: the Drowned King and the Tide Serpent.',

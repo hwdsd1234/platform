@@ -13,7 +13,8 @@
   const cliff = r => (x0, x1, top) => r(x0, top, x1, 17);
   // A lantern you can't glide past: a wall hangs from the top of the level down to two rows
   // above the end of its cliff, and the lantern hangs in the gap you have to go through.
-  const gateLamp = (r, s) => (x, top) => { r(x + 1, 0, x + 2, top - 3); s(x + 1, top - 1, 'L'); };
+  // (A pear sits right beside it, for when you come back there after a fall.)
+  const gateLamp = (r, s) => (x, top) => { r(x + 1, 0, x + 2, top - 3); s(x + 1, top - 1, 'L'); s(x, top - 1, 'p'); };
 
   LF.PEAR_LEVELS = [
     pear('Pear Drop', 88, '🍐 PEAR: hold jump while falling to glide', ({ r, s }) => {
