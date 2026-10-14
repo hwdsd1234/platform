@@ -176,6 +176,21 @@
       <ul class="awards">${items}</ul>
       <div class="menu"><button class="go" data-act="menu">Back</button></div>`);
   }
+  // The update log (updates.js), newest first. The Updates button has a dot till you've read
+  // the latest; entries newer than your last look are marked new.
+  function showUpdates() {
+    setVisible({ overlay: true });
+    const seen = store.get('updatesSeen', ''), log = LF.UPDATES || [];
+    const fmtDate = d => new Date(d + 'T12:00:00').toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+    card(`
+      <p class="eyebrow">What’s new</p>
+      <h2>Updates</h2>
+      <ul class="updates">${log.map(u => `<li><h3><time datetime="${u.date}">${fmtDate(u.date)}</time>${esc(u.title)}${u.date > seen ? '<span class="new">new</span>' : ''}</h3>
+        <ul>${u.items.map(t => `<li>${esc(t)}</li>`).join('')}</ul></li>`).join('')}</ul>
+      <div class="menu"><button class="go" data-act="menu">Back</button></div>`);
+    if (log[0]) { store.set('updatesSeen', log[0].date); markUpdates(); }
+  }
+  const markUpdates = () => { const b = $('map-updates'); if (b) b.classList.toggle('unread', !!(LF.UPDATES && LF.UPDATES[0] && LF.UPDATES[0].date > store.get('updatesSeen', ''))); };
   LF.awards.onEarn = () => SFX.award();
   LF.awards.sync({ storyLit: Object.keys(progress).length, hcLit: Object.keys(progressHC).length, first: !!progress[0] });
 
@@ -518,6 +533,7 @@
     const lit = Object.keys(progress).length, found = Object.keys(secrets).length, total = L.filter(lv => lv.secretTo != null).length;
     $('map-stats').textContent = `World ${L[mapAt].world + 1} of ${LF.WORLDS.length} · ${lit} of ${n} lit · secret exits ${found} of ${total}${hardcore ? ` · hardcore ${Object.keys(progressHC).length} lit` : ''}`;
     $('map-awards').textContent = `Awards · ${LF.awards.count().earned}/${LF.awards.count().total}`;
+    markUpdates();
     $('map-hc').textContent = `Hardcore: ${hardcore ? 'on' : 'off'}`; $('map-hc').classList.toggle('hc-on', hardcore);
     $('map-practice').textContent = `Practice: ${practice ? 'on' : 'off'}`; $('map-practice').classList.toggle('pr-on', practice);
     $('map').classList.toggle('practicing', practice);
@@ -1171,6 +1187,7 @@
     editor: () => openEditor(),
     menu: () => { if (screen === 'paused') saveMidway(); showMap(); },
     awards: showAwards,
+    updates: showUpdates,
     toggleHardcore: () => { hardcore = !hardcore; store.set('hardcore', hardcore); renderMap(false); flash(hardcore ? 'Hardcore on' : 'Hardcore off'); },
     resume: () => { screen = 'play'; setVisible({ hud: true, touch: true }); if (LF.music) LF.music.duck(false); },
     restart: () => play(playDef, playCtx),

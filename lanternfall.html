@@ -112,6 +112,14 @@
   .awards .bar { display: block; height: 4px; margin-top: 5px; background: var(--plum-2); border-radius: 2px; overflow: hidden; }
   .awards .bar span { display: block; height: 100%; background: var(--wick); }
   .awards em { font-style: normal; font-size: 10px; font-variant-numeric: tabular-nums; }
+  /* the update log */
+  .updates { list-style: none; margin: 0; padding: 0 8px 0 0; display: grid; gap: 14px; max-height: 56vh; overflow-y: auto; }
+  .updates h3 { margin: 0 0 4px; font-size: 13px; color: var(--mist); }
+  .updates h3 time { display: block; font-size: 10px; letter-spacing: .08em; color: var(--wick); font-weight: 400; }
+  .updates h3 .new { margin-left: 6px; font-size: 9px; padding: 1px 5px; border-radius: 6px; background: var(--wick); color: #1B1736; vertical-align: middle; }
+  .updates ul { margin: 0; padding-left: 16px; display: grid; gap: 4px; }
+  .updates li li { font-size: 11px; line-height: 1.5; color: var(--mist-dim); }
+  #map-updates.unread::after { content: ''; display: inline-block; width: 6px; height: 6px; margin-left: 5px; border-radius: 50%; background: var(--wick); vertical-align: middle; }
   .menu .hc-on { color: var(--ember); border-color: var(--ember); }
   .hc-note { color: var(--ember); font-size: 12px; }
   .lvl .hc { color: var(--ember); }
@@ -460,6 +468,7 @@
       <button class="mini" data-act="items">Items · Tab</button>
       <button class="mini" data-act="yours">Your levels</button>
       <button class="mini" data-act="awards" id="map-awards">Awards</button>
+      <button class="mini" data-act="updates" id="map-updates">Updates</button>
       <button class="mini" data-act="toggleHardcore" id="map-hc">Hardcore: off</button>
       <button class="mini" data-act="togglePractice" id="map-practice">Practice: off</button>
       <button class="mini" data-act="help">How to play</button>
@@ -589,30 +598,31 @@
   </div>
 </div>
 
-<script src="js/engine.js?v=156"></script>
-<script src="js/render.js?v=156"></script>
-<script src="js/gen.js?v=156"></script>
-<script src="js/levels-1.js?v=156"></script>
-<script src="js/levels-2.js?v=156"></script>
-<script src="js/levels-3.js?v=156"></script>
-<script src="js/levels-4.js?v=156"></script>
-<script src="js/levels-5.js?v=156"></script>
-<script src="js/levels-6.js?v=156"></script>
-<script src="js/levels-7.js?v=156"></script>
-<script src="js/levels-8.js?v=156"></script>
-<script src="js/levels-9.js?v=156"></script>
-<script src="js/levels-10.js?v=156"></script>
-<script src="js/levels-11.js?v=156"></script>
-<script src="js/levels-12.js?v=156"></script>
-<script src="js/levels-13.js?v=156"></script>
-<script src="js/levels-14.js?v=156"></script>
-<script src="js/checkpoints.js?v=156"></script>
-<script src="js/bosses.js?v=156"></script>
-<script src="js/worlds.js?v=156"></script>
-<script src="js/lengthen.js?v=156"></script>
-<script src="js/secrets.js?v=156"></script>
-<script src="js/awards.js?v=156"></script>
-<script src="js/editor.js?v=156"></script>
-<script src="js/music.js?v=156"></script>
-<script src="js/mapart.js?v=156"></script>
-<script src="js/ui.js?v=156"></script>
+<script src="js/engine.js?v=157"></script>
+<script src="js/render.js?v=157"></script>
+<script src="js/gen.js?v=157"></script>
+<script src="js/levels-1.js?v=157"></script>
+<script src="js/levels-2.js?v=157"></script>
+<script src="js/levels-3.js?v=157"></script>
+<script src="js/levels-4.js?v=157"></script>
+<script src="js/levels-5.js?v=157"></script>
+<script src="js/levels-6.js?v=157"></script>
+<script src="js/levels-7.js?v=157"></script>
+<script src="js/levels-8.js?v=157"></script>
+<script src="js/levels-9.js?v=157"></script>
+<script src="js/levels-10.js?v=157"></script>
+<script src="js/levels-11.js?v=157"></script>
+<script src="js/levels-12.js?v=157"></script>
+<script src="js/levels-13.js?v=157"></script>
+<script src="js/levels-14.js?v=157"></script>
+<script src="js/checkpoints.js?v=157"></script>
+<script src="js/bosses.js?v=157"></script>
+<script src="js/worlds.js?v=157"></script>
+<script src="js/lengthen.js?v=157"></script>
+<script src="js/secrets.js?v=157"></script>
+<script src="js/awards.js?v=157"></script>
+<script src="js/editor.js?v=157"></script>
+<script src="js/music.js?v=157"></script>
+<script src="js/mapart.js?v=157"></script>
+<script src="js/updates.js?v=157"></script>
+<script src="js/ui.js?v=157"></script>
