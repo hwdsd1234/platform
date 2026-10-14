@@ -48,7 +48,7 @@
     o: { name: 'Orange', power: 'Jump boost', color: '#FF9A2E', note: 'higher jumps, until you die' },
     b: { name: 'Banana', power: 'Double jump', color: '#FFE066', note: 'jump again in mid-air, until you die' },
     m: { name: 'Watermelon', power: 'Speed', color: '#4CAF50', note: 'run faster, until you die' },
-    p: { name: 'Pear', power: 'Glide', color: '#C5D94A', note: 'hold jump while falling to glide down slowly; jump again in mid-air for a big lift, then float down slower still till you land or touch a wall, until you die' },
+    p: { name: 'Pear', power: 'Glide', color: '#C5D94A', note: 'hold up (or jump) while falling to glide down slowly; press Space in mid-air for a big lift, then float down slower still till you land or touch a wall, until you die' },
     s: { name: 'Strawberry', power: 'Wall grip', color: '#F0506E', note: 'slide down walls at a third of the speed, until you die' },
     'ç': { name: 'Cherry', power: 'Ammo magnet', color: '#B3123A', note: 'ammo crates within 4 blocks fly to you, until you die' },
     'ƀ': { name: 'Blueberry', power: 'Night eyes', color: '#5B6EE1', note: 'your light reaches twice as far, until you die' },
@@ -2796,6 +2796,9 @@
     p.vx = approach(p.vx, dir * run * (wet ? .65 : 1), accel * dt);
 
     if (input.jumpPressed) { p.buffer = .13; input.jumpPressed = false; } else p.buffer -= dt;
+    // (The pear's spin goes on Space (or Z, or the touch jump button), not on Up: Up only
+    // glides, however often you press it.)
+    const spin = !!input.spinPressed; input.spinPressed = false;
     p.coyote = p.onGround ? .1 : p.coyote - dt;
     if (input.down && p.onGround) p.drop = .2;
     p.drop -= dt;
@@ -2838,7 +2841,7 @@
       ring(W, p.x + p.w / 2, p.y + p.h, 26, '255,224,102', .3);
       p.trail = .25; p.trailC = '255,224,102';
       W.emit('djump');
-    } else if (p.buffer > 0 && p.glide && !p.onGround && !p.spun && !wet) {
+    } else if (spin && p.glide && !p.onGround && !p.spun && !wet) {
       // The pear's spin: a big lift in mid-air, once (after the acorn of the Mario games). After
       // it you float down even slower than a glide, till you land or touch a wall (which gives
       // you the spin back).

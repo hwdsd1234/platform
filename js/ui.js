@@ -116,7 +116,7 @@
   // ---------- state ----------
   let screen = 'title', W = null, playDef = null, playCtx = null;
   const cam = { x: 0, y: 0, zoom: 1 };
-  const input = { left: false, right: false, jump: false, down: false, jumpPressed: false, fire: false, firePressed: false, rocket: false, rocketPressed: false, grenade: false, grenadePressed: false, kill: false, killPressed: false, dyn: false, dynPressed: false, big: false };
+  const input = { left: false, right: false, jump: false, down: false, jumpPressed: false, fire: false, firePressed: false, rocket: false, rocketPressed: false, grenade: false, grenadePressed: false, kill: false, killPressed: false, dyn: false, dynPressed: false, spinPressed: false, big: false };
   let attract = LF.createWorld(LF.LEVELS[0]);
   let story = { time: 0, falls: 0 };
 
@@ -830,7 +830,7 @@
         <li><kbd>E</kbd> fire: tap for one shot, hold for autofire; shots splash 1 block · <kbd>X</kbd> explosive round (2 ammo, 3-block blast) · <kbd>A</kbd> kill shot (3 ammo): kills whatever it hits in one go, golems and carts too (a boss takes it as one hit) · every shot counts as one hit (a grenade one per blast, up to three), so golems take 3 and TNT carts 5 (stomps count too); a TNT blast kills everything near it but you · <kbd>Q</kbd> bouncing grenade (3 ammo) · <kbd>D</kbd> dynamite (4 ammo): thrown, it falls and sits where it lands, and after a 3-second fuse kills everything within 5 blocks, golems and carts too (a boss takes it as one hit; it never hurts you) · <kbd>Shift</kbd>+<kbd>D</kbd> big dynamite (8 ammo, 10 blocks) · hold any of them to keep firing · hold <kbd>Shift</kbd> for a big shot: 2× size and blast, 2× ammo · ammo crates are hidden through each level; big crates hold 10, huge ones 25; enemies drop 1–5 ammo when killed, more for tougher ones (TNT carts drop none)</li>
         <li>Keys open the locked-door blocks you touch, one block at a time; you keep the key</li>
         <li>Water is safe: you sink slowly and can jump as often as you like</li>
-        <li>Fruit: 🍎 shield (a second apple doubles it) · 🍊 jump boost · 🍌 double jump · 🍉 speed · 🍐 glide (hold jump while falling; jump again in mid-air for a big lift, then float down slower still till you land or touch a wall; wall jumps give the lift back) · 🍓 wall grip · 🍒 ammo magnet · 🫐 night eyes (twice the light) · only one fruit power besides the apple's shield works at a time: a new fruit takes the place of the last · powers last until you die; powers and leftover ammo carry on to the next level · in the Sky Roads only apples work: the wind holds your other powers and gives them back when you leave</li>
+        <li>Fruit: 🍎 shield (a second apple doubles it) · 🍊 jump boost · 🍌 double jump · 🍉 speed · 🍐 glide (hold <kbd>↑</kbd> or jump while falling; press <kbd>Space</kbd> in mid-air for a big lift, then float down slower still till you land or touch a wall; wall jumps give the lift back; letting go of <kbd>↑</kbd> and pressing it again just keeps you gliding) · 🍓 wall grip · 🍒 ammo magnet · 🫐 night eyes (twice the light) · only one fruit power besides the apple's shield works at a time: a new fruit takes the place of the last · powers last until you die; powers and leftover ammo carry on to the next level · in the Sky Roads only apples work: the wind holds your other powers and gives them back when you leave</li>
         <li>Towers have no guns: the boss falls to 3 stomps, but each stomp throws it into a 10-second fury: it glows red and rampages round the arena, leaping (with a slam where it lands) or darting about dropping bombs, and throwing rings of embers, rocks from the ceiling and fire round your feet; then it's worn out and stands dazed for a moment: stomp it then · its last fury (one stomp left) adds its own signature move · the Last Dark takes 5 stomps and you can't stomp it again until it calms down · your ammo waits for you outside</li>
         <li>Neo: when a slab sits right over your ledge, flush with its edge, run off the edge, jump at once and steer straight back in to land on top (miss, and you just drop back)</li>
         <li>Wheels turn their platforms round and round: ride one to the top · in the Sky Roads there's no floor at all, just the long drop</li>
@@ -1245,6 +1245,8 @@
       if (k) {
         e.preventDefault();
         if (k === 'jump' && !input.jump && !e.repeat) input.jumpPressed = true;
+        // (Space and Z also spin with the pear in mid-air; Up only glides.)
+        if ((e.code === 'Space' || e.code === 'KeyZ') && !e.repeat) input.spinPressed = true;
         if (SHOTS.includes(k) && !input[k] && !e.repeat) input[k + 'Pressed'] = true;
         input[k] = true;
       }
@@ -1275,7 +1277,7 @@
 
   function bindTouch(id, k) {
     const el = $(id);
-    const on = e => { e.preventDefault(); initAudio(); if (k === 'jump' && !input.jump) input.jumpPressed = true; if (SHOTS.includes(k) && !input[k]) input[k + 'Pressed'] = true; input[k] = true; el.classList.add('on'); };
+    const on = e => { e.preventDefault(); initAudio(); if (k === 'jump' && !input.jump) input.jumpPressed = true; if (k === 'jump') input.spinPressed = true; if (SHOTS.includes(k) && !input[k]) input[k + 'Pressed'] = true; input[k] = true; el.classList.add('on'); };
     const off = e => { e.preventDefault(); input[k] = false; el.classList.remove('on'); };
     el.addEventListener('pointerdown', on); el.addEventListener('pointerup', off);
     el.addEventListener('pointercancel', off); el.addEventListener('pointerleave', off);

@@ -8,6 +8,8 @@
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
       'Fixed: getting hit could leave you flickering in lava, safe for a moment. Lava (still or moving) now kills you even right after a hit.',
       'After the pear’s spin you float down slowly, even slower than a glide and without holding anything, like NSMBU’s acorn.',
+      'Pear controls: Space in mid-air does the spin; Up only glides, so letting go of Up and pressing it again keeps you gliding.',
+      'Story levels run on with no doors between their sections: each part opens straight into the next.',
       'Passage doors look different now: a ring of stone round a swirling, glowing portal, with rings flashing out where you go in and where you come out.',
       'Two sunken castles: Sunken Keep in the Waterfront and Drowned Castle in the Canal District. Each is a set of flooded halls to swim through, and a flooded hall where its keeper swims after you: the Drowned King and the Tide Serpent.',
       'The pear’s mid-air spin lifts you twice as high. After it you can’t glide and you drop fast, until you land or touch a wall.',
