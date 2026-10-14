@@ -532,6 +532,25 @@
         ell(cx + f * (e.w * .42 + 2), cy - 8, 3, 3, e.state === 'tired' ? '#9A8FBF' : '#FF6B3D');
         if (e.state === 'breath') ell(cx + f * (e.w * .42 + 14), cy, 6, 4, '#FFB547');
       },
+      'Θ+': (e, cx, cy, hurt) => {
+        // The Drowned King: a great green-grey fish-man in a rusted crown, trailing weed.
+        const f = e.face || 1, c = hurt ? '#FFFFFF' : '#4E7A6A', stun = e.state === 'stunned';
+        ctx.strokeStyle = '#3E6B3A'; ctx.lineWidth = 3; for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.moveTo(cx - f * 10 + k * 6 - 9, e.y + e.h - 6); ctx.quadraticCurveTo(cx - f * 20 + k * 6, e.y + e.h + 10 + (reduced ? 0 : Math.sin(clock * 3 + k) * 5), cx - f * 14 + k * 6, e.y + e.h + 18); ctx.stroke(); }
+        ell(cx, cy + 4, e.w * .42, e.h * .4, c);
+        ctx.fillStyle = hurt ? '#FFFFFF' : '#3A5E52'; ctx.beginPath(); ctx.moveTo(cx - f * e.w * .4, cy); ctx.lineTo(cx - f * e.w * .62, cy - 14); ctx.lineTo(cx - f * e.w * .62, cy + 18); ctx.fill();
+        ell(cx + f * 12, cy - 4, 7, 7, '#FFF1CF'); ell(cx + f * 14, cy - 4, 3.5, 3.5, stun ? '#9A8FBF' : '#211C3F');
+        ctx.strokeStyle = '#211C3F'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx + f * 4, cy + 10); ctx.lineTo(cx + f * 22, cy + 8); ctx.stroke();
+        ctx.fillStyle = '#B5893A'; ctx.beginPath(); ctx.moveTo(cx - 14, e.y + 8); for (let k = 0; k <= 4; k++) ctx.lineTo(cx - 14 + k * 7, e.y + (k % 2 ? 0 : -8)); ctx.lineTo(cx + 14, e.y + 8); ctx.fill();
+      },
+      'Ж+': (e, cx, cy, hurt) => {
+        // The Tide Serpent: a long blue sea serpent, its body waving behind its head.
+        const f = e.face || 1, c = hurt ? '#FFFFFF' : '#3E6FA0', stun = e.state === 'stunned';
+        for (let k = 5; k >= 0; k--) { const x = cx - f * k * 13, y = cy + (reduced ? 0 : Math.sin(clock * 5 + k * .9) * 7); ell(x, y, 13 - k, 12 - k, k % 2 ? '#2E5A85' : c); }
+        ell(cx + f * 14, cy - 2, 16, 12, c);
+        ctx.fillStyle = '#9FD8FF'; ctx.beginPath(); ctx.moveTo(cx - 6, cy - 12); ctx.lineTo(cx, cy - 24); ctx.lineTo(cx + 6, cy - 12); ctx.fill();
+        ell(cx + f * 20, cy - 5, 3.5, 3.5, stun ? '#9A8FBF' : '#FFE066');
+        ctx.fillStyle = '#FFFFFF'; for (const d of [0, 5]) ctx.fillRect(cx + f * (24 + d), cy + 4, 2, 4);
+      },
       'Σ+': (e, cx, cy, hurt) => {
         // The Crystal Mole: a plump mole with glowing crystals growing from its back.
         const f = e.face || 1, c = hurt ? '#FFFFFF' : '#5A4A6A';

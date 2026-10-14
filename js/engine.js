@@ -137,6 +137,9 @@
     'Φ': { name: 'The Pumpkin Knight', w: 56, h: 66, stomp: false, hits: 4 },
     'Ψ': { name: 'The Smog Dragon', w: 100, h: 58, stomp: false, fly: true, hits: 4 },
     'Σ': { name: 'The Crystal Mole', w: 66, h: 48, stomp: false, hits: 4 },
+    // The keepers of the two sunken castles, swimming in their flooded halls.
+    'Θ': { name: 'The Drowned King', w: 70, h: 56, stomp: false, fly: true, hits: 4 },
+    'Ж': { name: 'The Tide Serpent', w: 96, h: 44, stomp: false, fly: true, hits: 4 },
   };
   for (const [c, g] of Object.entries(GIANTS)) {
     const base = LF.ENEMIES[c];
@@ -1936,7 +1939,8 @@
   // stuck in a wall, the knight winds down, the roc and the dragon land to rest, the Rat
   // King sits back on his throne, the Pumpkin Knight reels after every other leap, and the
   // mole is stunned when it bursts back up out of the floor.
-  const KEEPERS = new Set(['Γ+', 'Δ+', 'Ξ+', 'Λ+', 'Π+', 'Φ+', 'Ψ+', 'Σ+']);
+  const reducedBob = e => Math.sin(e.t * 2) * 6;
+  const KEEPERS = new Set(['Γ+', 'Δ+', 'Ξ+', 'Λ+', 'Π+', 'Φ+', 'Ψ+', 'Σ+', 'Θ+', 'Ж+']);
   function stepKeeper(W, e, dt, live, px, py, rage, toward) {
     const ex = e.x + e.w / 2, ey = e.y + e.h / 2, fast = rage ? 1.25 : 1, fly = LF.ENEMIES[e.type].fly;
     const daze = (t, state = 'dazed') => { e.state = state; e.dazed = e.wait = t * DAZE; };
@@ -2075,6 +2079,35 @@
           for (const off of [-TS * 2, TS * 2]) { const t = 1.1, g = 900, tx = px + off; W.projectiles.push({ kind: 'bomb', fury: true, x: ex - 6, y: e.y - 6, w: 12, h: 12, vx: (tx - ex) / t, vy: (py - e.y) / t - g * t / 2, g, life: 4 }); }
           e.wait = 1.2 / fast; W.emit('lob');
         } else leap();
+        break;
+      }
+      case 'Θ+':
+      case 'Ж+': {
+        // The sunken keepers swim about their flooded hall after you. The Drowned King charges
+        // across the hall and is stunned when he rams a wall; he blows rings of bubbles and
+        // calls pike. The Tide Serpent surges along in waves, rams the walls the same way,
+        // and blows bubbles that drift at you.
+        const king = e.type === 'Θ+';
+        if (e.state === 'ram') {
+          if (moveX(W, e, e.vx * dt) || e.x <= lo + 1 || e.x >= hi - 1) {
+            clampX(); W.shake = Math.max(W.shake, .45); W.emit('slam');
+            burst(W, ex + Math.sign(e.vx) * e.w / 2, ey, 18, ['#9FD8FF', '#FFFFFF'], 200, 100, 3);
+            e.vx = 0; daze(1.9, 'stunned'); W.floaters.push({ x: ex, y: e.y - 14, t: 'stunned!', life: 1.2, c: '#FFE2A8' });
+          }
+          if (!king) e.y = e.ry + Math.sin(e.st * 6) * TS * 1.2, e.st += dt;
+          break;
+        }
+        // Swim toward you, slowly (and keep in the hall).
+        const tx = Math.max(lo, Math.min(hi, px - e.w / 2)), ty = Math.max(TS * 2, Math.min((W.h - 3) * TS - e.h, py - e.h / 2));
+        e.x += Math.sign(tx - e.x) * Math.min(Math.abs(tx - e.x), 55 * fast * dt);
+        e.y += Math.sign(ty - e.y) * Math.min(Math.abs(ty - e.y), 45 * fast * dt) + (reducedBob(e) * dt);
+        e.face = toward;
+        if ((e.wait -= dt) > 0 || !live) break;
+        const act = next(king ? ['ram', 'rings', 'ram', 'pike'] : ['ram', 'bubbles', 'ram', 'bubbles']);
+        if (act === 'ram') { e.state = 'ram'; e.vx = toward * (king ? 360 : 300) * fast; e.ry = e.y; e.st = 0; W.emit('snort'); }
+        else if (act === 'rings') { for (let k = 0; k < 10; k++) { const a = k / 10 * TAU; W.projectiles.push({ kind: 'bubble', x: ex - 8, y: ey - 8, w: 16, h: 16, vx: Math.cos(a) * 90, vy: Math.sin(a) * 90, life: 4 }); } e.wait = 1.4 / fast; W.emit('spit'); }
+        else if (act === 'pike') { if (minions(W) < 3) for (const d of [-1, 1]) spawnMinion(W, 'Y', ex + d * e.w, ey); e.wait = 1.2 / fast; }
+        else { for (let k = 0; k < 5; k++) W.projectiles.push({ kind: 'bubble', x: ex - 8, y: ey - 8, w: 16, h: 16, vx: toward * (40 + k * 25), vy: (k - 2) * 25, life: 5 }); e.wait = 1.2 / fast; W.emit('spit'); }
         break;
       }
       case 'Σ+': {

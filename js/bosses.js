@@ -885,6 +885,55 @@
     },
   };
 
+  // ---- The sunken castles ----
+  // Two castles under the water, one in the Waterfront and one in the Canal District, before
+  // each world's own castle: flooded halls you swim through (two of them, a door between),
+  // then a flooded hall where its keeper swims after you.
+  const flood = g => { for (let y = 1; y < g.length - 3; y++) for (let x = 1; x < g[0].length - 1; x++) if (g[y][x] === '.') g[y][x] = '~'; return g; };
+  const SUNKEN_COURSES = {
+    // Walls hanging down and walls standing up, by turns: swim over one, under the next.
+    maze(R, first) {
+      const c = course(60, first), { g, F } = c;
+      for (let x = c.x0 + 3, k = 0; x < c.x1 - 2; x += 7, k++) {
+        if (k % 2) put(g, x, 1, x + 1, F - 5, '#'); else { put(g, x, F - 6, x + 1, F - 1, '#'); g[F][x + 3] = '^'; g[F][x - 2] = '^'; }
+      }
+      return flood(g);
+    },
+    // A reef of coral pillars, pike patrolling between them and jellies bobbing.
+    reef(R, first) {
+      const c = course(62, first), { g, F } = c;
+      for (let x = c.x0 + 4; x < c.x1 - 2; x += 9) { const top = F - 3 - Math.floor(R() * 4); put(g, x, top, x + 1, F - 1, '#'); }
+      g[F - 6][14] = 'Y'; g[F - 3][27] = 'U'; g[F - 8][36] = 'Y'; g[F - 4][45] = 'U'; g[F - 2][20] = 'N';
+      return flood(g);
+    },
+    // A floor of spikes with fire bars turning above it: keep swimming, and time it.
+    spikes(R, first) {
+      const c = course(60, first), { g, F } = c;
+      put(g, c.x0, F, c.x1, F, '^');
+      for (let x = c.x0 + 6; x < c.x1 - 3; x += 12) g[F - 5][x] = 'f';
+      g[F - 9][24] = 'Y';
+      return flood(g);
+    },
+  };
+  const SUNKEN = [
+    { after: 'The Lighthouse', name: 'Sunken Keep', giant: 'Θ', sign: 'THE DROWNED KING · he rams the walls · stomp him while he’s stunned', courses: ['maze', 'reef', 'spikes', 'reef'] },
+    { after: 'The Soot Canals', name: 'Drowned Castle', giant: 'Ж', sign: 'THE TIDE SERPENT · it surges at you in waves · stomp it when it hits a wall', courses: ['reef', 'spikes', 'maze', 'spikes'] },
+  ];
+  const sunkenAfter = Object.fromEntries(SUNKEN.map((c, k) => [c.after, k]));
+  function sunkenOf(k) {
+    const c = SUNKEN[k];
+    const def = {
+      name: c.name, dark: .72, giant: c.giant, bossHits: 4,
+      map: hall(48, 16, ({ r, s }) => { r(8, 10, 13, 10, '='); s(10, 9, 'a'); r(34, 10, 39, 10, '='); r(20, 6, 27, 6, '='); s(30, 6, '0'); }).map(row => row.replace(/\./g, '~')),
+      course: R => {
+        const all = c.courses.map((m, n) => SUNKEN_COURSES[m](R, n === 0));
+        return [joinRuns(all.slice(0, 2), R, true), joinRuns(all.slice(2), R, false)];
+      },
+      signs: [{ x: 2, y: 9.4, t: c.sign }],
+    };
+    return { ...tower(def, 1300 + k * 29, true), chapter: c.after, boss: true, sunken: true, since: 12 };
+  }
+
   // The castles: one at the end of every world but the last (whose castle is the Last
   // Dark's), each with its own keeper (see stepKeeper in engine.js). A castle's arena is a
   // hall with planks to get above its keeper; fliers hover high, walkers stand on the floor.
@@ -935,7 +984,7 @@
       }
     });
     const w = rows[0].length;
-    if (lamp) { const jy = rows.findIndex(r => r.includes('j')), jx = rows[jy].indexOf('j'); if (rows[jy][jx - 3] === '.') rows[jy][jx - 3] = 'L'; }
+    if (lamp) { const jy = rows.findIndex(r => r.includes('j')), jx = rows[jy].indexOf('j'); if (rows[jy][jx - 3] === '.' || rows[jy][jx - 3] === '~') rows[jy][jx - 3] = 'L'; }
     // An apple in every section: on the first open footing nearest its middle (not over moving lava).
     for (const [a, b] of mids) {
       const mid = Math.floor((a + b) / 2);
@@ -1183,7 +1232,7 @@
     for (let y = h - 1; y >= 0; y--) {
       const jx = g[y].lastIndexOf('j', arena.x - 1);
       if (jx < runAt.x) continue;
-      const spot = [jx - 2, jx - 1, jx + 1].find(x => g[y][x] === '.' && LF.isSolid(g[y + 1]?.[x]));
+      const spot = [jx - 2, jx - 1, jx + 1].find(x => (g[y][x] === '.' || g[y][x] === '~') && LF.isSolid(g[y + 1]?.[x]));
       if (spot != null) g[y][spot] = 'L';
       break;
     }
@@ -1210,7 +1259,8 @@
     if (n % 10 === 0 && FIGHTS[n / 10 - 1]) out.push({ ...tower(arena(n / 10 - 1, Math.floor((n / 10 - 1) / 5)), 300 + n), chapter, boss: true });
     else if (n % 10 === 5 && GIANT_FIGHTS[(n - 5) / 10]) out.push({ ...tower(giantArena((n - 5) / 10), 300 + n), chapter, boss: true });
     const chapterEnds = regular[i + 1] && regular[i + 1].chapter !== chapter;
-    // A world's last chapter ends at its castle.
+    // A world's last chapter ends at its castle (in two worlds, a sunken castle first).
+    if (chapterEnds && sunkenAfter[chapter] != null) out.push(sunkenOf(sunkenAfter[chapter]));
     if (chapterEnds && castleAfter[chapter] != null) out.push(castleOf(castleAfter[chapter]));
     if (chapter === 'The Powder Works' && chapterEnds) {
       out.push(...(LF.SKY_LEVELS || []));
