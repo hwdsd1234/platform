@@ -7,7 +7,8 @@
 (() => {
   const LF = window.LF;
   const B = LF.build;
-  const pear = (name, w, sign, draw) => ({ chapter: 'The Pear Cliffs', name, pear: true, since: 11, dark: .45, signs: [{ x: 1, y: 2.4, t: sign }], map: B(w, 18, draw) });
+  // (A ceiling over every level, so there's no going over the top of the walls.)
+  const pear = (name, w, sign, draw) => ({ chapter: 'The Pear Cliffs', name, pear: true, since: 11, dark: .45, signs: [{ x: 1, y: 2.4, t: sign }], map: B(w, 18, a => { a.r(0, 0, w - 1, 0); draw(a); }) });
   // A cliff or pillar: solid from row `top` to the bottom of the level, x0..x1.
   const cliff = r => (x0, x1, top) => r(x0, top, x1, 17);
   // A lantern you can't glide past: a wall hangs from the top of the level down to two rows

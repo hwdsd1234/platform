@@ -4,7 +4,7 @@
   const TS = LF.TS = 32;
   const G = 2100, MAXFALL = 900, RUN = 250, JUMP = 700, SPRING = 1080;
   const FAST = 1.4;
-  const GLIDE_FALL = 95, GLIDE_LIFT = 430;   // the pear: the slowest you fall gliding, the lift of its spin
+  const GLIDE_FALL = 95, GLIDE_LIFT = 640, SPUN_FALL = 1.35;   // the pear: the slowest you fall gliding, the lift of its spin, how much faster you fall after it
   const WALL_SLIDE = 110, WALL_KICK = 330, BOOST = 1.22, REGROW = 12, SINK = 55;
 
   // Per-level player settings, set in the editor's Player dialog (def.player).
@@ -48,7 +48,7 @@
     o: { name: 'Orange', power: 'Jump boost', color: '#FF9A2E', note: 'higher jumps, until you die' },
     b: { name: 'Banana', power: 'Double jump', color: '#FFE066', note: 'jump again in mid-air, until you die' },
     m: { name: 'Watermelon', power: 'Speed', color: '#4CAF50', note: 'run faster, until you die' },
-    p: { name: 'Pear', power: 'Glide', color: '#C5D94A', note: 'hold jump while falling to glide down slowly, and jump again once in mid-air for a little lift, until you die' },
+    p: { name: 'Pear', power: 'Glide', color: '#C5D94A', note: 'hold jump while falling to glide down slowly; jump again in mid-air for a big lift, after which you drop fast and can’t glide till you land or touch a wall, until you die' },
     s: { name: 'Strawberry', power: 'Wall grip', color: '#F0506E', note: 'slide down walls at a third of the speed, until you die' },
     'ç': { name: 'Cherry', power: 'Ammo magnet', color: '#B3123A', note: 'ammo crates within 4 blocks fly to you, until you die' },
     'ƀ': { name: 'Blueberry', power: 'Night eyes', color: '#5B6EE1', note: 'your light reaches twice as far, until you die' },
@@ -2771,9 +2771,9 @@
     // Walls: touching one in the air allows a wall jump; pushing into it while falling slides slowly.
     p.wall = p.onGround ? 0 : wallBeside(W, p, -1) ? -1 : wallBeside(W, p, 1) ? 1 : p.spinWallT > 0 ? p.spinWallSide : 0;
     const airJumps = T.airJumps + (p.dbl > 0 ? 1 : 0);
-    if (p.wall) { p.wallDir = p.wall; p.wallCoyote = .1; p.airJumps = airJumps; }
+    if (p.wall) { p.wallDir = p.wall; p.wallCoyote = .1; p.airJumps = airJumps; p.spun = false; }
     else p.wallCoyote -= dt;
-    if (p.onGround || wet) { p.airJumps = airJumps; p.spun = false; p.kickedOff = 0; }
+    if (p.onGround || wet) { p.airJumps = airJumps; p.spun = false; }
     p.sliding = !!p.wall && dir === p.wall && p.vy > 0;
 
     // Jump speed scales with sqrt(height x gravity) so the height setting is exact at any gravity.
@@ -2788,10 +2788,8 @@
       p.vy = -jumpV * .88; p.buffer = 0; p.jumping = true; p.sx = .85; p.sy = 1.2;
       burst(W, p.x + p.w / 2, p.y + p.h, 6, ['#7FB0E0', '#D9D0F0'], 70, 150, 2);
       W.emit('swim');
-    } else if (p.buffer > 0 && p.wallCoyote > 0 && !p.onGround && !(p.glide && p.kickedOff === p.wallDir)) {
-      // (Gliding on the pear, you can't kick off the same wall twice before you land, or its
-      // slow fall would let you climb any wall.)
-      const away = -p.wallDir; p.kickedOff = p.wallDir;
+    } else if (p.buffer > 0 && p.wallCoyote > 0 && !p.onGround) {
+      const away = -p.wallDir;
       p.vy = -jumpV * .92 * Math.sqrt(T.wallJump); p.vx = away * WALL_KICK * T.wallKick; p.face = away; p.lock = .16;
       p.buffer = 0; p.wallCoyote = 0; p.jumping = true; p.sliding = false; p.sx = .8; p.sy = 1.25;
       burst(W, p.wallDir > 0 ? p.x + p.w : p.x, p.y + p.h / 2, 7, ['#9A8FBF', '#D9D0F0'], 90, 200, 2);
@@ -2808,9 +2806,9 @@
       p.trail = .25; p.trailC = '255,224,102';
       W.emit('djump');
     } else if (p.buffer > 0 && p.glide && !p.onGround && !p.spun && !wet) {
-      // The pear's spin: once between landings, a little lift in mid-air (after the acorn of
-      // the Mario games). (Touching a wall doesn't give it back, or you could spin up a wall
-      // forever.)
+      // The pear's spin: a big lift in mid-air, once (after the acorn of the Mario games). After
+      // it you can't glide and you drop faster, till you land or touch a wall, which gives you
+      // the pear's spin and glide back.
       p.vy = Math.min(p.vy, -GLIDE_LIFT); p.spun = true; p.buffer = 0; p.jumping = false; p.sx = 1.2; p.sy = .85;
       burst(W, p.x + p.w / 2, p.y + p.h / 2, 12, ['#C5D94A', '#E4F08A'], 120, 60, 2.5);
       ring(W, p.x + p.w / 2, p.y + p.h / 2, 24, '197,217,74', .3);
@@ -2821,9 +2819,9 @@
     if (wet) {
       p.vy = Math.min(SINK, p.vy + grav * .45 * dt);
       if (Math.random() < .05) W.particles.push({ x: p.x + p.w / 2 + p.face * 4, y: p.y + 4, vx: 0, vy: -40, life: .6, max: .6, c: '#9FD8FF', size: 2, g: -60 });
-    } else p.vy = Math.min(MAXFALL * Math.sqrt(T.gravity), p.vy + grav * dt * (p.vy > 0 ? 1.15 : 1));
-    // The pear's glide: holding jump while falling, you float down slowly.
-    p.gliding = !!(p.glide && !p.onGround && !wet && !p.sliding && input.jump && p.vy > 0);
+    } else p.vy = Math.min(MAXFALL * Math.sqrt(T.gravity), p.vy + grav * dt * (p.vy > 0 ? (p.glide && p.spun ? 1.15 * SPUN_FALL : 1.15) : 1));
+    // The pear's glide: holding jump while falling, you float down slowly (not after its spin).
+    p.gliding = !!(p.glide && !p.spun && !p.onGround && !wet && !p.sliding && input.jump && p.vy > 0);
     if (p.gliding) { p.vy = Math.min(p.vy, GLIDE_FALL); if (Math.random() < .15) W.particles.push({ x: p.x + p.w / 2 + (Math.random() - .5) * 20, y: p.y, vx: 0, vy: -30, life: .4, max: .4, c: '#C5D94A', size: 2, g: 0 }); }
     if (p.sliding) {
       p.vy = Math.min(p.vy, WALL_SLIDE * T.wallSlide / (p.grip ? 3 : 1));
