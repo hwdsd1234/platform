@@ -651,13 +651,14 @@
       fruitOn(st, R, 17, 2, .8); fruitOn(st, R, 3, 12);
       return finish(st, 15, 19);
     },
-    // Turn blocks turning in the air, one above the other.
+    // Turn blocks: two of them, each with a stone ledge before it to wait on while you time
+    // the jump onto it, and a ledge after it to jump off to.
     turns: R => {
       const st = stage(15);
-      st.g[13][6] = ':'; st.g[10][9] = ';'; st.g[7][12] = ':';
-      put(st.g, 13, 3, 18, 3, '#');
-      fruitOn(st, R, 20, 14); fruitOn(st, R, 16, 2, .8);
-      return finish(st, 13, 18);
+      put(st.g, 2, 12, 6, 12, '#'); st.g[10][8] = ':';
+      put(st.g, 10, 6, 15, 6, '#'); st.g[4][17] = ';';
+      fruitOn(st, R, 4, 11, .8); fruitOn(st, R, 12, 5, .8);
+      return finish(st, 16, 18);
     },
     // Lava rising up a run of ledges: climb before it gets you.
     flood: R => {
@@ -892,7 +893,7 @@
     { world: 'The Lighthouse', name: 'Lighthouse Castle', giant: 'Δ', course: ['swim', 'liftsSpikes'], sign: 'THE LIGHTHOUSE CRAB · it scuttles into walls · stomp it while it’s stuck' },
     { world: 'The Powder Works', name: 'Clockwork Castle', giant: 'Ξ', course: ['conveyCrush', 'blinkLava'], sign: 'THE CLOCKWORK KNIGHT · jump his gears · stomp him while he winds down' },
     { world: 'The Neo Ledges', name: 'Storm Castle', giant: 'Λ', fly: true, course: ['skyTurns', 'skyWheels'], sign: 'THE STORM ROC · it swoops low · stomp it when it lands to rest' },
-    { world: 'The Soot Canals', name: 'Rat Castle', giant: 'Π', course: ['crumbleSpikes', 'pendulums'], sign: 'THE RAT KING · dodge his dash · stomp him on his throne' },
+    { world: 'The Pear Cliffs', name: 'Rat Castle', giant: 'Π', course: ['crumbleSpikes', 'pendulums'], sign: 'THE RAT KING · dodge his dash · stomp him on his throne' },
     { world: 'The Melon Patch', name: 'Pumpkin Castle', giant: 'Φ', course: ['springLava', 'pendulums'], sign: 'THE PUMPKIN KNIGHT · his bombs land where they’re marked · stomp him when he’s dizzy' },
     { world: 'The Bell Foundry', name: 'Smog Castle', giant: 'Ψ', fly: true, course: ['bubblePits', 'lavaTide'], sign: 'THE SMOG DRAGON · it breathes fire across the floor · stomp it when it lands' },
     { world: 'The Cinder Mines', name: 'Crystal Castle', giant: 'Σ', course: ['icePits', 'iceSteps'], sign: 'THE CRYSTAL MOLE · it bursts up where the floor glows · stomp it while it’s stunned' },
@@ -1217,6 +1218,11 @@
       // Sky Roads' castle.
       out.push({ ...tower(voidDef(), 777, false, true), chapter: 'The Neo Ledges', boss: true, sky: true, since: 6 });
       out.push(castleOf(castleAfter['The Neo Ledges']));
+    }
+    // The Pear Cliffs (levels-14.js) close the Canal District, before its castle.
+    if (chapter === 'The Soot Canals' && chapterEnds) {
+      out.push(...(LF.PEAR_LEVELS || []));
+      out.push(castleOf(castleAfter['The Pear Cliffs']));
     }
     // And the Melon Patch (levels-13.js) closes the Garden Market.
     if (chapter === 'The Ember Gardens' && chapterEnds) {

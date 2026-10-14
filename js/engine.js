@@ -2771,9 +2771,9 @@
     // Walls: touching one in the air allows a wall jump; pushing into it while falling slides slowly.
     p.wall = p.onGround ? 0 : wallBeside(W, p, -1) ? -1 : wallBeside(W, p, 1) ? 1 : p.spinWallT > 0 ? p.spinWallSide : 0;
     const airJumps = T.airJumps + (p.dbl > 0 ? 1 : 0);
-    if (p.wall) { p.wallDir = p.wall; p.wallCoyote = .1; p.airJumps = airJumps; p.spun = false; }
+    if (p.wall) { p.wallDir = p.wall; p.wallCoyote = .1; p.airJumps = airJumps; }
     else p.wallCoyote -= dt;
-    if (p.onGround || wet) { p.airJumps = airJumps; p.spun = false; }
+    if (p.onGround || wet) { p.airJumps = airJumps; p.spun = false; p.kickedOff = 0; }
     p.sliding = !!p.wall && dir === p.wall && p.vy > 0;
 
     // Jump speed scales with sqrt(height x gravity) so the height setting is exact at any gravity.
@@ -2788,8 +2788,10 @@
       p.vy = -jumpV * .88; p.buffer = 0; p.jumping = true; p.sx = .85; p.sy = 1.2;
       burst(W, p.x + p.w / 2, p.y + p.h, 6, ['#7FB0E0', '#D9D0F0'], 70, 150, 2);
       W.emit('swim');
-    } else if (p.buffer > 0 && p.wallCoyote > 0 && !p.onGround) {
-      const away = -p.wallDir;
+    } else if (p.buffer > 0 && p.wallCoyote > 0 && !p.onGround && !(p.glide && p.kickedOff === p.wallDir)) {
+      // (Gliding on the pear, you can't kick off the same wall twice before you land, or its
+      // slow fall would let you climb any wall.)
+      const away = -p.wallDir; p.kickedOff = p.wallDir;
       p.vy = -jumpV * .92 * Math.sqrt(T.wallJump); p.vx = away * WALL_KICK * T.wallKick; p.face = away; p.lock = .16;
       p.buffer = 0; p.wallCoyote = 0; p.jumping = true; p.sliding = false; p.sx = .8; p.sy = 1.25;
       burst(W, p.wallDir > 0 ? p.x + p.w : p.x, p.y + p.h / 2, 7, ['#9A8FBF', '#D9D0F0'], 90, 200, 2);
@@ -2806,8 +2808,9 @@
       p.trail = .25; p.trailC = '255,224,102';
       W.emit('djump');
     } else if (p.buffer > 0 && p.glide && !p.onGround && !p.spun && !wet) {
-      // The pear's spin: once a jump, a little lift in mid-air (after the acorn of the Mario
-      // games).
+      // The pear's spin: once between landings, a little lift in mid-air (after the acorn of
+      // the Mario games). (Touching a wall doesn't give it back, or you could spin up a wall
+      // forever.)
       p.vy = Math.min(p.vy, -GLIDE_LIFT); p.spun = true; p.buffer = 0; p.jumping = false; p.sx = 1.2; p.sy = .85;
       burst(W, p.x + p.w / 2, p.y + p.h / 2, 12, ['#C5D94A', '#E4F08A'], 120, 60, 2.5);
       ring(W, p.x + p.w / 2, p.y + p.h / 2, 24, '197,217,74', .3);
@@ -3015,22 +3018,6 @@
     }
 
     const cx = p.x + p.w / 2, cy = p.y + p.h / 2;
-    // Stepping into a tower's boss arena, the dark tears every fruit power off you but the
-    // apple shield.
-    if (W.def.arenaX && !W.stripped && p.x >= W.def.arenaX * TS) {
-      W.stripped = true;
-      const had = Object.keys(POWERS).filter(t => p[POWERS[t]]);
-      if (had.length) {
-        for (const k of FLAGS) p[k] = 0; p.airJumps = Math.min(p.airJumps, playerTune(W.def).airJumps);
-        for (const t of had) for (let k = 0; k < 10; k++) {
-          const a = Math.random() * TAU, sp = 120 + Math.random() * 160;
-          W.particles.push({ x: cx, y: cy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 120, life: .9, max: .9, c: LF.FRUITS[t].color, size: 3, g: 500 });
-        }
-        ring(W, cx, cy, 60, '70,60,107', .5);
-        W.floaters.push({ x: cx, y: p.y - 18, t: 'the dark takes your fruit! (apples stay)', life: 1.8, c: '#CFC6E8' });
-        W.shake = Math.max(W.shake, .25); W.emit('strip');
-      }
-    }
     for (const l of W.lanterns) {
       if (l.lit || Math.abs(cx - l.x) > 22 || Math.abs(cy - l.y) > 26) continue;
       l.lit = true; l.pop = 1; W.lanternLit = true;

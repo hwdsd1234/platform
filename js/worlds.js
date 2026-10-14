@@ -9,7 +9,7 @@
     { name: 'The Waterfront', chapters: ['The Orchard', 'The Drowned Quarter', 'The Lighthouse'] },
     { name: 'The Clockwork Quarter', chapters: ['The Clockworks', 'The Frost Roofs', 'The Clock Tower', 'The Vault', 'The Horde', 'The Powder Works'] },
     { name: 'The Sky Roads', chapters: ['The Cloud Steps', 'The Wind Wheels', 'The Storm Heights', 'The High Winds', 'The Neo Ledges'] },
-    { name: 'The Canal District', chapters: ['The Tallow Docks', 'The Soot Canals'] },
+    { name: 'The Canal District', chapters: ['The Tallow Docks', 'The Soot Canals', 'The Pear Cliffs'] },
     { name: 'The Garden Market', chapters: ['The Wax Market', 'The Ember Gardens', 'The Melon Patch'] },
     { name: 'The Smokelands', chapters: ['The Smoke Stacks', 'The Ash Barrens', 'The Bell Foundry'] },
     { name: 'The Glass Mines', chapters: ['The Glass Works', 'The Moth Archive', 'The Cinder Mines'] },

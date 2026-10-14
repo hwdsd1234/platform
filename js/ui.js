@@ -31,8 +31,8 @@
   const levelsV = store.get('levelsV', 1);
   // Later additions say which save version brought them in (lv.since): the Storm Heights
   // and the Sky Spire came with version 6, the Melon Vault with 7, the High Winds with 8,
-  // the Neo Ledges with 9, the world castles with 10.
-  const SAVE_V = 10;
+  // the Neo Ledges with 9, the world castles with 10, the Pear Cliffs with 11.
+  const SAVE_V = 11;
   if (levelsV < SAVE_V) {
     const was = LF.LEVELS.map((lv, i) => i).filter(i => !((LF.LEVELS[i].since || 0) > levelsV) && (levelsV >= 3 || (levelsV < 2 ? !LF.LEVELS[i].boss : !LF.LEVELS[i].giantFight)));
     const move = book => Object.fromEntries(Object.entries(book).map(([k, v]) => [was[k] ?? k, v]));
@@ -811,7 +811,6 @@
         <li>Keys open the locked-door blocks you touch, one block at a time; you keep the key</li>
         <li>Water is safe: you sink slowly and can jump as often as you like</li>
         <li>Fruit: 🍎 shield (a second apple doubles it) · 🍊 jump boost · 🍌 double jump · 🍉 speed · 🍐 glide (hold jump while falling; jump again once in mid-air for a lift) · 🍓 wall grip · 🍒 ammo magnet · 🫐 night eyes (twice the light) · only one fruit power besides the apple's shield works at a time: a new fruit takes the place of the last · powers last until you die; powers and leftover ammo carry on to the next level · in the Sky Roads only apples work: the wind holds your other powers and gives them back when you leave</li>
-        <li>Stepping into a tower's boss arena, you lose every fruit power but your apple shield, and the only fruit in there is apples</li>
         <li>Towers have no guns: the boss falls to 3 stomps, but each stomp throws it into a 10-second fury: it glows red and rampages round the arena, leaping (with a slam where it lands) or darting about dropping bombs, and throwing rings of embers, rocks from the ceiling and fire round your feet; then it's worn out and stands dazed for a moment: stomp it then · its last fury (one stomp left) adds its own signature move · the Last Dark takes 5 stomps and you can't stomp it again until it calms down · your ammo waits for you outside</li>
         <li>Neo: when a slab sits right over your ledge, flush with its edge, run off the edge, jump at once and steer straight back in to land on top (miss, and you just drop back)</li>
         <li>Wheels turn their platforms round and round: ride one to the top · in the Sky Roads there's no floor at all, just the long drop</li>

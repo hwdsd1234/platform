@@ -4,8 +4,8 @@
 // as many as it takes to make it at least twice as long:
 // - most levels: sections from the level generator, the same shape and size as the level
 //   and as hard as its world;
-// - Sky Roads levels: the level again, mirrored, then as it was, and so on (no floors to
-//   add there).
+// - Sky Roads and Pear Cliffs levels: the level again, mirrored, then as it was, and so on
+//   (no floors to add there, and the gaps are for gliding).
 // It keeps one lantern, the one nearest its middle. Every lengthened level is checked with
 // LF.analyze; a section that won't fit is swapped
 // for a mirrored copy of the level. Built when you play a level (it takes a moment), the
@@ -47,7 +47,7 @@
     if (!def || def.boss || def.arenaX || !Array.isArray(def.map) || !def.map.some(r => r.includes('D'))) return def;
     if (cache.has(def.name)) return cache.get(def.name);
     const base = LF.normalize(def.map), mirrored = mirror(base);
-    const pick = k => (def.sky ? (k % 2 ? mirrored : base) : generated(def, k, def.world));
+    const pick = k => (def.sky || def.pear ? (k % 2 ? mirrored : base) : generated(def, k, def.world));
     // (Sections till it's at least LONGER times the level, counting the open tiles.)
     const room = rows => rows.reduce((n, r) => n + r.replace(/#/g, '').length, 0);
     const parts = [base];
