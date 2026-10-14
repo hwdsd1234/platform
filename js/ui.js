@@ -211,7 +211,9 @@
   const GROVE_REGROW = 60 * 60 * 1000;
   const houseUsed = i => !!houses[i] && typeof houses[i] === 'object' && houses[i].at != null && Date.now() - houses[i].at < GROVE_REGROW;
   const regrowIn = i => { const m = Math.ceil((GROVE_REGROW - (Date.now() - houses[i].at)) / 60000); return m >= 60 ? '1 hour' : `${m} min`; };
-  const houseOpen = i => !!progress[i] && !houseUsed(i);
+  // (In practice every grove is open and never used up: see also cleared.)
+  const groveUsed = i => !practice && houseUsed(i);
+  const houseOpen = i => practice || (!!progress[i] && !houseUsed(i));
   // The lamplighter can also stand at a cannon: { world: k } at the end of world k, or
   // { secret: i } beside level i. Enter there plays the Cannon Yard (see cannonLevel).
   let mapCannon = null;
@@ -422,7 +424,7 @@
     // Fruit houses: a cottage with a fruit on its sign; dim until its level is cleared, its
     // door shut once you've been in.
     for (const [i, c] of Object.entries(houseSpots)) {
-      const cls = houseUsed(i) ? ' used' : progress[i] ? ' open' : '';
+      const cls = groveUsed(i) ? ' used' : progress[i] || practice ? ' open' : '';
       if (progress[i]) out += `<path class="warp house-path" d="M${pos[i].x} ${pos[i].y} L${c.x} ${c.y}"/>`;
       out += `<g class="house${cls}" data-house="${i}" transform="translate(${c.x} ${c.y})"><circle class="hit" r="18"/>
         <rect x="-13" y="-16" width="26" height="18" rx="2" class="walls"/><path d="M-17 -16 L0 -30 L17 -16 Z" class="roof"/>
@@ -499,7 +501,7 @@
       initAudio();
       if (mapBusy) return;
       const i = +g.dataset.house;
-      if (!progress[i]) return flash('Clear the level beside it first');
+      if (!progress[i] && !practice) return flash('Clear the level beside it first');
       if (mapHouse === i) return ACTIONS.house({ i });
       mapHouse = i; mapCannon = null; mapAt = i; store.set('mapAt', i); renderMap();
     });
@@ -590,9 +592,9 @@
       $('map-info').innerHTML = `<div>
           <small>Fruit house · beside level ${mapHouse + 1}</small>
           <strong>Fruit Grove</strong>
-          <em>${houseUsed(mapHouse) ? `You’ve been in here: the fruit grows back in ${regrowIn(mapHouse)}` : '10 seconds to grab all the fruit you can: it all goes in your inventory'}</em>
+          <em>${groveUsed(mapHouse) ? `You’ve been in here: the fruit grows back in ${regrowIn(mapHouse)}` : '10 seconds to grab all the fruit you can: it all goes in your inventory'}</em>
         </div>
-        <div class="map-actions">${houseUsed(mapHouse) ? '' : '<button class="go" data-act="house">Go in</button>'}</div>`;
+        <div class="map-actions">${groveUsed(mapHouse) ? '' : '<button class="go" data-act="house">Go in</button>'}</div>`;
       const b = $('map-info').querySelector('[data-act]');
       if (b) b.addEventListener('click', () => { initAudio(); if (!mapBusy) ACTIONS.house({ i: mapHouse }); });
       return;
@@ -688,7 +690,7 @@
     if (mapAt === W[k].last && worlds[k].cannon && (progress[mapAt] || practice)) out.push({ ...worlds[k].cannon, cannon: { world: k } });
     if (mapAt === W[k].first && k > 0 && (progress[mapAt] || practice)) out.push({ ...worlds[k - 1].cannon, cannon: { world: k - 1 } });
     if (secrets[mapAt]) out.push({ ...secretCannons[mapAt], cannon: { secret: mapAt } });
-    if (houseSpots[mapAt] && progress[mapAt]) out.push({ ...houseSpots[mapAt], house: mapAt });
+    if (houseSpots[mapAt] && (progress[mapAt] || practice)) out.push({ ...houseSpots[mapAt], house: mapAt });
     return out;
   }
   // Walk the way (dx, dy) points, along whichever path goes most nearly that way.
@@ -778,8 +780,8 @@
       <header><h2>Inventory</h2><button class="mini" id="inv-close">Close · Tab</button></header>
       <ul class="inv-items">${Object.entries(LF.FRUITS).map(([t, f]) => `<li>
         <span class="inv-icon">${FRUIT_ICON[t]}</span><div><b>${f.name} ×${inventory[t] || 0}</b><small>${esc(f.note)}</small></div>
-        <button class="mini go-mini" data-use="${t}" ${(inventory[t] || 0) > 0 && !hardcore ? '' : 'disabled'}>Use</button></li>`).join('')}</ul>
-      <p class="lede">${hardcore ? 'Hardcore is on: no fruit.' : `Ready for your next level: ${powersText(now)}`}</p>
+        <button class="mini go-mini" data-use="${t}" ${(inventory[t] || 0) > 0 && !hardcore && !practice ? '' : 'disabled'}>Use</button></li>`).join('')}</ul>
+      <p class="lede">${practice ? 'Practice is on: your items stay put till you turn it off.' : hardcore ? 'Hardcore is on: no fruit.' : `Ready for your next level: ${powersText(now)}`}</p>
       <p class="inv-note">Gather fruit in the fruit houses on the map (each one’s grove grows back an hour after you’ve been in, even while you’re away; fruit in a level only grows back while you play it). Powers last until you die and carry on from level to level. Ammo left over when you clear a level carries on too, until you die${hardcore ? '' : ` (you have ${store.get('ammo', 0)})`}.</p>
     </div>`;
     $('inv-close').addEventListener('click', closeInventory);
@@ -787,6 +789,7 @@
   }
   function useItem(t) {
     if (hardcore || !(inventory[t] > 0)) return;
+    if (practice) return flash('Practice is on: nothing you use or get counts (turn it off to use your items)');
     const target = { shield: 0, airJumps: 0, ...(carry || {}) };
     if (!LF.applyFruit(target, t)) return flash('You already have that power');
     inventory[t]--; store.set('inventory', inventory);
@@ -816,7 +819,7 @@
         <li>Wheels turn their platforms round and round: ride one to the top · in the Sky Roads there's no floor at all, just the long drop</li>
         <li>Lanterns are checkpoints (one a level, two in a tower, three in the castle): dying sends you back to the map, but go into the same level again and you start at the lantern you lit; play another level first and it's put out</li>
         <li>Towers: climb, then the battlements, then the boss; beating the boss ends the level</li>
-        <li>Practice mode (on the map): every level open, nothing counts · <kbd>Z</kbd> set a checkpoint · <kbd>X</kbd> remove the latest · <kbd>C</kbd> explosive round</li>
+        <li>Practice mode (on the map): every level open, and nothing counts: no progress, awards or secret exits, your carried powers and ammo aren't used or changed, Fruit Groves give nothing to keep (and aren't used up), and items can't be used · <kbd>Z</kbd> set a checkpoint · <kbd>X</kbd> remove the latest · <kbd>C</kbd> explosive round</li>
         <li>Dying loses all your ammo (and your fruit powers) · <kbd>R</kbd> give up: you die (back to the map; lit lanterns are kept) · <kbd>Shift</kbd>+<kbd>R</kbd> restart the whole level from the start, lanterns out (also a death: powers and ammo gone) · <kbd>Esc</kbd> pause · <kbd>M</kbd> sound ${muted ? 'off' : 'on'} · <kbd>N</kbd> music ${store.get('music', true) ? 'on' : 'off'}</li>
       </ul>
       ${hardcore ? '<p class="lede hc-note">Hardcore is on: no lanterns, no ammo, no fruit, no invincibility after respawning. The door is already open, but there are no checkpoints: every fall sends you back to the start, in the dark. Water turns to lava.</p>' : ''}
@@ -862,7 +865,7 @@
     // (While you're in a story level, the save says so: see leftMidLevel.)
     store.set('inLevel', ctx.kind === 'story' ? { index: ctx.index } : null);
     // A Fruit Grove counts as visited the moment you walk in: no refreshing for another go.
-    if (ctx.kind === 'house') { houses[ctx.i] = { at: Date.now() }; store.set('houses', houses); }
+    if (ctx.kind === 'house' && !ctx.practice) { houses[ctx.i] = { at: Date.now() }; store.set('houses', houses); }
     if (LF.music) { LF.music.play(trackFor(def, ctx, false)); LF.music.duck(false); }
     if (ctx.kind !== 'shared') setHash(keyFor(ctx));
     // Fruit powers and ammo you're carrying come with you into story levels (not in Hardcore).
@@ -923,6 +926,15 @@
     // (Towers have no guns, so the ammo you're carrying waits for you outside.)
     if (playCtx.kind === 'story' && !hardcore) { saveCarry({ ...W.player, ...(W.player.held || {}) }); if (!W.def.noAmmo) store.set('ammo', W.player.ammo); }
     // Out of the Fruit Grove: everything picked goes in the inventory.
+    // (In practice, a grove's just for fun: the fruit isn't kept and the grove isn't used up.)
+    if (playCtx.kind === 'house' && playCtx.practice) {
+      screen = 'clear';
+      setVisible({ hud: true, overlay: true });
+      card(`<p class="eyebrow">Fruit Grove · practice</p><h2>${W.fruits.filter(f => f.taken).length} picked</h2>
+        <p class="lede">Practice is on, so the fruit isn't kept and the grove isn't used up.</p>
+        <div class="menu"><button class="go" data-act="menu">Back to the map</button></div>`);
+      return;
+    }
     if (playCtx.kind === 'house') {
       screen = 'clear';
       setVisible({ hud: true, overlay: true });
@@ -1141,7 +1153,7 @@
       if (practice) return play(LF.LEVELS[+d.i], { kind: 'practice', index: +d.i });
       story = +d.i === 0 ? { time: 0, falls: 0 } : story; play(LF.LEVELS[+d.i], { kind: 'story', index: +d.i });
     },
-    togglePractice: () => { practice = !practice; store.set('practice', practice); mapCannon = null; mapHouse = null; renderMap(false); flash(practice ? 'Practice on: every level open · Z/X set and clear checkpoints · nothing counts' : 'Practice off'); },
+    togglePractice: () => { practice = !practice; store.set('practice', practice); mapCannon = null; mapHouse = null; renderMap(false); flash(practice ? 'Practice on: every level open · Z/X set and clear checkpoints · nothing counts: no progress, awards, items or carried powers' : 'Practice off'); },
     select: showMap,
     yours: showYours,
     help: showHelp,
@@ -1149,7 +1161,7 @@
     // Stand at a secret cannon you've found (from the level's button on the map).
     warp: d => { const i = +(d.i ?? mapAt); if (LF.LEVELS[i].secretTo != null && secrets[i]) { mapAt = i; mapCannon = { secret: i }; store.set('mapAt', i); renderMap(); } },
     // Into a fruit house's Fruit Grove (once an hour per house).
-    house: d => { const i = +d.i; if (houseOpen(i)) play(fruitGrove(i), { kind: 'house', i }); },
+    house: d => { const i = +d.i; if (houseOpen(i)) play(fruitGrove(i), { kind: 'house', i, practice }); },
     items: () => showInventory(),
     // From the clear screen: off to the cannon you've just reached.
     toCannon: () => ACTIONS.cannon(mapCannon),
