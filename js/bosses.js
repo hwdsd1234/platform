@@ -977,7 +977,7 @@
     put(g, 2, 13, 3, 13, '#'); g[12][3] = 'L'; g.keepLamp = true;
     for (const [x, y, c] of [[5, 13, 'đ'], [9, 11, 'd'], [12, 14, 'đ'], [16, 10, 'd'], [18, 12, 'đ'], [22, 9, 'd'], [20, 15, 'd'], [7, 9, 'd'], [14, 8, 'đ'], [3, 10, 'd']]) g[y][x] = c;
     g[h - 4][w - 3] = 'j';
-    g.flows = [{ mode: 'fall', x0: 2, x1: w - 2, hi: 16, lo: h - 3, bottom: h - 3, speed: .8, whileOver: true }];
+    g.flows = [{ mode: 'fall', x0: 2, x1: w - 2, hi: 16, lo: h - 3, bottom: h - 3, speed: .8, whileOver: true }];   // (draining only while you're on a shingle or in the air: see stepFlows)
     return g;
   }
   const CASTLE_MORE = ['lavaHops', 'crumbleLava', 'liftsSpikes', 'conveyCrush', 'blinkLava', 'crumbleSpikes', 'pendulums', 'springLava', 'bubblePits', 'icePits', 'lavaTide', 'lavaWaves', 'iceSteps'];

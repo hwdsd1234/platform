@@ -648,8 +648,13 @@
         const cx = p.x + p.w / 2, there = f.triggerY != null ? cx >= f.x0 * TS && cx <= (f.x1 + 1) * TS && p.y + p.h <= f.triggerY * TS : p.x >= f.trigger * TS;
         if (there && !p.dead) f.on = true; else continue;
       }
-      // (A drain that only drains while you're out over it, on the shingles.)
-      if (f.whileOver && !(p.x + p.w / 2 >= f.x0 * TS && p.x + p.w / 2 <= (f.x1 + 1) * TS)) continue;
+      // (A drain that only drains while you're out over it on the shingles, or in the air
+      // between them: not standing on stone, or clinging to a wall.)
+      if (f.whileOver) {
+        const over = p.x + p.w / 2 >= f.x0 * TS && p.x + p.w / 2 <= (f.x1 + 1) * TS;
+        const onShingle = p.onGround && p.onPlat && p.onPlat.kind === 'fall';
+        if (p.dead || !over || p.sliding || (p.onGround && !onShingle)) continue;
+      }
       f.t += dt;
       if (f.mode === 'rise') f.s = Math.max(f.hi * TS, f.s - f.speed * TS * dt);
       if (f.mode === 'fall') f.s = Math.min(f.lo * TS, f.s + f.speed * TS * dt);
