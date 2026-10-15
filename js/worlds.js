@@ -14,6 +14,8 @@
     { name: 'The Smokelands', chapters: ['The Smoke Stacks', 'The Ash Barrens', 'The Bell Foundry'] },
     { name: 'The Glass Mines', chapters: ['The Glass Works', 'The Moth Archive', 'The Cinder Mines'] },
     { name: 'Night’s End', chapters: ['The Wick Bridges', 'The Ember Coast', 'The Chimney Peaks', 'The Last Lamps', 'The Dawn Tower', 'The Last Night'] },
+    // After the Last Dark: the Star Road (special.js).
+    { name: 'The Star Road', chapters: ['The Star Road'] },
   ];
   const worldOf = {};
   WORLDS.forEach((w, k) => w.chapters.forEach(c => { worldOf[c] = k; }));

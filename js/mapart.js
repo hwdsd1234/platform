@@ -15,6 +15,8 @@
     { sky: ['#382424', '#4A2D2A'], trail: '#B08A6A', kind: 'smoke', wander: 'bat' },
     { sky: ['#1A2542', '#243358'], trail: '#9FD8FF', kind: 'crystal', wander: 'spider' },
     { sky: ['#0F0C24', '#1B1536'], trail: '#8F81AB', kind: 'night', wander: 'wraith' },
+    // The Star Road: a golden night.
+    { sky: ['#1A1430', '#3A2A12'], trail: '#FFD24A', kind: 'sky', wander: 'spark' },
   ];
   const theme = k => THEMES[k % THEMES.length];
 

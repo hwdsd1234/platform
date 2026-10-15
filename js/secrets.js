@@ -143,9 +143,12 @@
   function lastDoor(g) { let best = null; g.forEach((row, y) => row.forEach((c, x) => { if (c === 'j' && (!best || x > best.x)) best = { x, y }; })); return best; }
   function find(g, c) { for (let y = 0; y < g.length; y++) { const x = g[y].indexOf(c); if (x >= 0) return { x, y }; } return null; }
 
+  // (Not in the last world, Night's End, or the Star Road after it, which is reached only
+  // past the Last Dark; and no secret cannon goes further than Night's End.)
+  const LAST = WORLDS.findIndex(w => w.name === 'The Star Road') - 1;
   WORLDS.forEach((world, k) => {
-    if (k === WORLDS.length - 1) return;
-    const to = Math.min(k + 2, WORLDS.length - 1);
+    if (k >= LAST) return;
+    const to = Math.min(k + 2, LAST);
     const regular = L.map((lv, i) => i).filter(i => L[i].world === k && !L[i].boss && !L[i].secretTo);
     // Aim for a third and two thirds of the way through the world, taking the nearest level
     // after that with rock to hide a room in (or, failing that, the aimed-for level itself).

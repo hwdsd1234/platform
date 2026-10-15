@@ -204,7 +204,7 @@
     const tiles = rows.map(r => r.split('').map(c => (c === '.' ? ' ' : c)));
     const W = {
       def, name: def.name || 'Untitled', dark: def.dark ?? .6, w, h, tiles,
-      lanterns: [], spinners: [], fruits: [], ammo: [], ammoFly: [], passages: [], entries: [], marks: [], blinks: [], bullets: [], traps: [], rings: [], ghosts: [], keys: [], unlocking: [], freeze: 0, enemies: [], plats: [], projectiles: [], particles: [], floaters: [], crumbles: [],
+      lanterns: [], coins: [], spinners: [], fruits: [], ammo: [], ammoFly: [], passages: [], entries: [], marks: [], blinks: [], bullets: [], traps: [], rings: [], ghosts: [], keys: [], unlocking: [], freeze: 0, enemies: [], plats: [], projectiles: [], particles: [], floaters: [], crumbles: [],
       door: null, start: { tx: 1, ty: h - 2 }, clock: 0, time: 0, falls: 0, shake: 0,
       deadTimer: 0, cleared: false, events: [],
     };
@@ -230,6 +230,9 @@
       // counting left to right, leads to the k-th n). They join the parts of a tower.
       else if (c === 'j') { W.passages.push({ tx: x, ty: y, x: x * TS, y: (y - 1) * TS + 4, w: 32, h: 60, open: true, glow: 1 }); tiles[y][x] = ' '; }
       else if (c === 'n') { W.entries.push({ tx: x, ty: y }); tiles[y][x] = ' '; }
+      // ¢ is a star coin (three to a story level, see coins.js). def.coinsHave says which of
+      // them you've already got (they show faded).
+      else if (c === '¢') { const k = W.coins.length; W.coins.push({ k, tx: x, ty: y, x: x * TS + 16, y: y * TS + 16, taken: false, had: !!(def.coinsHave && def.coinsHave[k]), pop: 0 }); tiles[y][x] = ' '; }
       // ĵ and ň: the doors joining a lengthened level's sections (see lengthen.js), paired
       // among themselves left to right, after the level's own passages.
       else if (c === 'ĵ') { (W.linkOut ||= []).push({ tx: x, ty: y, x: x * TS, y: (y - 1) * TS + 4, w: 32, h: 60, open: true, glow: 1 }); tiles[y][x] = ' '; }
@@ -3116,6 +3119,16 @@
       burst(W, f.x, f.y, 16, [spec.color, '#FFF6C2'], 130, 150, 2.5);
       W.floaters.push({ x: f.x, y: f.y - 20, t: f.type === 'a' && p.shield > 1 ? 'shield ×2' : spec.power.toLowerCase(), life: 1.1, c: spec.color });
       W.emit('fruit', { type: f.type });
+    }
+
+    // Star coins: touch one to pick it up (it's yours for good when you finish the level).
+    for (const c of W.coins) {
+      if (c.taken || Math.abs(cx - c.x) > 22 || Math.abs(cy - c.y) > 24) continue;
+      c.taken = true; c.pop = 1; (W.coinsGot ||= [])[c.k] = true;
+      burst(W, c.x, c.y, 26, ['#FFE066', '#FFF6C2', '#FFB547'], 180, 120, 3);
+      ring(W, c.x, c.y, 40, '255,224,102', .5);
+      W.floaters.push({ x: c.x, y: c.y - 24, t: `★ coin ${W.coins.filter(q => q.taken || q.had).length}/${W.coins.length}`, life: 1.4, c: '#FFE066' });
+      W.emit('coin', { k: c.k });
     }
 
     // A passage door takes you through to the next part of the level.

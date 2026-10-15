@@ -1376,5 +1376,11 @@
       }
     } else d.map = d.map.map(row => [...row].map(c => (isFruit(c) ? (turn++ % 3 === 2 ? powerFruit[Math.floor(turn / 3) % powerFruit.length] : 'a') : c)).join(''));
   }
+  // ---- The Star Road ----
+  // After the last level, a special world: a level for each world (see special.js, which
+  // builds them when you play them; this map is only a stand-in for the world map).
+  ['Old Town', 'The Waterfront', 'The Clockwork Quarter', 'The Sky Roads', 'The Canal District', 'The Garden Market', 'The Smokelands', 'The Glass Mines', 'Night’s End'].forEach((w, k) => {
+    out.push({ chapter: 'The Star Road', name: `Star of ${w.replace(/^The /, '')}`, starOf: k, since: 14, dark: .92, map: ['P........D', '##########'] });
+  });
   L.length = 0; L.push(...out);
 })();

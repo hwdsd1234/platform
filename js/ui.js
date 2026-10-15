@@ -18,6 +18,10 @@
     set(k, v) { try { localStorage.setItem('lanternfall.' + k, JSON.stringify(v)); } catch (e) {} },
   };
   let progress = store.get('progress', {});
+  // Star coins you've got, by level: coins[i] = [true/false ×3] (kept once you finish the level).
+  let coins = store.get('coins', {});
+  const coinCount = i => (coins[i] || []).filter(Boolean).length;
+  const worldCoins = k => { const w = LF.WORLDS[k]; let have = 0, all = 0; for (let i = w.first; i <= w.last; i++) { have += coinCount(i); all += 3; } return { have, all }; };
   let customs = store.get('custom', []);
   // Hardcore: every lantern is removed, so the door starts open and there are no checkpoints,
   // and water turns to lava wherever the level can be finished without swimming.
@@ -32,12 +36,12 @@
   // Later additions say which save version brought them in (lv.since): the Storm Heights
   // and the Sky Spire came with version 6, the Melon Vault with 7, the High Winds with 8,
   // the Neo Ledges with 9, the world castles with 10, the Pear Cliffs with 11, the sunken
-  // castles with 12. With 13, two castles went (one castle a world): Lighthouse Castle and
+  // castles with 12, the Star Road (at the very end) with 14. With 13, two castles went (one castle a world): Lighthouse Castle and
   // Rat Castle, the sunken castles taking their places; Drowned Castle moved to after the
   // Pear Cliffs. So a save's numbering is rebuilt as it was (GONE puts the old castles back
   // where they stood), each level found again by name; a cleared castle that's gone counts
   // as its world's castle cleared.
-  const SAVE_V = 13;
+  const SAVE_V = 14;
   const GONE = [{ name: 'Lighthouse Castle', after: 'Sunken Keep', now: 'Sunken Keep' }, { name: 'Rat Castle', after: 'The Long Glide', now: 'Drowned Castle' }];
   if (levelsV < SAVE_V) {
     let old = LF.LEVELS.map((lv, i) => ({ name: lv.name, since: lv.since || 0, boss: lv.boss, giantFight: lv.giantFight, i }));
@@ -254,7 +258,12 @@
   LF.LEVELS.forEach((lv, i) => { if (lv.secretTo != null) (secretInto[lv.secretTo] ||= []).push(i); });
   const near = i => mapLayout().adj[i];
   const landedBySecret = i => (secretInto[i] || []).some(j => secrets[j]);
+  // The Star Road (after the Last Dark): its stops are open to walk once the Last Dark has
+  // fallen; each level plays once you hold every coin in its world (starOpen).
+  const finalBeaten = () => !!progress[LF.LEVELS.findIndex(l => l.finalFight)];
+  const starOpen = i => practice || (finalBeaten() && (() => { const c = worldCoins(LF.LEVELS[i].starOf); return c.have >= c.all; })());
   const unlocked = i => {
+    if (LF.LEVELS[i].starOf != null) return practice || finalBeaten();
     if (practice || i === 0 || progress[i] || landedBySecret(i)) return true;
     const L = LF.LEVELS, k = L[i].world;
     if (i === LF.WORLDS[k].first && k > 0 && progress[LF.WORLDS[k - 1].last]) return true;
@@ -547,7 +556,8 @@
       mapCannon = how; mapHouse = null; mapAt = how.secret != null ? how.secret : LF.WORLDS[how.world].last; store.set('mapAt', mapAt); renderMap();
     });
     const lit = Object.keys(progress).length, found = Object.keys(secrets).length, total = L.filter(lv => lv.secretTo != null).length;
-    $('map-stats').textContent = `World ${L[mapAt].world + 1} of ${LF.WORLDS.length} · ${lit} of ${n} lit · secret exits ${found} of ${total}${hardcore ? ` · hardcore ${Object.keys(progressHC).length} lit` : ''}`;
+    const wc = worldCoins(L[mapAt].world);
+    $('map-stats').textContent = `World ${L[mapAt].world + 1} of ${LF.WORLDS.length} · ${lit} of ${n} lit · coins here ${wc.have} of ${wc.all} · secret exits ${found} of ${total}${hardcore ? ` · hardcore ${Object.keys(progressHC).length} lit` : ''}`;
     $('map-awards').textContent = `Awards · ${LF.awards.count().earned}/${LF.awards.count().total}`;
     markUpdates();
     $('map-hc').textContent = `Hardcore: ${hardcore ? 'on' : 'off'}`; $('map-hc').classList.toggle('hc-on', hardcore);
@@ -647,7 +657,7 @@
     $('map-info').innerHTML = `<div>
         <small>World ${lv.world + 1} · chapter ${roman(chapterIndex(mapAt))} · ${esc(lv.chapter)} · level ${mapAt + 1} · key ${levelKey(lv.name)}</small>
         <strong>${esc(lv.name)}</strong>
-        <em>${lv.boss ? 'boss fight · ' : ''}${p ? 'best ' + fmt(p.best) : 'not yet lit'}${hc ? ` · hardcore ${fmt(hc.best)}` : ''}${fork}${secret}</em>
+        <em>${lv.boss ? 'boss fight · ' : ''}${p ? 'best ' + fmt(p.best) : 'not yet lit'}${hc ? ` · hardcore ${fmt(hc.best)}` : ''} · coins ${[0, 1, 2].map(k => ((coins[mapAt] || [])[k] ? '★' : '☆')).join('')}${fork}${secret}</em>
       </div>
       <div class="map-actions">
         <button class="go" data-act="story" data-i="${mapAt}">Play</button>
@@ -851,6 +861,7 @@
         <li>Wheels turn their platforms round and round: ride one to the top · in the Sky Roads there's no floor at all, just the long drop</li>
         <li>Lanterns are checkpoints (one a level, two in a tower, three in the castle): dying sends you back to the map, but go into the same level again and you start at the lantern you lit; play another level first and it's put out</li>
         <li>Towers: climb, then the battlements, then the boss; beating the boss ends the level</li>
+        <li>Star coins: three in every level (★ in the HUD and on the map); they're yours once you finish the level. Beat the Last Dark and Night's End's cannon opens the Star Road, a world of nine very hard levels, one for each world: each opens once you hold every star coin in its world</li>
         <li>Practice mode (on the map): every level open, and nothing counts: no progress, awards or secret exits, your carried powers and ammo aren't used or changed, Fruit Groves give nothing to keep (and aren't used up), and items can't be used · <kbd>Z</kbd> set a checkpoint · <kbd>X</kbd> remove the latest · <kbd>C</kbd> explosive round</li>
         <li>Dying loses all your ammo (and your fruit powers) · <kbd>R</kbd> give up: you die (back to the map; lit lanterns are kept) · <kbd>Shift</kbd>+<kbd>R</kbd> restart the whole level from the start, lanterns out (also a death: powers and ammo gone) · <kbd>Esc</kbd> pause · <kbd>M</kbd> sound ${muted ? 'off' : 'on'} · <kbd>N</kbd> music ${store.get('music', true) ? 'on' : 'off'}</li>
       </ul>
@@ -892,7 +903,11 @@
   const clockFor = def => def.clock || (def.castle ? 400 : 300);
   function play(def, ctx) {
     // Story levels are four times as long (see lengthen.js).
-    if ((ctx.kind === 'story' || ctx.kind === 'practice') && LF.lengthen) def = LF.lengthen(def);
+    // (A Star Road level is built from its world's level, already as long: special.js.)
+    if (def.starOf != null && LF.starLevel) def = LF.starLevel(def);
+    else if ((ctx.kind === 'story' || ctx.kind === 'practice') && LF.lengthen) def = LF.lengthen(def);
+    // Three star coins in it (coins.js); the ones you've already got show faded.
+    if ((ctx.kind === 'story' || ctx.kind === 'practice') && LF.addCoins) def = { ...LF.addCoins(def), coinsHave: coins[ctx.index] || [] };
     playDef = def; playCtx = ctx;
     // (While you're in a story level, the save says so: see leftMidLevel.)
     store.set('inLevel', ctx.kind === 'story' ? { index: ctx.index } : null);
@@ -1008,6 +1023,8 @@
       const isBest = !prev || t < prev.best;
       if (isBest) { book[i] = { best: t, falls }; store.set(hardcore ? 'progressHC' : 'progress', book); }
       if (hardcore && !progress[i]) { progress[i] = { best: t, falls }; store.set('progress', progress); }
+      // The star coins you picked up are yours now.
+      if (W.coinsGot) { coins[i] = [0, 1, 2].map(k => !!((coins[i] || [])[k] || W.coinsGot[k])); store.set('coins', coins); }
       const last = i === LF.LEVELS.length - 1, secret = W.clearedBy === 'secret' && LF.LEVELS[i].secretTo != null;
       LF.awards.clear({ kind: 'story', index: i, time: t, falls, hardcore, horde: !!W.horde, storyLit: Object.keys(progress).length, hcLit: Object.keys(progressHC).length, progress, secrets: Object.keys(secrets).length + (secret && !secrets[i] ? 1 : 0) });
       story.time += t; story.falls += falls;
@@ -1183,6 +1200,8 @@
   // ---------- actions ----------
   const ACTIONS = {
     story: d => {
+      const lv = LF.LEVELS[+d.i];
+      if (lv.starOf != null && !starOpen(+d.i)) { const c = worldCoins(lv.starOf); return flash(`Collect every star coin in ${LF.WORLDS[lv.starOf].name} to open this (${c.have} of ${c.all})`); }
       if (practice) return play(LF.LEVELS[+d.i], { kind: 'practice', index: +d.i });
       story = +d.i === 0 ? { time: 0, falls: 0 } : story; play(LF.LEVELS[+d.i], { kind: 'story', index: +d.i });
     },
@@ -1312,7 +1331,7 @@
     const lit = W.lanterns.filter(l => l.lit).length, open = W.door && W.door.open;
     const p = W.player;
     const boss = W.enemies.find(e => e.alive && e.awake && LF.isBoss(e));
-    const key = `${lit}|${Math.floor(W.time * 10)}|${W.falls}|${open}|${p.shield}|${Object.values(LF.powerFlags(p)).join('')}|${p.ammo}|${JSON.stringify(p.keys)}|${boss ? boss.type + boss.hp : ''}`;
+    const key = `${lit}|${Math.floor(W.time * 10)}|${W.falls}|${open}|${p.shield}|${Object.values(LF.powerFlags(p)).join('')}|${p.ammo}|${JSON.stringify(p.keys)}|${boss ? boss.type + boss.hp : ''}|${W.coins.filter(c => c.taken).length}`;
     if (key === hudCache) return;
     hudCache = key;
     // With no lanterns (a boss arena, or Hardcore) the door is all there is to show.
@@ -1324,6 +1343,8 @@
     $('hud-time').previousElementSibling.textContent = W.def.timeLimit || clock != null ? 'Left' : 'Time';
     $('hud-time').style.color = clock != null && clock <= (W.def.hurry || LF.HURRY) ? '#FF6B3D' : '';
     $('hud-falls').textContent = W.falls;
+    $('hud-coins-wrap').hidden = !W.coins.length;
+    if (W.coins.length) $('hud-coins').textContent = W.coins.map(c => (c.taken || c.had ? '★' : '☆')).join('');
     $('hud-ammo').textContent = W.def.noAmmo ? 'stomp!' : p.ammo;
     const held = Object.keys(p.keys);
     $('hud-keys-wrap').hidden = !held.length;
