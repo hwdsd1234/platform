@@ -51,10 +51,14 @@
     p: { name: 'Pear', power: 'Glide', color: '#C5D94A', note: 'hold up (or jump) while falling to glide down slowly; press Space in mid-air for a big lift, after which you can’t glide and fall steadily till you land, until you die' },
     s: { name: 'Strawberry', power: 'Wall grip', color: '#F0506E', note: 'slide down walls at a third of the speed, until you die' },
     'ç': { name: 'Cherry', power: 'Ammo magnet', color: '#B3123A', note: 'ammo crates within 4 blocks fly to you, until you die' },
+    'ƥ': { name: 'Pineapple', power: 'Spike-proof', color: '#F2C94C', note: 'spikes don’t hurt you (lava and spiked pendulums still do), until you die' },
+    'ǥ': { name: 'Grapes', power: 'Lucky', color: '#8E5BC2', note: 'enemies drop twice the ammo, until you die' },
+    'ƫ': { name: 'Peach', power: 'Swimmer', color: '#FFA07A', note: 'swim strokes are stronger and you sink slower, until you die' },
+    'ɯ': { name: 'Mango', power: 'Slow clock', color: '#FFB347', note: 'the level clock runs at two-thirds speed, until you die' },
     'ƀ': { name: 'Blueberry', power: 'Night eyes', color: '#5B6EE1', note: 'your light reaches twice as far, until you die' },
   };
   // Every fruit but the apple gives a power that's on or off: the player's flag for each.
-  const POWERS = LF.POWERS = { o: 'boost', b: 'dbl', m: 'fast', p: 'glide', s: 'grip', 'ç': 'magnet', 'ƀ': 'glow' };
+  const POWERS = LF.POWERS = { o: 'boost', b: 'dbl', m: 'fast', p: 'glide', s: 'grip', 'ç': 'magnet', 'ƀ': 'glow', 'ƥ': 'spiky', 'ǥ': 'lucky', 'ƫ': 'swimmer', 'ɯ': 'slowtime' };
   const FLAGS = Object.values(POWERS);
   LF.powerFlags = p => Object.fromEntries(FLAGS.map(k => [k, p[k] ? 1 : 0]));
   LF.hasPowers = p => FLAGS.some(k => p[k]);
@@ -526,7 +530,7 @@
     const y0 = Math.floor((p.y + 4) / TS), y1 = Math.floor((p.y + p.h - 1) / TS);
     for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
       const c = tile(W, tx, ty);
-      if (c === '^' && p.y + p.h > ty * TS + 14) return true;
+      if (c === '^' && p.y + p.h > ty * TS + 14 && !p.spiky) return true;   // (the pineapple: spike-proof)
       if (c === '~' && !swims && p.y + p.h > ty * TS + 10) return true;
     }
     return p.y > W.h * TS + 60;
@@ -730,6 +734,8 @@
     }
     if (playing && !W.cleared) {
       W.time += dt;
+      // (The mango slows the level clock to two-thirds speed.)
+      if (W.player.slowtime && W.def.deadline && !W.player.dead) W.clockFrom = (W.clockFrom || 0) + dt / 3;
       if (p.dead) { if (!W.lost) { W.deadTimer -= dt; if (W.deadTimer <= 0) respawn(W); } }
       else if (p.inCannon) stepCannon(W, p, dt);
       else stepPlayer(W, p, input, dt);
@@ -896,7 +902,7 @@
   // value. They fly to the player side by side as one group (n bullets, spaced so you can
   // count them) and arrive together for +n ammo. Hardcore has no ammo, so nothing drops there.
   function dropAmmo(W, e) {
-    const n = LF.ENEMIES[e.type].drop;
+    const n = LF.ENEMIES[e.type].drop * (W.player.lucky ? 2 : 1);   // (grapes: twice the ammo)
     if (!n || W.def.noSpawnInv || W.def.noAmmo) return;
     W.ammoFly.push({ n, x: e.x + e.w / 2, y: e.y + e.h / 2, vx: (Math.random() - .5) * 80, vy: -300, t: 0 });
   }
@@ -2821,7 +2827,7 @@
       W.emit('jump');
     } else if (p.buffer > 0 && wet) {
       // Swimming: as many jumps as you like while in the water.
-      p.vy = -jumpV * .88; p.buffer = 0; p.jumping = true; p.sx = .85; p.sy = 1.2;
+      p.vy = -jumpV * .88 * (p.swimmer ? 1.15 : 1); p.buffer = 0; p.jumping = true; p.sx = .85; p.sy = 1.2;   // (the peach: stronger strokes)
       burst(W, p.x + p.w / 2, p.y + p.h, 6, ['#7FB0E0', '#D9D0F0'], 70, 150, 2);
       W.emit('swim');
     } else if (p.buffer > 0 && p.wallCoyote > 0 && !p.onGround) {
@@ -2853,7 +2859,7 @@
     if (p.jumping && !input.jump && p.vy < 0) { p.vy *= .45; p.jumping = false; }
     if (p.vy >= 0) p.jumping = false;
     if (wet) {
-      p.vy = Math.min(SINK, p.vy + grav * .45 * dt);
+      p.vy = Math.min(SINK * (p.swimmer ? .5 : 1), p.vy + grav * .45 * dt);
       if (Math.random() < .05) W.particles.push({ x: p.x + p.w / 2 + p.face * 4, y: p.y + 4, vx: 0, vy: -40, life: .6, max: .6, c: '#9FD8FF', size: 2, g: -60 });
     } else p.vy = Math.min(MAXFALL * Math.sqrt(T.gravity), p.vy + grav * dt * (p.vy > 0 ? 1.15 : 1));
     // The pear's glide: holding jump while falling, you float down slowly. After its spin you

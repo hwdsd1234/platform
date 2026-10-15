@@ -1317,9 +1317,10 @@
     signs: [{ x: 2, y: 14.4, t: 'THE LAST DARK · 4 stomps · stomp it when it dives to the floor · after the third: RUN →' }],
   };
   out.push({ ...tower(finalDef, 999, true), chapter: 'The Last Night', boss: true, finalFight: true });
-  // The newer fruit (strawberry, cherry, blueberry, pear) grow in the story levels too: every
+  // The newer fruit (strawberry, cherry, blueberry, pear, pineapple, grapes, peach, mango) grow
+  // in the story levels too: every
   // third apple outside the towers and the Sky Roads becomes one of them, in turn.
-  const NEW_FRUIT = ['s', 'ç', 'ƀ', 'p'];
+  const NEW_FRUIT = ['s', 'ç', 'ƀ', 'p', 'ƥ', 'ǥ', 'ƫ', 'ɯ'];
   let apples = 0;
   for (const d of out) {
     if (d.boss || d.sky || !Array.isArray(d.map)) continue;

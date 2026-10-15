@@ -1042,6 +1042,27 @@
         ctx.fillStyle = '#E4F08A'; ctx.fillRect(-3.5, 0, 2.2, 2.5);
         ctx.strokeStyle = '#6B452C'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(1, -10); ctx.stroke();
         ctx.fillStyle = '#5FBF5A'; ctx.beginPath(); ctx.ellipse(4, -9, 3.2, 1.6, -.4, 0, TAU); ctx.fill();
+      } else if (f.type === 'ƥ') {
+        // A pineapple: a yellow cross-hatched body under a spiky green crown.
+        ctx.fillStyle = '#4E9A3A'; for (const a of [-.5, 0, .5]) { ctx.beginPath(); ctx.moveTo(-2, -4); ctx.lineTo(Math.sin(a) * 6, -11); ctx.lineTo(2, -4); ctx.fill(); }
+        ctx.fillStyle = '#F2C94C'; ctx.beginPath(); ctx.ellipse(0, 2, 5.5, 7, 0, 0, TAU); ctx.fill();
+        ctx.strokeStyle = '#B58A1E'; ctx.lineWidth = .9; ctx.beginPath(); for (const d of [-4, 0, 4]) { ctx.moveTo(d - 3, -3); ctx.lineTo(d + 3, 7); ctx.moveTo(d + 3, -3); ctx.lineTo(d - 3, 7); } ctx.stroke();
+      } else if (f.type === 'ǥ') {
+        // A bunch of grapes.
+        ctx.fillStyle = '#8E5BC2'; for (const [gx, gy] of [[-4, -2], [0, -2], [4, -2], [-2, 2], [2, 2], [0, 6]]) { ctx.beginPath(); ctx.arc(gx, gy, 3, 0, TAU); ctx.fill(); }
+        ctx.fillStyle = '#C3A2E8'; ctx.fillRect(-5, -4, 1.5, 1.5); ctx.fillRect(1, 0, 1.5, 1.5);
+        ctx.strokeStyle = '#6B452C'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(0, -5); ctx.lineTo(1, -9); ctx.stroke();
+      } else if (f.type === 'ƫ') {
+        // A peach: round and blushing, with a crease and a leaf.
+        ctx.fillStyle = '#FFA07A'; ctx.beginPath(); ctx.arc(0, 1, 6.5, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#FF7A6B'; ctx.beginPath(); ctx.arc(2.5, 2.5, 3.5, 0, TAU); ctx.fill();
+        ctx.strokeStyle = '#D9654F'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, -5); ctx.quadraticCurveTo(-2, 1, 0, 7); ctx.stroke();
+        ctx.fillStyle = '#5FBF5A'; ctx.beginPath(); ctx.ellipse(3, -6, 3.2, 1.6, -.4, 0, TAU); ctx.fill();
+      } else if (f.type === 'ɯ') {
+        // A mango: a long golden-orange drop, blushing red at one end.
+        ctx.fillStyle = '#FFB347'; ctx.beginPath(); ctx.ellipse(0, 1, 5, 7, .35, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#E8603C'; ctx.beginPath(); ctx.ellipse(2, -2, 3, 3.5, .35, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#5FBF5A'; ctx.beginPath(); ctx.ellipse(-1, -7, 3.2, 1.5, -.6, 0, TAU); ctx.fill();
       } else if (f.type === 's') {
         // A strawberry: a red heart point down, pale seeds, a green crown.
         ctx.fillStyle = '#F0506E'; ctx.beginPath(); ctx.moveTo(-6.5, -2); ctx.quadraticCurveTo(-6, 7, 0, 8); ctx.quadraticCurveTo(6, 7, 6.5, -2); ctx.quadraticCurveTo(0, -5, -6.5, -2); ctx.fill();
