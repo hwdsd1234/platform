@@ -56,9 +56,10 @@
     'ƫ': { name: 'Peach', power: 'Swimmer', color: '#FFA07A', note: 'swim strokes are stronger and you sink slower, until you die' },
     'ɯ': { name: 'Mango', power: 'Slow clock', color: '#FFB347', note: 'the level clock runs at two-thirds speed, until you die' },
     'ƀ': { name: 'Blueberry', power: 'Night eyes', color: '#5B6EE1', note: 'your light reaches twice as far, until you die' },
+    'ŧ': { name: 'Tomato', power: 'Second chance', color: '#E8402A', note: 'a hit with no shield doesn’t kill you: the tomato takes it, then for 5 seconds you run fast, jump high and can’t be hurt, and whatever you touch dies (a boss takes a hit)' },
   };
   // Every fruit but the apple gives a power that's on or off: the player's flag for each.
-  const POWERS = LF.POWERS = { o: 'boost', b: 'dbl', m: 'fast', p: 'glide', s: 'grip', 'ç': 'magnet', 'ƀ': 'glow', 'ƥ': 'spiky', 'ǥ': 'lucky', 'ƫ': 'swimmer', 'ɯ': 'slowtime' };
+  const POWERS = LF.POWERS = { o: 'boost', b: 'dbl', m: 'fast', p: 'glide', s: 'grip', 'ç': 'magnet', 'ƀ': 'glow', 'ƥ': 'spiky', 'ǥ': 'lucky', 'ƫ': 'swimmer', 'ɯ': 'slowtime', 'ŧ': 'tomato' };
   const FLAGS = Object.values(POWERS);
   LF.powerFlags = p => Object.fromEntries(FLAGS.map(k => [k, p[k] ? 1 : 0]));
   LF.hasPowers = p => FLAGS.some(k => p[k]);
@@ -610,12 +611,25 @@
   function hurt(W) {
     const p = W.player;
     if (p.dead || p.inv > 0) return;
+    if (!p.shield && p.tomato) return tomatoSave(W, p);
     if (!p.shield) return kill(W);
     // p.shield counts layers: 1, or 2 after a second apple. A hit takes one off.
     p.shield--; p.inv = 1.2; p.vy = -520; p.jumping = false;
     burst(W, p.x + p.w / 2, p.y + p.h / 2, 20, ['#9FD8FF', '#D9D0F0'], 200, 300);
     W.floaters.push({ x: p.x + p.w / 2, y: p.y - 8, t: p.shield ? 'shield cracked' : 'shield broke', life: 1, c: '#9FD8FF' });
     W.shake = .15; W.freeze = .06; ring(W, p.x + p.w / 2, p.y + p.h / 2, 46, '159,216,255', .45); W.emit('shield');
+  }
+
+  // The tomato: a hit with no shield, and it takes the hit instead (and is gone). Then
+  // RUSH seconds of all three: speed, a high jump, and invincibility that kills whatever you
+  // touch (p.rush; see stepPlayer and the enemy checks).
+  const RUSH = 5;
+  function tomatoSave(W, p) {
+    p.tomato = 0; p.rush = RUSH; p.inv = RUSH; p.vy = -520; p.jumping = false;
+    burst(W, p.x + p.w / 2, p.y + p.h / 2, 28, ['#E8402A', '#FFB547', '#FFE066', '#7FD87A'], 240, 200);
+    ring(W, p.x + p.w / 2, p.y + p.h / 2, 60, '232,64,42', .5);
+    W.floaters.push({ x: p.x + p.w / 2, y: p.y - 8, t: 'TOMATO RUSH!', life: 1.4, c: '#FF6B3D' });
+    W.shake = .2; W.freeze = .06; W.emit('shield');
   }
 
   function respawn(W) {
@@ -2839,6 +2853,7 @@
     }
     pullLever(W, p, input);
     p.lock -= dt; p.inv -= dt;
+    if (p.rush > 0) p.rush -= dt;
 
     if (dir && p.lock <= 0) p.face = dir;
     // Right after a wall jump, steering is weak so the kick carries you off the wall.
@@ -2849,7 +2864,7 @@
     }
     p.wet = wet;
     // (A watermelon makes you FAST times quicker on your feet.)
-    const T = playerTune(W.def), grav = G * T.gravity, run = RUN * T.run * (p.fast > 0 ? FAST : 1);
+    const T = playerTune(W.def), grav = G * T.gravity, run = RUN * T.run * (p.fast > 0 || p.rush > 0 ? FAST : 1);
     const accel = p.onGround ? (p.ice ? (dir ? 450 : 120) : dir ? 2600 : 2200) : p.lock > 0 ? 250 : (dir ? 1700 : 700) * T.air;
     p.vx = approach(p.vx, dir * run * (wet ? .65 : 1), accel * dt);
 
@@ -2871,7 +2886,7 @@
     p.sliding = !!p.wall && dir === p.wall && p.vy > 0;
 
     // Jump speed scales with sqrt(height x gravity) so the height setting is exact at any gravity.
-    const jumpV = JUMP * Math.sqrt(T.jump * T.gravity) * (p.boost > 0 ? BOOST : 1);
+    const jumpV = JUMP * Math.sqrt(T.jump * T.gravity) * (p.boost > 0 || p.rush > 0 ? BOOST : 1);
     if (p.buffer > 0 && p.coyote > 0 && !dropping) {
       p.vy = -jumpV; p.buffer = 0; p.coyote = 0; p.jumping = true;
       p.onGround = false; p.onPlat = null; p.sx = .75; p.sy = 1.3;
@@ -3082,6 +3097,13 @@
       if (!e.alive || e.phased || !overlap(p, e)) continue;
       const spec = LF.ENEMIES[e.type];
       if (e.type === 'G' && e.fade > .85) continue;
+      // A tomato rush: whatever you touch dies; a boss takes a hit (and flies into its fury,
+      // or falls on its last), at most one a stomp's pause apart. Nothing hurts you.
+      if (p.rush > 0) {
+        if (!spec.boss) { shootEnemy(W, e, Math.sign(e.x - p.x) || 1, null, 'KO', 999); continue; }
+        if (!(e.fury > 0) && !(e.stompCool > 0)) { e.stompCool = .4; W.shake = .15; shootEnemy(W, e, 0, null, 'rush'); }
+        continue;
+      }
       // A boss in a fury can't be stomped: you just bounce off it.
       if (spec.boss && e.fury > 0) {
         if (p.vy > 0 && p.y + p.h - e.y < 18) {

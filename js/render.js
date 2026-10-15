@@ -1124,6 +1124,13 @@
         ctx.strokeStyle = '#4E7A2E'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(-4, 2); ctx.quadraticCurveTo(-2, -6, 2, -9); ctx.moveTo(4, 3); ctx.quadraticCurveTo(3, -4, 2, -9); ctx.stroke();
         ctx.fillStyle = '#B3123A'; ctx.beginPath(); ctx.arc(-4, 4, 4, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.arc(4, 5, 4, 0, TAU); ctx.fill();
         ctx.fillStyle = '#FF6B8A'; ctx.fillRect(-6, 2, 1.6, 1.6); ctx.fillRect(2, 3, 1.6, 1.6);
+      } else if (f.type === 'ŧ') {
+        // A round red tomato with a green star of leaves on top.
+        ctx.fillStyle = '#E8402A'; ctx.beginPath(); ctx.ellipse(0, 2, 7, 6, 0, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#FF8A70'; ctx.fillRect(-4, -1, 2, 2);
+        ctx.fillStyle = '#4E9A3A'; ctx.beginPath();
+        for (let k = 0; k < 10; k++) { const ang = -Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? 1.2 : 4; ctx.lineTo(Math.cos(ang) * rr, -4 + Math.sin(ang) * rr * .6); }
+        ctx.fill();
       } else if (f.type === 'ƀ') {
         // A little cluster of blueberries.
         ctx.fillStyle = '#5B6EE1'; for (const [bx, by] of [[-3.5, 3], [3.5, 3], [0, -2.5]]) { ctx.beginPath(); ctx.arc(bx, by, 4, 0, TAU); ctx.fill(); }
@@ -1300,7 +1307,12 @@
 
     function drawPlayer(p) {
       if (p.dead) return;
-      if (p.inv > 0) ctx.globalAlpha = reduced ? .5 : Math.floor(p.inv * 16) % 2 ? .25 : .8;
+      // A tomato rush: no flicker, but a ring of shifting colour round you.
+      if (p.rush > 0) {
+        const hue = reduced ? 10 : (clock * 360) % 360;
+        ctx.save(); ctx.globalAlpha = Math.min(1, p.rush) * .45; ctx.fillStyle = `hsl(${hue},95%,60%)`;
+        ctx.beginPath(); ctx.ellipse(p.x + p.w / 2, p.y + p.h / 2, p.w * .95, p.h * .8, 0, 0, TAU); ctx.fill(); ctx.restore();
+      } else if (p.inv > 0) ctx.globalAlpha = reduced ? .5 : Math.floor(p.inv * 16) % 2 ? .25 : .8;
       const f = p.face, bx = p.x + p.w / 2, by = p.y + p.h, fl = LF.flamePos(p);
       // Gliding on the pear's power: a broad leaf held up overhead like a canopy.
       if (p.gliding) {

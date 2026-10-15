@@ -803,7 +803,7 @@
   // Fruit you've gathered (in Fruit Groves), up to INV_MAX of each. Tab opens it, on the map
   // only (not in a level): using a fruit gets you ready for your next level. Powers last until you
   // die, and carry on from level to level (carry: { shield, boost, dbl }). Not in Hardcore.
-  const INV_MAX = 999, FRUIT_ICON = { a: '🍎', o: '🍊', b: '🍌', m: '🍉', p: '🍐', 'ƥ': '🍍', 'ǥ': '🍇', 'ƫ': '🍑', 'ɯ': '🥭', s: '🍓', 'ç': '🍒', 'ƀ': '🫐' };
+  const INV_MAX = 999, FRUIT_ICON = { a: '🍎', o: '🍊', b: '🍌', m: '🍉', p: '🍐', 'ƥ': '🍍', 'ǥ': '🍇', 'ƫ': '🍑', 'ɯ': '🥭', s: '🍓', 'ç': '🍒', 'ƀ': '🫐', 'ŧ': '🍅' };
   let inventory = { ...Object.fromEntries(Object.keys(LF.FRUITS).map(t => [t, 0])), ...store.get('inventory', {}) };
   for (const t in inventory) if (!LF.FRUITS[t]) delete inventory[t];   // (fruit that's since gone, like the pear)
   let carry = store.get('powers', null), invFrom = null;
@@ -1363,7 +1363,7 @@
     if (p.boost > 0) powers.push('<i class="pw-o">Boost</i>');
     if (p.dbl > 0) powers.push('<i class="pw-b">Double</i>');
     if (p.fast > 0) powers.push('<i class="pw-m">Speed</i>');
-    for (const [t, k, label] of [['p', 'glide', 'Glide'], ['ƥ', 'spiky', 'Spike-proof'], ['ǥ', 'lucky', 'Lucky'], ['ƫ', 'swimmer', 'Swimmer'], ['ɯ', 'slowtime', 'Slow clock'], ['s', 'grip', 'Grip'], ['ç', 'magnet', 'Magnet'], ['ƀ', 'glow', 'Eyes']]) if (p[k]) powers.push(`<i style="color:${LF.FRUITS[t].color}">${label}</i>`);
+    for (const [t, k, label] of [['p', 'glide', 'Glide'], ['ƥ', 'spiky', 'Spike-proof'], ['ǥ', 'lucky', 'Lucky'], ['ƫ', 'swimmer', 'Swimmer'], ['ɯ', 'slowtime', 'Slow clock'], ['s', 'grip', 'Grip'], ['ç', 'magnet', 'Magnet'], ['ƀ', 'glow', 'Eyes'], ['ŧ', 'tomato', 'Tomato']]) if (p[k]) powers.push(`<i style="color:${LF.FRUITS[t].color}">${label}</i>`);
     $('hud-powers-wrap').hidden = !powers.length;
     $('hud-powers').innerHTML = powers.join('');
     $('boss-bar').hidden = !boss;
