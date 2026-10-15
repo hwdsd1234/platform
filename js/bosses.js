@@ -1342,14 +1342,26 @@
     signs: [{ x: 2, y: 14.4, t: 'THE LAST DARK · 4 stomps · stomp it when it dives to the floor · after the third: RUN →' }],
   };
   out.push({ ...tower(finalDef, 999, true), chapter: 'The Last Night', boss: true, finalFight: true });
-  // The newer fruit (strawberry, cherry, blueberry, pear, pineapple, grapes, peach, mango) grow
-  // in the story levels too: every
-  // third apple outside the towers and the Sky Roads becomes one of them, in turn.
-  const NEW_FRUIT = ['s', 'ç', 'ƀ', 'p', 'ƥ', 'ǥ', 'ƫ', 'ɯ'];
-  let apples = 0;
-  for (const d of out) {
-    if (d.boss || d.sky || !Array.isArray(d.map)) continue;
-    d.map = d.map.map(row => row.replace(/a/g, () => (apples++ % 3 === 1 ? NEW_FRUIT[Math.floor(apples / 3) % NEW_FRUIT.length] : 'a')));
-  }
+  // Fruit across the map: every fruit with a power (all but the apple, the everyday fruit)
+  // grows in exactly FRUIT_LEVELS story levels, spread evenly from the start of the map to
+  // the end, each fruit's levels offset from the others'. The Melon Patch keeps its
+  // watermelons and the Pear Cliffs their pears, and they count toward their fruit's levels;
+  // every other spot where fruit grew grows an apple.
+  const FRUIT_LEVELS = 10;
+  const story = out.filter(d => !d.boss && !d.sky && Array.isArray(d.map));
+  const themed = { m: d => d.melon, p: d => d.pear };
+  const powerFruit = Object.keys(LF.FRUITS).filter(t => t !== 'a');
+  for (const d of out) if (!d.boss && Array.isArray(d.map)) d.map = d.map.map(row => [...row].map(c => (powerFruit.includes(c) && !(themed[c] && themed[c](d)) ? 'a' : c)).join(''));   // (the Sky Roads too: only apples work there)
+  powerFruit.forEach((t, n) => {
+    const already = story.filter(d => d.map.some(r => r.includes(t))).length, want = FRUIT_LEVELS - already;
+    const pool = story.filter(d => !d.melon && !d.pear);
+    for (let k = 0; k < want; k++) {
+      const d = pool[Math.floor(((k + (n + .5) / powerFruit.length) / want) * pool.length) % pool.length];
+      // (On an apple's spot if it has one; else the first open spot standing on stone.)
+      let done = false;
+      d.map = d.map.map(row => (done || !row.includes('a') ? row : (done = true, row.replace('a', t))));
+      if (!done) d.map = d.map.map((row, y) => { if (done || y === 0) return row; const x = [...row].findIndex((c, x) => c === '.' && d.map[y + 1] && '#=i'.includes(d.map[y + 1][x])); if (x < 0) return row; done = true; return row.slice(0, x) + t + row.slice(x + 1); });
+    }
+  });
   L.length = 0; L.push(...out);
 })();

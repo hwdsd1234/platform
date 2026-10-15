@@ -49,7 +49,8 @@
     const near = (v, sizes) => Object.entries(sizes).sort((a, b) => Math.abs(a[1] - v) - Math.abs(b[1] - v))[0][0];
     const opts = up ? { shape: 'up', size: near(h, { s: 34, m: 56, l: 84 }) } : { shape: 'right', size: near(w, { s: 48, m: 84, l: 130 }) };
     const g = LF.generate({ ...opts, seed: hash(def.name) + k * 1013, difficulty: Math.min(5, 1 + Math.floor((world || 0) / 2)) });
-    return LF.normalize(g.map);
+    // (Only apples grow in the extra sections: each fruit with a power has its own levels.)
+    return LF.normalize(g.map).map(r => [...r].map(c => (LF.FRUITS[c] && c !== 'a' ? 'a' : c)).join(''));
   }
   LF.lengthen = def => {
     if (!def || def.boss || def.arenaX || !Array.isArray(def.map) || !find(def.map, 'D') || !find(def.map, 'P')) return def;
