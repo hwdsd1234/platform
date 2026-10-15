@@ -131,37 +131,29 @@
     });
   }
 
-  // The boss theme: one tune for every boss fight (bar the Last Dark's), as the Mario games
-  // do it. E minor, fast: a hook that climbs and falls back over i–♭VI–♭VII–V, again a
-  // step higher over ♭VI, a dive down through iv, and a run up; then a second half of its
-  // own. Under it a galloping bass. Sixteen bars. Notes are [step, MIDI].
+  // The boss theme: one tune for every boss fight (bar the Last Dark's), in the manner of the
+  // Mario games' boss battles: E, and dark. Under it a bass that worries at its note, a
+  // half-step up and back, syncopated; brass stabs on the off-beats; a short riff that climbs
+  // a half-step every two bars, then a chromatic answer falling back; then a second half that
+  // rises over the IV and runs back up into the top. Sixteen bars. Each bar: its root (MIDI,
+  // low), its riff ([step, semitones above root+24]), and how it ends.
+  const RIFF = [[0, 0], [2, 0], [3, 3], [6, 1], [8, 0], [11, -2], [12, -1], [14, 0]];
+  const ANSWER = [[0, 7], [2, 6], [3, 5], [4, 4], [6, 3], [8, 1], [10, 0]];
+  const RISE = [[0, 0], [3, 0], [6, 3], [8, 5], [10, 6], [12, 7], [14, 10]];
+  const FALL = [[0, 12], [2, 11], [3, 10], [6, 8], [8, 7], [10, 6], [12, 5], [14, 3]];
+  const RUN = [[0, 0], [2, 2], [4, 3], [6, 5], [8, 7], [10, 8], [12, 11], [14, 12]];
   const BOSS = [
-    { ch: [64, 67, 71], root: 40, lead: [[0, 76], [2, 76], [3, 79], [6, 83], [8, 81], [10, 79], [11, 78], [12, 79], [14, 76]] },
-    { ch: [60, 64, 67], root: 36, lead: [[0, 79], [2, 79], [3, 84], [6, 83], [8, 79], [10, 76], [12, 72], [14, 76]] },
-    { ch: [62, 66, 69], root: 38, lead: [[0, 78], [2, 78], [3, 81], [6, 86], [8, 84], [10, 81], [11, 79], [12, 78], [14, 74]], fill: true },
-    { ch: [59, 63, 66], root: 35, lead: [[0, 75], [3, 78], [6, 81], [8, 83], [12, 75]], hit: [12, 14] },
-    { ch: [64, 67, 71], root: 40, lead: [[0, 76], [2, 76], [3, 79], [6, 83], [8, 81], [10, 79], [11, 78], [12, 79], [14, 76]] },
-    { ch: [60, 64, 67], root: 36, lead: [[0, 79], [3, 84], [6, 88], [8, 86], [10, 84], [11, 83], [12, 79]] },
-    { ch: [57, 60, 64], root: 33, lead: [[0, 81], [2, 84], [3, 81], [6, 76], [8, 77], [10, 76], [12, 72], [14, 71]] },
-    { ch: [59, 63, 66], root: 35, lead: [[0, 71], [4, 75], [8, 78], [10, 81], [12, 83], [14, 87]], toms: true },
-    // The second half: iv, ♭VI, ♭VII, V, then home and up through III to iv and a last V that
-    // falls back into the top.
-    { ch: [57, 60, 64], root: 33, lead: [[0, 81], [2, 81], [3, 84], [6, 81], [8, 79], [10, 78], [12, 76]] },
-    { ch: [60, 64, 67], root: 36, lead: [[0, 79], [2, 79], [3, 84], [6, 88], [8, 86], [10, 84], [12, 79]] },
-    { ch: [62, 66, 69], root: 38, lead: [[0, 78], [3, 81], [6, 86], [8, 84], [10, 83], [12, 81], [14, 78]], fill: true },
-    { ch: [59, 63, 66], root: 35, lead: [[0, 75], [4, 78], [8, 83], [12, 87]], hit: [12, 14] },
-    { ch: [64, 67, 71], root: 40, lead: [[0, 88], [2, 86], [3, 83], [6, 79], [8, 83], [10, 86], [12, 88]] },
-    { ch: [55, 59, 62], root: 43, lead: [[0, 86], [3, 83], [6, 79], [8, 74], [10, 79], [12, 83]] },
-    { ch: [57, 60, 64], root: 33, lead: [[0, 84], [2, 83], [3, 81], [6, 76], [8, 78], [10, 79], [12, 81]] },
-    { ch: [59, 63, 66], root: 35, lead: [[0, 83], [3, 87], [6, 90], [8, 87], [10, 83], [12, 78], [14, 75]], toms: true },
+    [40, RIFF], [40, RIFF], [41, RIFF], [41, RIFF], [42, RIFF], [42, RIFF], [43, ANSWER], [40, ANSWER, 'hit'],
+    [45, RISE], [45, RISE], [43, FALL], [43, FALL], [41, RISE], [41, FALL], [40, RIFF], [40, RUN, 'toms'],
   ];
-  const GALLOP = [0, 0, 12, 0, 0, 0, 12, 0, 0, 0, 12, 0, 0, 12, 0, 12];
+  const WORRY = [[0, 0], [2, 0], [3, 1], [5, 0], [6, 3], [8, 0], [10, 0], [11, 1], [13, 0], [14, 6]];
   function bossBars() {
-    return BOSS.map(c => {
-      const lead = Array(16).fill(null), len = Array(16).fill(0);
-      c.lead.forEach(([st, n], k) => { lead[st] = n; len[st] = Math.min(4, (c.lead[k + 1] || [16])[0] - st); });
-      const bass = GALLOP.map((d, k) => (k % 4 === 3 ? null : c.root + d));
-      return { lead, len, bass, chord: c.ch, stab: c.hit ? [] : [6, 14], hit: c.hit || [], fill: !!c.fill, toms: !!c.toms };
+    return BOSS.map(([root, riff, end], k) => {
+      const lead = Array(16).fill(null), len = Array(16).fill(0), bass = Array(16).fill(null);
+      riff.forEach(([st, d], n) => { lead[st] = root + 24 + d; len[st] = Math.min(3, (riff[n + 1] || [16])[0] - st); });
+      for (const [st, d] of WORRY) bass[st] = root + d;
+      // (Power chords for the brass: root, fifth, octave.)
+      return { lead, len, bass, chord: [root + 12, root + 19, root + 24], stab: end ? [] : [3, 6, 11, 14], hit: end === 'hit' ? [12, 14] : [], fill: k === 6, toms: end === 'toms' };
     });
   }
 
@@ -169,7 +161,7 @@
   function compose(name) {
     if (cache[name]) return cache[name];
     // (Every boss fight plays the one boss theme.)
-    if (name.startsWith('fight:')) return cache[name] = cache.boss || (cache.boss = { mode: 'minor', root: 52, bpm: 168, feel: 'fight', bars: bossBars() });
+    if (name.startsWith('fight:')) return cache[name] = cache.boss || (cache.boss = { mode: 'minor', root: 52, bpm: 176, feel: 'fight', bars: bossBars() });
     const t = TRACKS[name] || TRACKS.map, R = LF.rng(t.seed * 7919 + 13), scale = SCALES[t.mode];
     // (Fights, the towers and the castle are all built on a hook, so they stick.)
     if (t.feel === 'grand') return cache[name] = { ...t, bars: castleBars() };

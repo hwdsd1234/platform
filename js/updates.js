@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'New boss music, in the style of the Mario boss battles: a worried, syncopated bass, brass stabs on the off-beats and a riff that climbs a half-step every two bars.',
       'Fixed: getting hit could leave you flickering in lava, safe for a moment. Lava (still or moving) now kills you even right after a hit.',
       'After the pear’s spin you float down slowly, even slower than a glide and without holding anything, like NSMBU’s acorn.',
       'Pear controls: Space in mid-air does the spin; Up only glides, so letting go of Up and pressing it again keeps you gliding.',
