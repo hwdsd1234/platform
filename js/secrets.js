@@ -4,11 +4,11 @@
 // (or the last one). lv.secretTo is the index of that world's first level, lv.secretWorld the
 // world's index. Load after worlds.js, so the worlds and level indexes are final.
 //
-// The door goes in a little hidden room behind a false wall (l) that looks just like stone:
-// the only way in is to walk into the wall. The room is carved into solid rock beside a spot
-// you can reach if there is some, or else built as a small 3x3 block of stone on a ledge (as
-// long as the level can still be finished with it there). Failing both, the door goes in the
-// most out-of-the-way spot you can reach, unseen until you come near.
+// The door is locked in a lever vault (see coins.js): a little stone room sealed by a rune
+// seal, opened by solving the row of levers in front of it. The room is carved into solid
+// rock beside a spot you can reach if there is some, or else built as a small 3x3 block of
+// stone on a ledge (as long as the level can still be finished with it there). Failing both,
+// the door goes in the most out-of-the-way spot you can reach, unseen until you come near.
 (() => {
   const LF = window.LF, L = LF.LEVELS, WORLDS = LF.WORLDS;
   const floor = c => c === '#' || c === '=';
@@ -21,99 +21,22 @@
   const FAR_START = 16;
   const nearAny = (marks, x, y) => marks.some(m => Math.hypot(m.x - x, m.y - y) < (m.c === 'P' ? FAR_START : NEAR));
 
-  // A room up in the ceiling: where you stand under a low roof of solid rock, one block of
-  // it is false. Jump up through it into a little room with the door, on the ledge beside.
-  function ceilingRoom(lv, xMax = Infinity) {
-    const g = LF.normalize(lv.map).map(row => row.split('')), h = g.length, w = g[0].length;
-    const a0 = LF.analyze(lv), seen = a0.seen, P = find(g, 'P'), D = find(g, 'D') || lastDoor(g), marks = landmarks(g);
+  // Lock a secret door in a lever vault (see coins.js) in level lv, left of column xMax (and,
+  // for a tower, at least minUp rows above the start): as far from the start and the door as
+  // it can be. True if it found room for one.
+  function vaultRoom(lv, xMax = Infinity, minUp = -Infinity) {
+    const g = LF.normalize(lv.map), G = g.map(r => r.split('')), w = g[0].length;
+    const a0 = LF.analyze(lv), seen = a0.seen, P = find(G, 'P'), D = find(G, 'D') || lastDoor(G), marks = landmarks(G);
     if (!P || !D) return false;
-    // The roof can be thick rock, or a thin slab with open air above: then the room is built
-    // on top of it as a block of stone (as long as the level can still be finished).
-    const spots = [];
-    for (let y = 7; y < h - 1; y++) for (let x = 2; x < w - 2; x++) {
-      if (!seen[y * w + x] || g[y][x] !== '.' || g[y - 1][x] !== '.' || !floor(g[y + 1][x]) || x >= xMax) continue;
-      if (nearAny(marks, x, y)) continue;
-      for (const d of [-1, 1]) {
-        const cols = [x - d, x, x + d, x + 2 * d];
-        if (cols.some(c => g[y - 2][c] !== '#')) continue;
-        let fits = true;
-        for (let r = y - 5; r <= y - 3 && fits; r++) for (const c of cols) if (g[r]?.[c] !== '#' && g[r]?.[c] !== '.') { fits = false; break; }
-        if (!fits) continue;
-        spots.push({ x, y, d, score: Math.hypot(x - P.x, y - P.y) + Math.hypot(x - D.x, y - D.y) + ((x * 7 + y * 13) % 11) });
-      }
-    }
-    spots.sort((a, b) => b.score - a.score);
-    for (const { x, y, d } of spots.slice(0, 40)) {
-      const t = g.map(row => row.slice());
-      for (let r = y - 5; r <= y - 3; r++) for (const c of [x - d, x, x + d, x + 2 * d]) t[r][c] = '#';
-      t[y - 2][x] = t[y - 3][x] = t[y - 4][x] = 'l';
-      t[y - 4][x + d] = 'l'; t[y - 3][x + d] = '?';
-      const tryLv = { ...lv, map: t.map(row => row.join('')) }, a = LF.analyze(tryLv);
-      if (!a.ok || a.litOk !== a0.litOk) continue;
-      lv.map = tryLv.map;
-      return true;
-    }
-    return false;
-  }
-
-  // Try to hide a secret door in level lv (left of column xMax); true if it found a room for it.
-  // (minUp: only spots at least that many rows above the start, for towers.)
-  function hideRoom(lv, xMax = Infinity, minUp = -Infinity) {
-    const g = LF.normalize(lv.map).map(row => row.split('')), h = g.length, w = g[0].length;
-    const seen = LF.analyze(lv).seen, P = find(g, 'P'), D = find(g, 'D') || lastDoor(g), marks = landmarks(g);
-    if (!P || !D) return false;
-    let best = null;
-    for (let y = 3; y < h - 2; y++) for (let x = 1; x < w - 1; x++) {
-      if (!seen[y * w + x] || g[y][x] !== '.' || g[y - 1][x] !== '.' || !floor(g[y + 1][x])) continue;
-      for (const d of [-1, 1]) {
-        // Rock 3 wide and 4 tall beside the spot: the entrance, the room, and a wall behind.
-        const far = x + 3 * d;
-        if (far < 1 || far > w - 2 || Math.max(x, far) >= xMax) continue;
-        let rock = true;
-        for (let k = 1; k <= 3 && rock; k++) for (let r = -2; r <= 1; r++) if (g[y + r][x + k * d] !== '#') { rock = false; break; }
-        if (!rock) continue;
-        const score = Math.hypot(x - P.x, y - P.y) + Math.hypot(x - D.x, y - D.y) + ((x * 7 + y * 13) % 11);
-        if (nearAny(marks, x, y) || P.y - y < minUp) continue;
-        if (!best || score > best.score) best = { x, y, d, score };
-      }
-    }
-    if (!best) return false;
-    const { x, y, d } = best;
-    g[y][x + d] = g[y - 1][x + d] = 'l';     // the false wall you walk through
-    g[y - 1][x + 2 * d] = 'l'; g[y][x + 2 * d] = '?';   // the room, with the door in it
-    lv.map = g.map(row => row.join(''));
-    return true;
-  }
-  // Build a 3x3 block of stone on a ledge with the room inside, facing the spot beside it.
-  function buildRoom(lv, xMax = Infinity) {
-    const g0 = LF.normalize(lv.map).map(row => row.split('')), h = g0.length, w = g0[0].length;
-    const a0 = LF.analyze(lv), seen = a0.seen, P = find(g0, 'P'), D = find(g0, 'D') || lastDoor(g0);
-    if (!P || !D) return false;
-    const spots = [];
-    for (let y = 4; y < h - 2; y++) for (let x = 1; x < w - 1; x++) {
-      if (!seen[y * w + x] || g0[y][x] !== '.' || g0[y - 1][x] !== '.' || !floor(g0[y + 1][x])) continue;
-      for (const d of [-1, 1]) {
-        const far = x + 3 * d;
-        if (far < 1 || far > w - 2 || Math.max(x, far) >= xMax) continue;
-        let room = true;
-        for (let k = 1; k <= 3 && room; k++) {
-          if (!floor(g0[y + 1][x + k * d])) room = false;
-          for (let r = -3; r <= 0; r++) if (g0[y + r][x + k * d] !== '.') { room = false; break; }
-        }
-        if (!room) continue;
-        if (nearAny(landmarks(g0), x, y)) continue;
-        spots.push({ x, y, d, score: Math.hypot(x - P.x, y - P.y) + Math.hypot(x - D.x, y - D.y) });
-      }
-    }
-    spots.sort((a, b) => b.score - a.score);
-    for (const { x, y, d } of spots.slice(0, 40)) {
-      const g = g0.map(row => row.slice());
-      for (let k = 1; k <= 3; k++) g[y - 2][x + k * d] = '#';
-      g[y - 1][x + 3 * d] = g[y][x + 3 * d] = '#';
-      g[y][x + d] = g[y - 1][x + d] = 'l';
-      g[y - 1][x + 2 * d] = 'l'; g[y][x + 2 * d] = '?';
-      const tryLv = { ...lv, map: g.map(row => row.join('')) }, a = LF.analyze(tryLv);
-      if (!a.ok || a.litOk !== a0.litOk) continue;
+    const spots = LF.vaults.spots(g, (x, y) => seen[y * w + x], (x, y) => x + 5 < xMax && P.y - y >= minUp && !nearAny(marks, x, y))
+      .map(q => ({ ...q, score: Math.hypot(q.x - P.x, q.y - P.y) + Math.hypot(q.x - D.x, q.y - D.y) + ((q.x * 7 + q.y * 13) % 11) + (q.rock ? 6 : 0) }))
+      .sort((a, b) => b.score - a.score);
+    for (const q of spots.slice(0, 40)) {
+      const t = g.map(r => r.split(''));
+      LF.vaults.build(t, q, '?', q.x * 31 + q.y);
+      const tryLv = { ...lv, map: t.map(r => r.join('')) };
+      // (A block built on a ledge mustn't get in the way of finishing the level.)
+      if (!q.rock) { const a = LF.analyze(tryLv); if (!a.ok || a.litOk !== a0.litOk || !a.seen[q.prize[1] * w + q.prize[0]]) continue; }
       lv.map = tryLv.map;
       return true;
     }
@@ -156,8 +79,7 @@
       let placed = false;
       for (let n = at; n < regular.length && !placed; n++) {
         const lv = L[regular[n]];
-        const first = n % 2 ? ceilingRoom : hideRoom, second = n % 2 ? hideRoom : ceilingRoom;
-        if (lv.secretTo == null && (first(lv) || second(lv) || buildRoom(lv))) { lv.secretTo = WORLDS[to].first; lv.secretWorld = to; placed = true; }
+        if (lv.secretTo == null && vaultRoom(lv)) { lv.secretTo = WORLDS[to].first; lv.secretWorld = to; placed = true; }
       }
       if (!placed && L[regular[at]].secretTo == null && farSpot(L[regular[at]])) { L[regular[at]].secretTo = WORLDS[to].first; L[regular[at]].secretWorld = to; }
     }
@@ -167,7 +89,7 @@
       const towers = L.filter(l => l.world === k && l.boss && !l.finalFight);
       for (const lv of [...towers.slice(towers.length >> 1), ...towers.slice(0, towers.length >> 1)]) {
         // In a tower: up the shaft, off a ledge, never down by the start or along the floor.
-        if (ceilingRoom(lv, lv.arenaX - 2) || hideRoom(lv, lv.arenaX - 2, 8) || buildRoom(lv, lv.arenaX - 2)) { lv.secretTo = WORLDS[to].first; lv.secretWorld = to; break; }
+        if (vaultRoom(lv, lv.arenaX - 2, 8)) { lv.secretTo = WORLDS[to].first; lv.secretWorld = to; break; }
       }
     }
   });

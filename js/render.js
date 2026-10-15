@@ -296,6 +296,20 @@
             ctx.beginPath(); ctx.moveTo(cx - 3 * d, y + 2.5); ctx.lineTo(cx + 2 * d, y + 5); ctx.lineTo(cx - 3 * d, y + 7.5); ctx.lineTo(cx - 1 * d, y + 5); ctx.fill();
           }
           ctx.restore();
+        } else if (c === 'ŝ') {
+          // A rune seal: dark stone with a glowing ring and as many marks as its puzzle's levers
+          // are lit.
+          drawStone(W, tx, ty, x, y, '#3E3460', '#332A52');
+          const pz = W.puzzles && W.puzzles.find(q => q.seals.some(([sx, sy]) => sx === tx && sy === ty));
+          const lit = pz ? pz.levers.filter(l => l.on).length : 0, all = pz ? pz.levers.length : 4;
+          const glow = reduced ? .7 : .55 + .25 * Math.sin(clock * 3 + tx + ty);
+          ctx.strokeStyle = `rgba(159,216,255,${glow})`; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(x + 16, y + 16, 9, 0, TAU); ctx.stroke();
+          for (let k = 0; k < all; k++) {
+            const ang = -Math.PI / 2 + k / all * TAU;
+            ctx.fillStyle = k < lit ? '#FFE066' : 'rgba(159,216,255,.35)';
+            ctx.beginPath(); ctx.arc(x + 16 + Math.cos(ang) * 9, y + 16 + Math.sin(ang) * 9, 2.6, 0, TAU); ctx.fill();
+          }
         } else if (c === '|' && opts.edit) {
           ctx.strokeStyle = 'rgba(255,107,61,.8)'; ctx.lineWidth = 2; ctx.setLineDash([4, 4]);
           ctx.beginPath(); ctx.moveTo(x + 16, y + 2); ctx.lineTo(x + 16, y + TS - 2); ctx.stroke(); ctx.setLineDash([]);
@@ -452,13 +466,27 @@
       }
     }
 
+    // Levers: a post with a handle, thrown right and glowing gold when lit, left and dim when
+    // not.
+    function drawLevers(W) {
+      for (const l of W.levers || []) {
+        const x = l.tx * TS, y = l.ty * TS;
+        if (l.flip > 0) l.flip = Math.max(0, l.flip - .08);
+        ctx.fillStyle = '#4C4062'; ctx.fillRect(x + 9, y + 24, 14, 8);
+        ctx.fillStyle = '#6E6186'; ctx.fillRect(x + 9, y + 24, 14, 2);
+        const ang = (l.on ? .6 : -.6) * (1 - l.flip * .5), hx = x + 16 + Math.sin(ang) * 16, hy = y + 26 - Math.cos(ang) * 16;
+        ctx.strokeStyle = '#A99CC4'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x + 16, y + 26); ctx.lineTo(hx, hy); ctx.stroke();
+        ctx.fillStyle = l.on ? '#FFE066' : '#5B6EE1';
+        if (l.on && !reduced) { ctx.globalAlpha = .35; ctx.beginPath(); ctx.arc(hx, hy, 8, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; }
+        ctx.beginPath(); ctx.arc(hx, hy, 4.5, 0, TAU); ctx.fill();
+      }
+    }
+
     // Star coins: big gold coins with a star, bobbing and turning; one you've already got from
     // an earlier run shows as a pale outline, and a just-taken one swells and fades.
     function drawCoins(W) {
       for (const c of W.coins || []) {
         if (c.taken && c.pop <= 0) continue;
-        // (A hidden coin you haven’t found yet isn’t drawn.)
-        if (!c.taken && !c.seen) continue;
         if (c.taken) c.pop = Math.max(0, c.pop - .04);
         const bob = reduced ? 0 : Math.sin(clock * 2.5 + c.k) * 3, turn = reduced ? 1 : Math.abs(Math.cos(clock * 1.6 + c.k));
         const r = 12 * (c.taken ? 1 + (1 - c.pop) : 1), a = c.taken ? c.pop : 1;
@@ -1770,6 +1798,7 @@
         if (W.chasing && tc.state === 'idle') { ctx.strokeStyle = `rgba(255,181,71,${.5 + .5 * Math.sin(clock * 8)})`; ctx.lineWidth = 2; ctx.strokeRect(tc.x - 3, tc.y - 3, tc.w + 6, tc.h + 2); }
       }
       for (const l of W.lanterns) drawLantern(l);
+      drawLevers(W);
       drawCoins(W);
       // A raging boss glows red (it can't be stomped till it calms down).
       for (const e of W.enemies) {

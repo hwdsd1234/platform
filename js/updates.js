@@ -6,6 +6,8 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Fixed: you could get a star coin counted twice, after an update moved the coins. Coins are now kept by which third of the level they’re in, so one you’ve got stays got wherever it moves.',
+      'No more false walls. Star coins and secret exits are locked in lever vaults instead: a little stone room sealed with a rune seal, and a row of four levers in front of it. Press ↓ at a lever to flip it, and the ones either side of it flip too; light all four and the seal breaks. Every vault starts in a different muddle.',
       'Rising lava never fills a whole stage any more: in the towers’ flood climbs it stops halfway up.',
       'Star coins are secret now, and hard to find: each is hidden in the most out-of-the-way part of its third of the level, nearly always inside the rock behind a false wall (walk into a wall, or jump up through a low ceiling) or in a little block of stone up on a ledge. You can’t see one till you’re in its hiding place (or, for the odd one out in the open, close by).',
       'The map marks where every fruit grows: a coloured dot by each level for each kind of fruit in it (hover for names), and the level’s fruit is listed under its name.',
