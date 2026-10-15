@@ -296,20 +296,6 @@
             ctx.beginPath(); ctx.moveTo(cx - 3 * d, y + 2.5); ctx.lineTo(cx + 2 * d, y + 5); ctx.lineTo(cx - 3 * d, y + 7.5); ctx.lineTo(cx - 1 * d, y + 5); ctx.fill();
           }
           ctx.restore();
-        } else if (c === 'ŝ') {
-          // A rune seal: dark stone with a glowing ring and as many marks as its puzzle's levers
-          // are lit.
-          drawStone(W, tx, ty, x, y, '#3E3460', '#332A52');
-          const pz = W.puzzles && W.puzzles.find(q => q.seals.some(([sx, sy]) => sx === tx && sy === ty));
-          const lit = pz ? pz.levers.filter(l => l.on).length : 0, all = pz ? pz.levers.length : 4;
-          const glow = reduced ? .7 : .55 + .25 * Math.sin(clock * 3 + tx + ty);
-          ctx.strokeStyle = `rgba(159,216,255,${glow})`; ctx.lineWidth = 2;
-          ctx.beginPath(); ctx.arc(x + 16, y + 16, 9, 0, TAU); ctx.stroke();
-          for (let k = 0; k < all; k++) {
-            const ang = -Math.PI / 2 + k / all * TAU;
-            ctx.fillStyle = k < lit ? '#FFE066' : 'rgba(159,216,255,.35)';
-            ctx.beginPath(); ctx.arc(x + 16 + Math.cos(ang) * 9, y + 16 + Math.sin(ang) * 9, 2.6, 0, TAU); ctx.fill();
-          }
         } else if (c === '|' && opts.edit) {
           ctx.strokeStyle = 'rgba(255,107,61,.8)'; ctx.lineWidth = 2; ctx.setLineDash([4, 4]);
           ctx.beginPath(); ctx.moveTo(x + 16, y + 2); ctx.lineTo(x + 16, y + TS - 2); ctx.stroke(); ctx.setLineDash([]);
@@ -435,8 +421,6 @@
     // its arms turning, sparks drifting into the middle, a pulsing glow), so it never looks
     // like the level's own door. When you go through, rings flash out where you went in and
     // where you came out (W.warps).
-    // (A portal into a secret section stays hidden in its vault till the seal breaks.)
-    const sealed = (W, d) => d.to && [-1, 1].some(k => LF.tile(W, d.tx + k, d.ty) === 'ŝ');
     function drawPassage(d) {
       const cx = d.x + 16, cy = d.y + 30, R0 = 22, t = reduced ? 0 : clock;
       // The glow behind it.
@@ -465,22 +449,6 @@
         const q = (W.clock - w.t) / .6;
         if (q < 0 || q > 1) continue;
         for (const [r, c] of [[1, '159,240,224'], [.6, '185,166,255']]) { ctx.strokeStyle = `rgba(${c},${1 - q})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(w.x, w.y, 8 + q * 60 * r, 0, TAU); ctx.stroke(); }
-      }
-    }
-
-    // Levers: a post with a handle, thrown right and glowing gold when lit, left and dim when
-    // not.
-    function drawLevers(W) {
-      for (const l of W.levers || []) {
-        const x = l.tx * TS, y = l.ty * TS;
-        if (l.flip > 0) l.flip = Math.max(0, l.flip - .08);
-        ctx.fillStyle = '#4C4062'; ctx.fillRect(x + 9, y + 24, 14, 8);
-        ctx.fillStyle = '#6E6186'; ctx.fillRect(x + 9, y + 24, 14, 2);
-        const ang = (l.on ? .6 : -.6) * (1 - l.flip * .5), hx = x + 16 + Math.sin(ang) * 16, hy = y + 26 - Math.cos(ang) * 16;
-        ctx.strokeStyle = '#A99CC4'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x + 16, y + 26); ctx.lineTo(hx, hy); ctx.stroke();
-        ctx.fillStyle = l.on ? '#FFE066' : '#5B6EE1';
-        if (l.on && !reduced) { ctx.globalAlpha = .35; ctx.beginPath(); ctx.arc(hx, hy, 8, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; }
-        ctx.beginPath(); ctx.arc(hx, hy, 4.5, 0, TAU); ctx.fill();
       }
     }
 
@@ -1644,7 +1612,7 @@
       }
       // Passage doors glow like an open door.
       // (Passage doors glow through the dark as their swirling portals.)
-      for (const pd of W.passages) if (!sealed(W, pd)) drawPassage(pd);
+      for (const pd of W.passages) drawPassage(pd);
       drawWarps(W);
       const d = W.door;
       if (d && d.glow > 0) {
@@ -1794,7 +1762,7 @@
       drawTiles(W, cam, opts);
       drawPlats(W);
       drawDoor(W.door); if (W.secretSeen || opts.edit) drawDoor(W.secret);
-      for (const d of W.passages) if (!sealed(W, d)) drawPassage(d);
+      for (const d of W.passages) drawPassage(d);
       drawWarps(W);
       // Practice checkpoints: little blue flags.
       for (const m of W.marks) {
@@ -1812,7 +1780,6 @@
         if (W.chasing && tc.state === 'idle') { ctx.strokeStyle = `rgba(255,181,71,${.5 + .5 * Math.sin(clock * 8)})`; ctx.lineWidth = 2; ctx.strokeRect(tc.x - 3, tc.y - 3, tc.w + 6, tc.h + 2); }
       }
       for (const l of W.lanterns) drawLantern(l);
-      drawLevers(W);
       drawCoins(W);
       // A raging boss glows red (it can't be stomped till it calms down).
       for (const e of W.enemies) {

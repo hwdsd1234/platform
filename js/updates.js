@@ -6,6 +6,10 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Pear: stomping an enemy (or bouncing off a raging boss) after the spin lets you glide again.',
+      'A star coin you already have is just an outline now: you pass straight through it, and it never counts twice. Coins you pick up only count once you finish the level; die first and that run’s coins are gone.',
+      'Every coin in a level is got a different way. Each secret section is one of seven kinds: pillar jumps, crumbling blocks, icy pillars, blinking blocks, conveyor belts running backwards, springs over tall walls, or lifts across long spiked pits. A level’s three coins always take three different kinds, and which three changes from level to level.',
+      'No more lever vaults. Each star coin and secret exit is found through a portal in the most out-of-the-way spot of its part of the level, down into its secret section.',
       'Star coins and secret exits are now at the end of secret sections: solve a lever vault (or find a lone portal somewhere out of the way), and its portal takes you down into a hidden run under the level of hard jumps between one-tile pillars over spikes, with bats in the way. The prize waits at the end, and for a coin a portal takes you back up beside the vault.',
       'New fruit: the tomato 🍅. With no shield, a hit doesn’t kill you: the tomato takes it instead (and is used up). Then for 5 seconds you run fast, jump high and can’t be hurt, and whatever you touch dies. A boss you touch takes a hit (and flies into its fury, or falls if it was its last). It grows on its own in 10 levels across the map, and here and there elsewhere.',
       'Fixed: you could get a star coin counted twice, after an update moved the coins. Coins are now kept by which third of the level they’re in, so one you’ve got stays got wherever it moves.',

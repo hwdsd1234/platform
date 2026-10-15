@@ -176,8 +176,7 @@
   // T and H are blink blocks (lowercase while switched off); < and > are conveyor belts.
   // i is ice: solid but slippery. 1, 2, 3 are locked doors opened by keys r, u, y.
   // v, w, z are shot doors (open after 3, 10, 25 hits); g is a boss gate (opens when the bosses fall).
-  // ŝ is a rune seal, broken by lighting every lever beside it (ł lit, Ł unlit; see levers below).
-  const isSolid = LF.isSolid = c => c === 'ŝ' || c === '#' || c === 'C' || c === 'O' || c === 'T' || c === 'H' || c === '<' || c === '>' || c === 'i' || c === '1' || c === '2' || c === '3' || c === 'v' || c === 'w' || c === 'z' || c === 'g';
+  const isSolid = LF.isSolid = c => c === '#' || c === 'C' || c === 'O' || c === 'T' || c === 'H' || c === '<' || c === '>' || c === 'i' || c === '1' || c === '2' || c === '3' || c === 'v' || c === 'w' || c === 'z' || c === 'g';
   LF.SHOT_DOORS = { v: 3, w: 10, z: 25 };
   LF.KEYS = {
     r: { name: 'Red key', gate: '1', color: '#FF6B3D', dim: '#7A2E1C' },
@@ -209,14 +208,13 @@
     const tiles = rows.map(r => r.split('').map(c => (c === '.' ? ' ' : c)));
     const W = {
       def, name: def.name || 'Untitled', dark: def.dark ?? .6, w, h, tiles,
-      lanterns: [], coins: [], levers: [], puzzles: [], spinners: [], fruits: [], ammo: [], ammoFly: [], passages: [], entries: [], marks: [], blinks: [], bullets: [], traps: [], rings: [], ghosts: [], keys: [], unlocking: [], freeze: 0, enemies: [], plats: [], projectiles: [], particles: [], floaters: [], crumbles: [],
+      lanterns: [], coins: [], spinners: [], fruits: [], ammo: [], ammoFly: [], passages: [], entries: [], marks: [], blinks: [], bullets: [], traps: [], rings: [], ghosts: [], keys: [], unlocking: [], freeze: 0, enemies: [], plats: [], projectiles: [], particles: [], floaters: [], crumbles: [],
       door: null, start: { tx: 1, ty: h - 2 }, clock: 0, time: 0, falls: 0, shake: 0,
       deadTimer: 0, cleared: false, events: [],
     };
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
       const c = tiles[y][x];
       if (c === 'P') { W.start = { tx: x, ty: y }; tiles[y][x] = ' '; }
-      else if (c === 'ł' || c === 'Ł') { W.levers.push({ tx: x, ty: y, on: c === 'ł', flip: 0 }); tiles[y][x] = ' '; }
       else if (c === 'L') { W.lanterns.push({ tx: x, ty: y, x: x * TS + 16, y: y * TS + 14, lit: false, f: (x * 7 + y * 3) % 9, pop: 0 }); tiles[y][x] = ' '; }
       else if (LF.KEYS[c]) { W.keys.push({ c, tx: x, ty: y, x: x * TS + 16, y: y * TS + 16, taken: false }); tiles[y][x] = ' '; }
       // & starts a horde chasing right from this column; % one rising from this row.
@@ -409,19 +407,6 @@
       const tall = h > w * 1.2, slot = c => (def.coinSlots || []).findIndex(([x, y]) => x === c.tx && y === c.ty);
       W.coins.sort((a, b) => (def.coinSlots ? slot(a) - slot(b) : tall ? b.ty - a.ty : a.tx - b.tx));
       W.coins.forEach((c, k) => { c.k = k; c.had = !!(def.coinsHave && def.coinsHave[k]); });
-    }
-    // Lever puzzles: each row of levers side by side is one puzzle, and the rune seal next to
-    // it (within 2 tiles of its end) is what it opens.
-    const lv = W.levers.slice().sort((a, b) => a.ty - b.ty || a.tx - b.tx);
-    for (let k = 0; k < lv.length;) {
-      let e = k + 1;
-      while (e < lv.length && lv[e].ty === lv[k].ty && lv[e].tx === lv[e - 1].tx + 1) e++;
-      const row = lv.slice(k, e), x0 = row[0].tx, x1 = row[row.length - 1].tx, ty = row[0].ty, seals = [];
-      for (let y = ty - 2; y <= ty + 1; y++) for (let x = x0 - 3; x <= x1 + 3; x++) if (tile(W, x, y) === 'ŝ') seals.push([x, y]);
-      const pz = { levers: row, seals, open: false };
-      row.forEach(l => { l.puzzle = pz; });
-      W.puzzles.push(pz);
-      k = e;
     }
     return W;
   };
@@ -2828,31 +2813,6 @@
     }
   }
 
-  // Standing at a lever and pressing ↓ pulls it: it flips, and so do the levers on either side
-  // of it. Light them all and the seal they belong to breaks.
-  const pullLever = LF._pull = (W, p, input) => {
-    const down = !!input.down, pressed = down && !p.downWas;
-    p.downWas = down;
-    // (The first time you come up to a row of levers, a word on how they work.)
-    if (!W.leverHint && W.levers.some(l => !l.puzzle.open && Math.abs(l.tx * TS + 16 - (p.x + p.w / 2)) < 40 && Math.abs(l.ty * TS - p.y) < 64)) {
-      W.leverHint = true;
-      W.floaters.push({ x: p.x + p.w / 2, y: p.y - 24, t: '↓ pulls a lever (and flips the ones beside it): light them all', life: 3.2, c: '#9FD8FF' });
-    }
-    if (!pressed || !p.onGround || !W.levers.length) return;
-    const cx = p.x + p.w / 2, ty = Math.floor((p.y + p.h - 1) / TS);
-    const l = W.levers.find(l => l.ty === ty && Math.abs(l.tx * TS + 16 - cx) < 16);
-    if (!l || l.puzzle.open) return;
-    const row = l.puzzle.levers, k = row.indexOf(l);
-    for (const q of [row[k - 1], l, row[k + 1]]) if (q) { q.on = !q.on; q.flip = 1; }
-    W.emit('hop');
-    if (!row.every(q => q.on)) return;
-    l.puzzle.open = true;
-    for (const [x, y] of l.puzzle.seals) { W.tiles[y][x] = ' '; burst(W, x * TS + 16, y * TS + 16, 16, ['#9FD8FF', '#B9A6FF', '#FFFFFF'], 160, 80, 2.5); }
-    if (W.secret && l.puzzle.seals.some(([x, y]) => Math.abs(x - W.secret.tx) <= 2 && Math.abs(y - W.secret.ty) <= 2)) W.secretSeen = true;
-    W.floaters.push({ x: cx, y: p.y - 18, t: 'the seal breaks!', life: 1.6, c: '#9FD8FF' });
-    W.emit('key');
-  };
-
   function stepPlayer(W, p, input, dt) {
     const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
     // Standing at the cannon and pressing ↓ climbs in.
@@ -2863,7 +2823,6 @@
       W.emit('hop');
       return;
     }
-    pullLever(W, p, input);
     p.lock -= dt; p.inv -= dt;
     if (p.rush > 0) p.rush -= dt;
 
@@ -3116,10 +3075,11 @@
         if (!(e.fury > 0) && !(e.stompCool > 0)) { e.stompCool = .4; W.shake = .15; shootEnemy(W, e, 0, null, 'rush'); }
         continue;
       }
+      // (Any stomp, or a bounce off a raging boss, ends the pear's spin: you can glide again.)
       // A boss in a fury can't be stomped: you just bounce off it.
       if (spec.boss && e.fury > 0) {
         if (p.vy > 0 && p.y + p.h - e.y < 18) {
-          p.vy = -560 * Math.sqrt(T.gravity); p.jumping = false;
+          p.vy = -560 * Math.sqrt(T.gravity); p.jumping = false; p.spun = false;
           if (!W.floaters.some(f => f.t === 'it’s raging!')) W.floaters.push({ x: e.x + e.w / 2, y: e.y - 8, t: 'it’s raging!', life: .8, c: '#FF4D3D' });
         } else if (e.stompCool <= 0) { hurt(W); if (p.dead) return; }
         continue;
@@ -3128,7 +3088,7 @@
       // sets them off) can be stomped again and again, with a short pause between.
       if ((spec.stomp || e.dazed > 0) && (spec.boss || e.hp > 1 || e.type === '@')) {
         if (p.vy > 0 && p.y + p.h - e.y < 18) {
-          p.vy = (input.jump ? -680 : -520) * Math.sqrt(T.gravity); p.jumping = input.jump;
+          p.vy = (input.jump ? -680 : -520) * Math.sqrt(T.gravity); p.jumping = input.jump; p.spun = false;
           if (e.stompCool <= 0) {
             e.stompCool = .4; W.shake = .15;
             W.floaters.push({ x: e.x + e.w / 2, y: e.y - 6, t: 'stomp', life: .8, c: '#FF6B3D' });
@@ -3139,7 +3099,7 @@
         continue;
       }
       if (spec.stomp && p.vy > 0 && p.y + p.h - e.y < 14) {
-        e.alive = false; dropAmmo(W, e); p.vy = (input.jump ? -620 : -460) * Math.sqrt(T.gravity); p.jumping = input.jump;
+        e.alive = false; dropAmmo(W, e); p.vy = (input.jump ? -620 : -460) * Math.sqrt(T.gravity); p.jumping = input.jump; p.spun = false;
         burst(W, e.x + e.w / 2, e.y + e.h / 2, 14, ['#FF6B3D', '#463C6B'], 160, 500);
         W.floaters.push({ x: e.x + e.w / 2, y: e.y - 6, t: 'stomp', life: .8, c: '#FF6B3D' });
         W.shake = .12; W.freeze = .05; ring(W, e.x + e.w / 2, e.y + e.h / 2, 28, '255,107,61'); W.emit('stomp', { type: e.type, kill: true });
@@ -3204,9 +3164,10 @@
       W.emit('fruit', { type: f.type });
     }
 
-    // Star coins: touch one to pick it up (it's yours for good when you finish the level).
+    // Star coins: touch one to pick it up (it's yours for good when you finish the level; die
+    // first and it isn't). One you already have is only an outline: you pass through it.
     for (const c of W.coins) {
-      if (c.taken || Math.abs(cx - c.x) > 22 || Math.abs(cy - c.y) > 24) continue;
+      if (c.taken || c.had || Math.abs(cx - c.x) > 22 || Math.abs(cy - c.y) > 24) continue;
       c.taken = true; c.pop = 1; (W.coinsGot ||= [])[c.k] = true;
       burst(W, c.x, c.y, 26, ['#FFE066', '#FFF6C2', '#FFB547'], 180, 120, 3);
       ring(W, c.x, c.y, 40, '255,224,102', .5);
