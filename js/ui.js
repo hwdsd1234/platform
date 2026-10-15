@@ -21,6 +21,12 @@
   // Star coins you've got, by level: coins[i] = [true/false ×3] (kept once you finish the level).
   let coins = store.get('coins', {});
   const coinCount = i => (coins[i] || []).filter(Boolean).length;
+  // The kinds of fruit growing in level i (as their map letters), power fruits first.
+  const fruitCache = {};
+  const fruitsIn = i => fruitCache[i] || (fruitCache[i] = (() => {
+    const m = LF.LEVELS[i].map, seen = new Set(Array.isArray(m) ? [...m.join('')].filter(c => LF.FRUITS[c]) : []);
+    return [...seen].sort((x, y) => (x === 'a') - (y === 'a'));
+  })());
   const worldCoins = k => { const w = LF.WORLDS[k]; let have = 0, all = 0; for (let i = w.first; i <= w.last; i++) { have += coinCount(i); all += 3; } return { have, all }; };
   let customs = store.get('custom', []);
   // Hardcore: every lantern is removed, so the door starts open and there are no checkpoints,
@@ -505,7 +511,9 @@
       let badge = '';
       if (secrets[i]) badge = `<text class="badge found" x="${r + 2}" y="${-r - 14}">★</text>`;
       else if (lv.secretTo != null && progress[i]) badge = `<text class="badge hint" x="${r + 2}" y="${-r - 14}">?</text>`;
-      out += `<g class="${cls}" data-i="${i}" transform="translate(${p.x} ${p.y})"><title>${i + 1}. ${esc(lv.name)}</title>${art.stop(lv, state)}<text class="num" y="${lv.finalFight ? 22 : lv.boss ? 20 : 18}">${i + 1}</text>${badge}</g>`;
+      // (A dot for each kind of fruit that grows there, in its colour, up on the left.)
+      const dots = fruitsIn(i).map((c, k) => `<circle class="fdot" cx="${-r - 4 - k * 11}" cy="${-r - 6}" r="4.6" fill="${LF.FRUITS[c].color}"/>`).join('');
+      out += `<g class="${cls}" data-i="${i}" transform="translate(${p.x} ${p.y})"><title>${i + 1}. ${esc(lv.name)}${fruitsIn(i).length ? ' · ' + fruitsIn(i).map(c => LF.FRUITS[c].name).join(', ') : ''}</title>${art.stop(lv, state)}<text class="num" y="${lv.finalFight ? 22 : lv.boss ? 20 : 18}">${i + 1}</text>${badge}${dots}</g>`;
     });
     // The lamplighter, standing over the current stop (or beside the cannon it's at).
     const at = mapHouse != null ? houseSpots[mapHouse] : mapCannon ? (mapCannon.secret != null ? secretCannons[mapCannon.secret] : worlds[mapCannon.world].cannon) : null;
@@ -657,7 +665,7 @@
     $('map-info').innerHTML = `<div>
         <small>World ${lv.world + 1} · chapter ${roman(chapterIndex(mapAt))} · ${esc(lv.chapter)} · level ${mapAt + 1} · key ${levelKey(lv.name)}</small>
         <strong>${esc(lv.name)}</strong>
-        <em>${lv.boss ? 'boss fight · ' : ''}${p ? 'best ' + fmt(p.best) : 'not yet lit'}${hc ? ` · hardcore ${fmt(hc.best)}` : ''} · coins ${[0, 1, 2].map(k => ((coins[mapAt] || [])[k] ? '★' : '☆')).join('')}${fork}${secret}</em>
+        <em>${lv.boss ? 'boss fight · ' : ''}${p ? 'best ' + fmt(p.best) : 'not yet lit'}${hc ? ` · hardcore ${fmt(hc.best)}` : ''} · coins ${[0, 1, 2].map(k => ((coins[mapAt] || [])[k] ? '★' : '☆')).join('')}${fruitsIn(mapAt).length ? ` · fruit: ${fruitsIn(mapAt).map(c => `<span class="fname" style="color:${LF.FRUITS[c].color}">●</span> ${LF.FRUITS[c].name}`).join(', ')}` : ''}${fork}${secret}</em>
       </div>
       <div class="map-actions">
         <button class="go" data-act="story" data-i="${mapAt}">Play</button>
