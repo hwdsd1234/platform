@@ -1342,26 +1342,39 @@
     signs: [{ x: 2, y: 14.4, t: 'THE LAST DARK · 4 stomps · stomp it when it dives to the floor · after the third: RUN →' }],
   };
   out.push({ ...tower(finalDef, 999, true), chapter: 'The Last Night', boss: true, finalFight: true });
-  // Fruit across the map: every fruit with a power (all but the apple, the everyday fruit)
-  // grows in exactly FRUIT_LEVELS story levels, spread evenly from the start of the map to
-  // the end, each fruit's levels offset from the others'. The Melon Patch keeps its
-  // watermelons and the Pear Cliffs their pears, and they count toward their fruit's levels;
-  // every other spot where fruit grew grows an apple.
-  const FRUIT_LEVELS = 10;
-  const story = out.filter(d => !d.boss && !d.sky && Array.isArray(d.map));
-  const themed = { m: d => d.melon, p: d => d.pear };
+  // Fruit across the map. Each fruit with a power (all but the apple) has PURE levels where
+  // it's the only fruit growing, spread evenly from the start of the map to the end (the
+  // Melon Patch's are the watermelon's, the Pear Cliffs' the pear's, and count toward
+  // theirs). Everywhere else the fruit's mixed: two spots in three grow apples, and the
+  // power fruits share the rest equally, in turn. (lv.pureFruit tells lengthen.js what the
+  // extra sections should grow.)
+  const PURE = 10;
   const powerFruit = Object.keys(LF.FRUITS).filter(t => t !== 'a');
-  for (const d of out) if (!d.boss && Array.isArray(d.map)) d.map = d.map.map(row => [...row].map(c => (powerFruit.includes(c) && !(themed[c] && themed[c](d)) ? 'a' : c)).join(''));   // (the Sky Roads too: only apples work there)
+  const isFruit = c => !!LF.FRUITS[c];
+  const story = out.filter(d => !d.boss && !d.sky && Array.isArray(d.map));
+  for (const d of out) if (!d.boss && d.sky && Array.isArray(d.map)) d.map = d.map.map(row => [...row].map(c => (isFruit(c) ? 'a' : c)).join(''));   // (only apples work in the Sky Roads)
+  for (const d of story) if (d.melon) d.pureFruit = 'm'; else if (d.pear) d.pureFruit = 'p';
+  const pool = story.filter(d => !d.pureFruit);
   powerFruit.forEach((t, n) => {
-    const already = story.filter(d => d.map.some(r => r.includes(t))).length, want = FRUIT_LEVELS - already;
-    const pool = story.filter(d => !d.melon && !d.pear);
+    const want = PURE - story.filter(d => d.pureFruit === t).length;
     for (let k = 0; k < want; k++) {
-      const d = pool[Math.floor(((k + (n + .5) / powerFruit.length) / want) * pool.length) % pool.length];
-      // (On an apple's spot if it has one; else the first open spot standing on stone.)
-      let done = false;
-      d.map = d.map.map(row => (done || !row.includes('a') ? row : (done = true, row.replace('a', t))));
-      if (!done) d.map = d.map.map((row, y) => { if (done || y === 0) return row; const x = [...row].findIndex((c, x) => c === '.' && d.map[y + 1] && '#=i'.includes(d.map[y + 1][x])); if (x < 0) return row; done = true; return row.slice(0, x) + t + row.slice(x + 1); });
+      let at = Math.floor(((k + (n + .5) / powerFruit.length) / want) * pool.length) % pool.length;
+      while (pool[at].pureFruit) at = (at + 1) % pool.length;
+      pool[at].pureFruit = t;
     }
   });
+  let turn = 0;
+  for (const d of story) {
+    if (d.pureFruit) {
+      d.map = d.map.map(row => [...row].map(c => (isFruit(c) ? d.pureFruit : c)).join(''));
+      // (At least a couple of its fruit, on open spots standing on stone, if it has fewer.)
+      for (let have = d.map.join('').split(d.pureFruit).length - 1; have < 2;) {
+        const y = d.map.findIndex((row, y) => y && d.map[y + 1] && [...row].some((c, x) => c === '.' && '#=i'.includes(d.map[y + 1][x]) && !isFruit(row[x - 1] || '') ));
+        if (y < 0) break;
+        const x = [...d.map[y]].findIndex((c, x) => c === '.' && '#=i'.includes(d.map[y + 1][x]) && !isFruit(d.map[y][x - 1] || ''));
+        d.map[y] = d.map[y].slice(0, x) + d.pureFruit + d.map[y].slice(x + 1); have++;
+      }
+    } else d.map = d.map.map(row => [...row].map(c => (isFruit(c) ? (turn++ % 3 === 2 ? powerFruit[Math.floor(turn / 3) % powerFruit.length] : 'a') : c)).join(''));
+  }
   L.length = 0; L.push(...out);
 })();
