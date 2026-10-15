@@ -4,8 +4,9 @@
 // (or the last one). lv.secretTo is the index of that world's first level, lv.secretWorld the
 // world's index. Load after worlds.js, so the worlds and level indexes are final.
 //
-// The door is locked in a lever vault (see coins.js): a little stone room sealed by a rune
-// seal, opened by solving the row of levers in front of it. The room is carved into solid
+// The door is at the end of a secret section (see coins.js): a lever vault, sealed by a rune
+// seal you open by solving the row of levers in front of it, holds a portal down into a run of
+// hard jumps under the level, and the door's at the end of that. The room is carved into solid
 // rock beside a spot you can reach if there is some, or else built as a small 3x3 block of
 // stone on a ledge (as long as the level can still be finished with it there). Failing both,
 // the door goes in the most out-of-the-way spot you can reach, unseen until you come near.
@@ -32,11 +33,39 @@
       .map(q => ({ ...q, score: Math.hypot(q.x - P.x, q.y - P.y) + Math.hypot(q.x - D.x, q.y - D.y) + ((q.x * 7 + q.y * 13) % 11) + (q.rock ? 6 : 0) }))
       .sort((a, b) => b.score - a.score);
     for (const q of spots.slice(0, 40)) {
-      const t = g.map(r => r.split(''));
-      LF.vaults.build(t, q, '?', q.x * 31 + q.y);
-      const tryLv = { ...lv, map: t.map(r => r.join('')) };
-      // (A block built on a ledge mustn't get in the way of finishing the level.)
-      if (!q.rock) { const a = LF.analyze(tryLv); if (!a.ok || a.litOk !== a0.litOk || !a.seen[q.prize[1] * w + q.prize[0]]) continue; }
+      // Best, the door at the end of a secret section through the vault (portal letter 0;
+      // the coins use the rest); else in the vault itself.
+      let t = g.map(r => r.split(''));
+      const y0 = a0.ok ? LF.vaults.addBand(t) : null;
+      if (y0 == null || !LF.vaults.hide(t, q, '?', q.x * 31 + q.y, y0, 0)) {
+        t = g.map(r => r.split(''));
+        LF.vaults.build(t, q, '?', q.x * 31 + q.y);
+      }
+      const tryLv = { ...lv, map: t.map(r => r.join('')) }, a = LF.analyze(tryLv);
+      const door = t.findIndex(r => r.includes('?')), dx = door >= 0 ? t[door].indexOf('?') : -1;
+      // (The level must be finished just as before, and the door reached.)
+      if (door < 0 || (a0.ok && (!a.ok || a.litOk !== a0.litOk || !a.seen[door * w + dx]))) continue;
+      lv.map = tryLv.map;
+      return true;
+    }
+    return false;
+  }
+  // No room for a vault: a portal on its own, as far from the start and the door as can be,
+  // down into a secret section with the door at its end (see coins.js).
+  function portalRoom(lv, xMax = Infinity, minUp = -Infinity) {
+    const g = LF.normalize(lv.map), G = g.map(r => r.split('')), w = g[0].length, h = g.length;
+    const a0 = LF.analyze(lv), seen = a0.seen, P = find(G, 'P'), D = find(G, 'D') || lastDoor(G), marks = landmarks(G);
+    if (!a0.ok || !P || !D) return false;
+    const spots = [];
+    for (let y = 2; y < h - 1; y++) for (let x = 2; x < w - 2; x++)
+      if (seen[y * w + x] && G[y][x] === '.' && x + 5 < xMax && P.y - y >= minUp && !nearAny(marks, x, y)) spots.push({ x, y, score: Math.hypot(x - P.x, y - P.y) + Math.hypot(x - D.x, y - D.y) + ((x * 7 + y * 13) % 11) });
+    spots.sort((a, b) => b.score - a.score);
+    for (const o of spots.slice(0, 30)) {
+      const t = g.map(r => r.split('')), y0 = LF.vaults.addBand(t);
+      if (!LF.vaults.hideOpen(t, [o.x, o.y], '?', o.x * 31 + o.y, y0, 0)) continue;
+      const tryLv = { ...lv, map: t.map(r => r.join('')) }, a = LF.analyze(tryLv);
+      const door = t.findIndex(r => r.includes('?')), dx = t[door].indexOf('?');
+      if (!a.ok || a.litOk !== a0.litOk || !a.seen[door * w + dx]) continue;
       lv.map = tryLv.map;
       return true;
     }
@@ -79,7 +108,7 @@
       let placed = false;
       for (let n = at; n < regular.length && !placed; n++) {
         const lv = L[regular[n]];
-        if (lv.secretTo == null && vaultRoom(lv)) { lv.secretTo = WORLDS[to].first; lv.secretWorld = to; placed = true; }
+        if (lv.secretTo == null && (vaultRoom(lv) || portalRoom(lv))) { lv.secretTo = WORLDS[to].first; lv.secretWorld = to; placed = true; }
       }
       if (!placed && L[regular[at]].secretTo == null && farSpot(L[regular[at]])) { L[regular[at]].secretTo = WORLDS[to].first; L[regular[at]].secretWorld = to; }
     }
@@ -89,7 +118,7 @@
       const towers = L.filter(l => l.world === k && l.boss && !l.finalFight);
       for (const lv of [...towers.slice(towers.length >> 1), ...towers.slice(0, towers.length >> 1)]) {
         // In a tower: up the shaft, off a ledge, never down by the start or along the floor.
-        if (vaultRoom(lv, lv.arenaX - 2, 8)) { lv.secretTo = WORLDS[to].first; lv.secretWorld = to; break; }
+        if (vaultRoom(lv, lv.arenaX - 2, 8) || portalRoom(lv, lv.arenaX - 2, 8)) { lv.secretTo = WORLDS[to].first; lv.secretWorld = to; break; }
       }
     }
   });

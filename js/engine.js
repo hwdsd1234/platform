@@ -185,6 +185,9 @@
     y: { name: 'Gold key', gate: '3', color: '#FFD447', dim: '#7A5A12' },
   };
   LF.GATES = { 1: 'r', 2: 'u', 3: 'y' };
+  // Portals into and out of the secret sections (see coins.js): a door ⓐ…ⓖ takes you to the
+  // landing with the same letter, Ⓐ…Ⓖ (with more than one of a letter, paired left to right).
+  LF.PORTALS = { doors: 'ⓐⓑⓒⓓⓔⓕⓖ', lands: 'ⒶⒷⒸⒹⒺⒻⒼ' };
   const isFloor = LF.isFloor = c => isSolid(c) || c === '=';
   const blocksPlat = c => isSolid(c) || c === '|' || c === '^' || c === '=';
 
@@ -233,6 +236,8 @@
       // counting left to right, leads to the k-th n). They join the parts of a tower.
       else if (c === 'j') { W.passages.push({ tx: x, ty: y, x: x * TS, y: (y - 1) * TS + 4, w: 32, h: 60, open: true, glow: 1 }); tiles[y][x] = ' '; }
       else if (c === 'n') { W.entries.push({ tx: x, ty: y }); tiles[y][x] = ' '; }
+      else if (LF.PORTALS.doors.includes(c)) { (W.portals ||= []).push({ c, tx: x, ty: y, x: x * TS, y: (y - 1) * TS + 4, w: 32, h: 60, open: true, glow: 1 }); tiles[y][x] = ' '; }
+      else if (LF.PORTALS.lands.includes(c)) { (W.landings ||= []).push({ c: LF.PORTALS.doors[LF.PORTALS.lands.indexOf(c)], tx: x, ty: y }); tiles[y][x] = ' '; }
       // ¢ is a star coin (three to a story level, see coins.js). def.coinsHave says which of
       // them you've already got (they show faded).
       else if (c === '¢') { const k = W.coins.length; W.coins.push({ k, tx: x, ty: y, x: x * TS + 16, y: y * TS + 16, taken: false, had: !!(def.coinsHave && def.coinsHave[k]), pop: 0 }); tiles[y][x] = ' '; }
@@ -325,6 +330,11 @@
     }
     if (W.giantAt) W.enemies.push(makeGiant(W, def.giant, W.giantAt.x, W.giantAt.y));
     W.passages.sort((a, b) => a.tx - b.tx); W.entries.sort((a, b) => a.tx - b.tx);
+    // (Portals go after the passages, each knowing where it leads.)
+    for (const c of new Set((W.portals || []).map(d => d.c))) {
+      const ds = W.portals.filter(d => d.c === c).sort((a, b) => a.tx - b.tx), ls = (W.landings || []).filter(l => l.c === c).sort((a, b) => a.tx - b.tx);
+      ds.forEach((d, k) => { if (ls[k]) W.passages.push({ ...d, to: ls[k] }); });
+    }
     // Shot doors: each patch of touching blocks of the same kind is one door with one counter.
     W.shotDoors = []; W.shotDoorAt = {};
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -393,9 +403,11 @@
     // Star coins are numbered by the third of the level they're in (start to end: left to
     // right, or bottom to top in a tall level), not by where they are, which can change with
     // an update: so the coin you got from a third stays got, and can't be got again.
+    // (coins.js says which third each is in, def.coinSlots, as some are down in secret
+    // sections under the level; failing that, they go by where they are.)
     if (W.coins.length) {
-      const tall = h > w * 1.2;
-      W.coins.sort((a, b) => (tall ? b.ty - a.ty : a.tx - b.tx));
+      const tall = h > w * 1.2, slot = c => (def.coinSlots || []).findIndex(([x, y]) => x === c.tx && y === c.ty);
+      W.coins.sort((a, b) => (def.coinSlots ? slot(a) - slot(b) : tall ? b.ty - a.ty : a.tx - b.tx));
       W.coins.forEach((c, k) => { c.k = k; c.had = !!(def.coinsHave && def.coinsHave[k]); });
     }
     // Lever puzzles: each row of levers side by side is one puzzle, and the rune seal next to
@@ -3204,7 +3216,7 @@
 
     // A passage door takes you through to the next part of the level.
     for (const [k, d] of W.passages.entries()) {
-      const to = W.entries[k];
+      const to = d.to || W.entries[k];
       if (!to || !overlap(p, { x: d.x + 8, y: d.y + 10, w: 16, h: d.h - 10 })) continue;
       // (A flash where you go in and where you come out: see drawPassage.)
       W.warps = [{ x: d.x + 16, y: d.y + 32, t: W.clock }, { x: to.tx * TS + 16, y: to.ty * TS, t: W.clock }];

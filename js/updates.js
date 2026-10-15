@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Star coins and secret exits are now at the end of secret sections: solve a lever vault (or find a lone portal somewhere out of the way), and its portal takes you down into a hidden run under the level of hard jumps between one-tile pillars over spikes, with bats in the way. The prize waits at the end, and for a coin a portal takes you back up beside the vault.',
       'New fruit: the tomato 🍅. With no shield, a hit doesn’t kill you: the tomato takes it instead (and is used up). Then for 5 seconds you run fast, jump high and can’t be hurt, and whatever you touch dies. A boss you touch takes a hit (and flies into its fury, or falls if it was its last). It grows on its own in 10 levels across the map, and here and there elsewhere.',
       'Fixed: you could get a star coin counted twice, after an update moved the coins. Coins are now kept by which third of the level they’re in, so one you’ve got stays got wherever it moves.',
       'No more false walls. Star coins and secret exits are locked in lever vaults instead: a little stone room sealed with a rune seal, and a row of four levers in front of it. Press ↓ at a lever to flip it, and the ones either side of it flip too; light all four and the seal breaks. Every vault starts in a different muddle.',

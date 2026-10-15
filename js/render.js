@@ -435,6 +435,8 @@
     // its arms turning, sparks drifting into the middle, a pulsing glow), so it never looks
     // like the level's own door. When you go through, rings flash out where you went in and
     // where you came out (W.warps).
+    // (A portal into a secret section stays hidden in its vault till the seal breaks.)
+    const sealed = (W, d) => d.to && [-1, 1].some(k => LF.tile(W, d.tx + k, d.ty) === 'ŝ');
     function drawPassage(d) {
       const cx = d.x + 16, cy = d.y + 30, R0 = 22, t = reduced ? 0 : clock;
       // The glow behind it.
@@ -1642,7 +1644,7 @@
       }
       // Passage doors glow like an open door.
       // (Passage doors glow through the dark as their swirling portals.)
-      for (const pd of W.passages) drawPassage(pd);
+      for (const pd of W.passages) if (!sealed(W, pd)) drawPassage(pd);
       drawWarps(W);
       const d = W.door;
       if (d && d.glow > 0) {
@@ -1792,7 +1794,7 @@
       drawTiles(W, cam, opts);
       drawPlats(W);
       drawDoor(W.door); if (W.secretSeen || opts.edit) drawDoor(W.secret);
-      for (const d of W.passages) drawPassage(d);
+      for (const d of W.passages) if (!sealed(W, d)) drawPassage(d);
       drawWarps(W);
       // Practice checkpoints: little blue flags.
       for (const m of W.marks) {

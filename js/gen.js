@@ -21,6 +21,7 @@
     // Passage doors: walking into the k-th j (counting left to right) takes you to the k-th n.
     const passIn = [], passOut = [];
     let linkIn = null, linkOut = null;   // (a lengthened level's section doors, ĵ to ň)
+    const portIn = [], portOut = [];      // (portals into secret sections, ⓐ to Ⓐ and so on)
     const key = (x, y) => y * w + x;
 
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -33,6 +34,8 @@
       else if (c === 'n') passOut.push({ x, y });
       else if (c === 'ĵ') (linkIn ||= []).push({ x, y });
       else if (c === 'ň') (linkOut ||= []).push({ x, y });
+      else if (LF.PORTALS && LF.PORTALS.doors.includes(c)) portIn.push({ x, y, c });
+      else if (LF.PORTALS && LF.PORTALS.lands.includes(c)) portOut.push({ x, y, c: LF.PORTALS.doors[LF.PORTALS.lands.indexOf(c)] });
       else if (KEY_GATE[c]) keys.push({ x, y, gate: KEY_GATE[c] });
       else if (c === 'M') {
         let l = x, r = x;
@@ -59,6 +62,12 @@
     if (!start) problems.push('Place a start (P).');
     passIn.sort((a, b) => a.x - b.x); passOut.sort((a, b) => a.x - b.x);
     if (linkIn) { passIn.push(...linkIn.sort((a, b) => a.x - b.x)); passOut.push(...(linkOut || []).sort((a, b) => a.x - b.x)); }
+    // (Each door to the same letter's landing: pairs [door, landing].)
+    const links = passIn.map((d, k) => [d, passOut[k]]);
+    for (const c of new Set(portIn.map(d => d.c))) {
+      const ds = portIn.filter(d => d.c === c).sort((a, b) => a.x - b.x), ls = portOut.filter(l => l.c === c).sort((a, b) => a.x - b.x);
+      ds.forEach((d, k) => links.push([d, ls[k]]));
+    }
     // (A boss level ends when the boss falls, so it needs no door: def.noDoor.)
     if (!doors && !def.noDoor) problems.push('Place a door (D).');
     if (doors > 1) problems.push('There is more than one door (D).');
@@ -113,13 +122,13 @@
         }
         // Through any passage door we've reached, and on from where it lets out.
         let more = false;
-        passIn.forEach((d, k) => {
-          if (used.has(k) || !passOut[k]) return;
+        links.forEach(([d, o], k) => {
+          if (used.has(k) || !o) return;
           let at = false;
           for (let dx = -1; dx <= 1 && !at; dx++) for (let r = 0; r <= 1; r++) if (seen[key(d.x + dx, d.y + r)]) at = true;
           if (!at) return;
           used.add(k);
-          const o = passOut[k], oy = ground(o.x, o.y);
+          const oy = ground(o.x, o.y);
           if (oy != null && !seen[key(o.x, oy)]) { seen[key(o.x, oy)] = 1; q.push([o.x, oy]); more = true; }
         });
         if (!more) break;
