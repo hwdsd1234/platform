@@ -457,6 +457,8 @@
     function drawCoins(W) {
       for (const c of W.coins || []) {
         if (c.taken && c.pop <= 0) continue;
+        // (A hidden coin you haven’t found yet isn’t drawn.)
+        if (!c.taken && !c.seen) continue;
         if (c.taken) c.pop = Math.max(0, c.pop - .04);
         const bob = reduced ? 0 : Math.sin(clock * 2.5 + c.k) * 3, turn = reduced ? 1 : Math.abs(Math.cos(clock * 1.6 + c.k));
         const r = 12 * (c.taken ? 1 + (1 - c.pop) : 1), a = c.taken ? c.pop : 1;

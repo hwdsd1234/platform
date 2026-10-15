@@ -660,11 +660,12 @@
       fruitOn(st, R, 4, 11, .8); fruitOn(st, R, 12, 5, .8);
       return finish(st, 16, 18);
     },
-    // Lava rising up a run of ledges: climb before it gets you.
+    // Lava rising up a run of ledges: climb before it gets you. (It stops halfway up, never
+    // filling the whole stage.)
     flood: R => {
       const st = STAGES.ledges(R);
       for (const row of st.g) for (let x = 0; x < SW; x++) if ('FZW'.includes(row[x])) row[x] = '.';   // (no fliers while you're racing the lava)
-      st.flows.push({ mode: 'rise', x0: 1, x1: SW - 2, lo: st.H, hi: 1, bottom: st.H, speed: .4, triggerY: st.H - 3, local: true });   // (it starts once you're up on its first ledge)
+      st.flows.push({ mode: 'rise', x0: 1, x1: SW - 2, lo: st.H, hi: Math.round(st.H / 2), bottom: st.H, speed: .4, triggerY: st.H - 3, local: true });   // (it starts once you're up on its first ledge)
       return st;
     },
   };

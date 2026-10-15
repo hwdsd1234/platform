@@ -6,6 +6,8 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Rising lava never fills a whole stage any more: in the towers’ flood climbs it stops halfway up.',
+      'Star coins are secret now, and hard to find: each is hidden in the most out-of-the-way part of its third of the level, nearly always inside the rock behind a false wall (walk into a wall, or jump up through a low ceiling) or in a little block of stone up on a ledge. You can’t see one till you’re in its hiding place (or, for the odd one out in the open, close by).',
       'The map marks where every fruit grows: a coloured dot by each level for each kind of fruit in it (hover for names), and the level’s fruit is listed under its name.',
       'New boss music, in the style of the Mario boss battles: a worried, syncopated bass, brass stabs on the off-beats and a riff that climbs a half-step every two bars.',
       'Fixed: getting hit could leave you flickering in lava, safe for a moment. Lava (still or moving) now kills you even right after a hit.',

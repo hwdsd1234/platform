@@ -232,7 +232,13 @@
       else if (c === 'n') { W.entries.push({ tx: x, ty: y }); tiles[y][x] = ' '; }
       // ¢ is a star coin (three to a story level, see coins.js). def.coinsHave says which of
       // them you've already got (they show faded).
-      else if (c === '¢') { const k = W.coins.length; W.coins.push({ k, tx: x, ty: y, x: x * TS + 16, y: y * TS + 16, taken: false, had: !!(def.coinsHave && def.coinsHave[k]), pop: 0 }); tiles[y][x] = ' '; }
+      // (Next to a false wall (l) it's hidden in the rock, unseen till you step through into
+      // its pocket; out in the open, unseen till you come within 3 tiles.)
+      else if (c === '¢') {
+        const k = W.coins.length, walled = [rows[y][x - 1], rows[y][x + 1], rows[y - 1]?.[x]].includes('l');
+        W.coins.push({ k, tx: x, ty: y, x: x * TS + 16, y: y * TS + 16, taken: false, had: !!(def.coinsHave && def.coinsHave[k]), pop: 0, walled, seen: false });
+        tiles[y][x] = walled ? 'l' : ' ';
+      }
       // ĵ and ň: the doors joining a lengthened level's sections (see lengthen.js), paired
       // among themselves left to right, after the level's own passages.
       else if (c === 'ĵ') { (W.linkOut ||= []).push({ tx: x, ty: y, x: x * TS, y: (y - 1) * TS + 4, w: 32, h: 60, open: true, glow: 1 }); tiles[y][x] = ' '; }
@@ -3122,7 +3128,15 @@
     }
 
     // Star coins: touch one to pick it up (it's yours for good when you finish the level).
+    // A hidden one shows itself once you're in its pocket (on a false wall near it), or near.
     for (const c of W.coins) {
+      if (!c.seen && !c.taken) {
+        if (c.walled) {
+          for (let ty = Math.floor(p.y / TS); ty <= Math.floor((p.y + p.h - 1) / TS) && !c.seen; ty++)
+            for (let tx = Math.floor(p.x / TS); tx <= Math.floor((p.x + p.w - 1) / TS); tx++) if (tile(W, tx, ty) === 'l' && Math.abs(tx - c.tx) <= 3 && Math.abs(ty - c.ty) <= 3) { c.seen = true; break; }
+        } else c.seen = Math.hypot(cx - c.x, cy - c.y) < TS * 3;
+        if (c.seen) W.emit('key');
+      }
       if (c.taken || Math.abs(cx - c.x) > 22 || Math.abs(cy - c.y) > 24) continue;
       c.taken = true; c.pop = 1; (W.coinsGot ||= [])[c.k] = true;
       burst(W, c.x, c.y, 26, ['#FFE066', '#FFF6C2', '#FFB547'], 180, 120, 3);
@@ -3149,7 +3163,7 @@
       let found = false;
       if (sd.hidden) {
         for (let ty = Math.floor(p.y / TS); ty <= Math.floor((p.y + p.h - 1) / TS) && !found; ty++)
-          for (let tx = Math.floor(p.x / TS); tx <= Math.floor((p.x + p.w - 1) / TS); tx++) if (tile(W, tx, ty) === 'l') { found = true; break; }
+          for (let tx = Math.floor(p.x / TS); tx <= Math.floor((p.x + p.w - 1) / TS); tx++) if (tile(W, tx, ty) === 'l' && Math.abs(tx - sd.tx) <= 3 && Math.abs(ty - sd.ty) <= 3) { found = true; break; }
       } else found = Math.hypot(cx - (sd.x + 16), cy - (sd.y + 30)) < TS * 3;
       if (found) {
         W.secretSeen = true;
