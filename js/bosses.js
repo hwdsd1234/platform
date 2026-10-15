@@ -906,6 +906,17 @@
       g[F - 6][14] = 'Y'; g[F - 3][27] = 'U'; g[F - 8][36] = 'Y'; g[F - 4][45] = 'U'; g[F - 2][20] = 'N';
       return flood(g);
     },
+    // Kelp tunnels: solid rock with one winding tunnel through it, jellies drifting in it.
+    kelp(R, first) {
+      const c = course(60, first), { g, F, S } = c, mid = F - 6;
+      put(g, c.x0, 1, c.x1, F - 1, '#');
+      const yAt = x => mid + Math.round(Math.sin((x - c.x0) / 5) * 3);
+      for (let x = c.x0; x <= c.x1; x++) { const y = yAt(x); put(g, x, y - 1, x, y + 1, '.'); }
+      for (const x of [c.x0, c.x0 + 1, c.x0 + 2]) put(g, x, yAt(x), x, S, '.');
+      for (const x of [c.x1 - 2, c.x1 - 1, c.x1]) put(g, x, yAt(x), x, S, '.');
+      for (let x = c.x0 + 9; x < c.x1 - 6; x += 12) g[yAt(x)][x] = 'U';
+      return flood(g);
+    },
     // A floor of spikes with fire bars turning above it: keep swimming, and time it.
     spikes(R, first) {
       const c = course(60, first), { g, F } = c;
@@ -916,19 +927,20 @@
     },
   };
   const SUNKEN = [
-    { after: 'The Lighthouse', name: 'Sunken Keep', giant: 'Θ', sign: 'THE DROWNED KING · he rams the walls · stomp him while he’s stunned', courses: ['maze', 'reef', 'spikes', 'reef'] },
-    { after: 'The Pear Cliffs', name: 'Drowned Castle', giant: 'Ж', sign: 'THE TIDE SERPENT · it surges at you in waves · stomp it when it hits a wall', courses: ['reef', 'spikes', 'maze', 'spikes'] },
+    { after: 'The Lighthouse', name: 'Sunken Keep', giant: 'Θ', sign: 'THE DROWNED KING · he rams the walls · stomp him while he’s stunned',
+      plan: [{ hall: ['maze', 'reef', 'maze', 'reef'] }, { hall: ['reef', 'maze', 'reef'] }],
+      arena: ({ r }) => { r(12, 9, 13, 12, '#'); r(34, 9, 35, 12, '#'); r(22, 11, 25, 12, '#'); r(8, 6, 13, 6, '='); r(34, 6, 39, 6, '='); } },
+    { after: 'The Pear Cliffs', name: 'Drowned Castle', giant: 'Ж', sign: 'THE TIDE SERPENT · it surges at you in waves · stomp it when it hits a wall',
+      plan: [{ hall: ['spikes', 'kelp', 'spikes', 'kelp'] }, { hall: ['kelp', 'spikes', 'kelp'] }],
+      arena: ({ r }) => { r(10, 13, 14, 13, '^'); r(33, 13, 37, 13, '^'); r(17, 9, 22, 9, '='); r(25, 9, 30, 9, '='); r(21, 5, 26, 5, '='); } },
   ];
   const sunkenAfter = Object.fromEntries(SUNKEN.map((c, k) => [c.after, k]));
   function sunkenOf(k) {
     const c = SUNKEN[k];
     const def = {
       name: c.name, dark: .72, giant: c.giant, bossHits: 4,
-      map: hall(48, 16, ({ r, s }) => { r(8, 10, 13, 10, '='); s(10, 9, 'a'); r(34, 10, 39, 10, '='); r(20, 6, 27, 6, '='); s(30, 6, '0'); }).map(row => row.replace(/\./g, '~')),
-      course: R => {
-        const all = c.courses.map((m, n) => SUNKEN_COURSES[m](R, n === 0));
-        return [joinRuns(all.slice(0, 2), R, true), joinRuns(all.slice(2), R, false)];
-      },
+      map: hall(48, 16, ({ r, s }) => { c.arena({ r, s }); s(10, 12, 'a'); s(30, 6, '0'); }).map(row => row.replace(/\./g, '~')),
+      course: R => buildPlan(R, c.plan, SUNKEN_COURSES),
       signs: [{ x: 2, y: 9.4, t: c.sign }],
     };
     return { ...tower(def, 1300 + k * 29, true), chapter: c.after, boss: true, sunken: true, since: 12 };
@@ -937,28 +949,42 @@
   // The castles: one at the end of every world but the last (whose castle is the Last
   // Dark's), each with its own keeper (see stepKeeper in engine.js). A castle's arena is a
   // hall with planks to get above its keeper; fliers hover high, walkers stand on the floor.
+  // Every castle is its own: its own challenges (no two castles share one), its own shape (a
+  // long hall of challenges, or a hall and a climb), and its own keeper's hall. `plan` is its
+  // parts in order: { hall: [courses] } (see COURSES), or { climb: [stages] } (see STAGES).
+  // `arena` dresses its keeper's hall.
   const CASTLES = [
-    { world: 'The Hollow Spire', name: 'Candle Keep', giant: 'Γ', course: ['lavaHops', 'lavaWaves'], sign: 'THE CANDLE KING · mind the wax and the flames · stomp him when he melts after a hop' },
-    { world: 'The Powder Works', name: 'Clockwork Castle', giant: 'Ξ', course: ['conveyCrush', 'blinkLava'], sign: 'THE CLOCKWORK KNIGHT · jump his gears · stomp him while he winds down' },
-    { world: 'The Neo Ledges', name: 'Storm Castle', giant: 'Λ', fly: true, course: ['skyTurns', 'skyWheels'], sign: 'THE STORM ROC · it swoops low · stomp it when it lands to rest' },
-    { world: 'The Melon Patch', name: 'Pumpkin Castle', giant: 'Φ', course: ['springLava', 'pendulums'], sign: 'THE PUMPKIN KNIGHT · his bombs land where they’re marked · stomp him when he’s dizzy' },
-    { world: 'The Bell Foundry', name: 'Smog Castle', giant: 'Ψ', fly: true, course: ['bubblePits', 'lavaTide'], sign: 'THE SMOG DRAGON · it breathes fire across the floor · stomp it when it lands' },
-    { world: 'The Cinder Mines', name: 'Crystal Castle', giant: 'Σ', course: ['icePits', 'iceSteps'], sign: 'THE CRYSTAL MOLE · it bursts up where the floor glows · stomp it while it’s stunned' },
+    { world: 'The Hollow Spire', name: 'Candle Keep', giant: 'Γ', sign: 'THE CANDLE KING · mind the wax and the flames · stomp him when he melts after a hop',
+      plan: [{ hall: ['lavaHops', 'lavaWaves', 'crumbleLava', 'lavaHops', 'lavaWaves', 'crumbleLava'] }, { hall: ['crumbleLava', 'lavaWaves', 'lavaHops', 'lavaWaves', 'lavaHops'] }],
+      arena: ({ r }) => { r(14, 13, 17, 14, '!'); r(30, 13, 33, 14, '!'); r(13, 10, 18, 10, '='); r(29, 10, 34, 10, '='); r(21, 7, 26, 7, '='); } },
+    { world: 'The Powder Works', name: 'Clockwork Castle', giant: 'Ξ', sign: 'THE CLOCKWORK KNIGHT · jump his gears · stomp him while he winds down',
+      plan: [{ hall: ['conveyCrush', 'blinkLava', 'liftsSpikes', 'conveyCrush', 'blinkLava', 'liftsSpikes'] }, { climb: ['lifts', 'belts', 'wheel', 'blinks', 'lifts', 'belts', 'wheel', 'blinks', 'belts', 'lifts', 'wheel', 'blinks'] }],
+      arena: ({ r }) => { r(10, 13, 20, 13, '<'); r(27, 13, 37, 13, '>'); r(8, 9, 13, 9, '='); r(34, 9, 39, 9, '='); r(20, 6, 27, 6, '='); } },
+    { world: 'The Neo Ledges', name: 'Storm Castle', giant: 'Λ', fly: true, sign: 'THE STORM ROC · it swoops low · stomp it when it lands to rest',
+      plan: [{ climb: ['turns', 'shingles', 'springs', 'turns', 'shingles', 'springs', 'turns', 'shingles', 'springs', 'turns', 'shingles', 'springs'] }, { hall: ['skyTurns', 'skyWheels', 'skyTurns', 'skyWheels', 'skyTurns'] }],
+      arena: ({ r }) => { r(12, 13, 16, 13, '^'); r(31, 13, 35, 13, '^'); r(5, 10, 9, 10, '='); r(17, 8, 22, 8, '='); r(26, 8, 31, 8, '='); r(38, 10, 42, 10, '='); } },
+    { world: 'The Melon Patch', name: 'Pumpkin Castle', giant: 'Φ', sign: 'THE PUMPKIN KNIGHT · his bombs land where they’re marked · stomp him when he’s dizzy',
+      plan: [{ hall: ['springLava', 'pendulums', 'crumbleSpikes', 'springLava', 'pendulums', 'crumbleSpikes'] }, { hall: ['pendulums', 'crumbleSpikes', 'springLava', 'crumbleSpikes', 'pendulums', 'springLava'] }],
+      arena: ({ r }) => { r(6, 11, 11, 11, '='); r(13, 8, 18, 8, '='); r(29, 8, 34, 8, '='); r(36, 11, 41, 11, '='); r(21, 5, 26, 5, '='); r(22, 13, 25, 13, '^'); } },
+    { world: 'The Bell Foundry', name: 'Smog Castle', giant: 'Ψ', fly: true, sign: 'THE SMOG DRAGON · it breathes fire across the floor · stomp it when it lands',
+      plan: [{ hall: ['bubblePits', 'lavaTide', 'liftsLava', 'bubblePits', 'lavaTide', 'liftsLava'] }, { climb: ['flood', 'ledges', 'chimney', 'flood', 'ledges', 'chimney', 'flood', 'ledges', 'chimney', 'ledges', 'chimney', 'ledges', 'flood', 'ledges'] }],
+      arena: ({ r }) => { r(18, 13, 21, 14, '!'); r(27, 13, 30, 14, '!'); r(17, 10, 22, 10, '='); r(26, 10, 31, 10, '='); r(9, 8, 13, 8, '='); r(35, 8, 39, 8, '='); } },
+    { world: 'The Cinder Mines', name: 'Crystal Castle', giant: 'Σ', sign: 'THE CRYSTAL MOLE · it bursts up where the floor glows · stomp it while it’s stunned',
+      plan: [{ hall: ['icePits', 'iceSteps', 'icePits', 'iceSteps', 'icePits', 'iceSteps'] }, { climb: ['ice', 'crumbles', 'pillars', 'ice', 'crumbles', 'pillars', 'ice', 'crumbles', 'pillars', 'ice', 'crumbles', 'pillars'] }],
+      arena: ({ r }) => { r(1, 13, 46, 13, 'i'); r(9, 10, 14, 10, '='); r(33, 10, 38, 10, '='); r(20, 7, 27, 7, '='); } },
   ];
+  // A castle's parts from its plan: halls joined from their courses, climbs stacked from their
+  // stages; the first part has the start and, at its end, a lantern (the keeper's door gets
+  // the other).
+  const buildPlan = (R, plan, courses = COURSES) => plan.map((part, n) => part.hall
+    ? joinRuns(part.hall.map((m, i) => courses[m](R, n === 0 && i === 0)), R, n === 0)
+    : stageClimb(R, part.climb, n === 0, n === 0));
   function castleOf(k) {
     const c = CASTLES[k];
     const def = {
       name: c.name, dark: .7, giant: c.giant, bossHits: 4,
-      // (Four times as long: its own two challenges, then nine more of the others', in two
-      // long halls joined by one door, a lantern at the end of the first.)
-      course: R => {
-        const all = [...c.course, ...CASTLE_MORE.filter(m => !c.course.includes(m)).slice(k % 3, k % 3 + 9)].map((m, n) => COURSES[m](R, n === 0));
-        return [joinRuns(all.slice(0, 6), R, true), joinRuns(all.slice(6), R, false)];
-      },
-      map: hall(48, 16, ({ r, s }) => {
-        r(8, 10, 13, 10, '='); s(10, 9, 'a'); r(34, 10, 39, 10, '='); s(36, 9, 'a');
-        r(20, 7, 27, 7, '='); s(30, c.fly ? 4 : 12, '0');
-      }),
+      course: R => buildPlan(R, c.plan),
+      map: hall(48, 16, ({ r, s }) => { c.arena({ r, s }); s(30, c.fly ? 4 : 12, '0'); }),
       signs: [{ x: 2, y: 9.4, t: c.sign }],
     };
     return { ...tower(def, 900 + k * 17, true), chapter: c.world, boss: true, castleOf: k, since: 10 };
@@ -1020,7 +1046,6 @@
       ...(shaft.flows || []).map(f => ({ ...f, x0: f.x0 + w, x1: f.x1 + w }))];
     return rows;
   }
-  const CASTLE_MORE = ['lavaHops', 'crumbleLava', 'liftsSpikes', 'conveyCrush', 'blinkLava', 'crumbleSpikes', 'pendulums', 'springLava', 'bubblePits', 'icePits', 'lavaTide', 'lavaWaves', 'iceSteps'];
   const castleAfter = Object.fromEntries(CASTLES.map((c, k) => [c.world, k]));
 
   // The Sky Spire, the Sky Roads' tower: no floor, just the long drop under a climb of

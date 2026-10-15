@@ -12,6 +12,7 @@
       'After the pear’s spin you can’t glide, and you fall at up to 300 px/s: clearly faster than a glide (95), but a third of a normal fall (900), till you land.',
       'Fixed: you could climb any wall forever by spinning (Space) between wall jumps. Wall jumps no longer give the spin back; only landing does.',
       'Pear Cliffs: a pear right beside every lantern, so you can pick one up the moment you come back there.',
+      'Every castle is completely different: each has its own challenges (no two castles share one), its own shape (long halls, or a hall and a tall climb), and its own keeper’s hall: lava pools for the Candle King, conveyor floors for the Clockwork Knight, spike pits for the Storm Roc, plank tiers for the Pumpkin Knight, lava pits for the Smog Dragon, an ice floor for the Crystal Mole, coral for the Drowned King and a spike bed for the Tide Serpent. Drowned Castle has new winding kelp tunnels.',
       'Four new fruits: pineapple (spikes don’t hurt you), grapes (enemies drop twice the ammo), peach (stronger swimming, slower sinking) and mango (the level clock runs at two-thirds speed). They’re in the story levels, Fruit Groves and the editor.',
       'One castle per world: the sunken castles are now the Waterfront’s and the Canal District’s castles (Drowned Castle comes after the Pear Cliffs). Lighthouse Castle and Rat Castle are gone; if you’d beaten one, its world’s castle counts as beaten.',
       'Story levels run on with no doors between their sections: each part opens straight into the next.',
