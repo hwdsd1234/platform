@@ -971,6 +971,7 @@
       screen = 'clear';
       setVisible({ hud: true, overlay: true });
       houses[playCtx.i] = { at: Date.now() }; store.set('houses', houses);
+      LF.awards.grove();
       const got = Object.entries(W.got).filter(([, n]) => n > 0);
       for (const [t, n] of got) inventory[t] = Math.min(INV_MAX, (inventory[t] || 0) + n);
       store.set('inventory', inventory);
@@ -1007,9 +1008,9 @@
       const isBest = !prev || t < prev.best;
       if (isBest) { book[i] = { best: t, falls }; store.set(hardcore ? 'progressHC' : 'progress', book); }
       if (hardcore && !progress[i]) { progress[i] = { best: t, falls }; store.set('progress', progress); }
-      LF.awards.clear({ kind: 'story', index: i, time: t, falls, hardcore, horde: !!W.horde, storyLit: Object.keys(progress).length, hcLit: Object.keys(progressHC).length });
-      story.time += t; story.falls += falls;
       const last = i === LF.LEVELS.length - 1, secret = W.clearedBy === 'secret' && LF.LEVELS[i].secretTo != null;
+      LF.awards.clear({ kind: 'story', index: i, time: t, falls, hardcore, horde: !!W.horde, storyLit: Object.keys(progress).length, hcLit: Object.keys(progressHC).length, progress, secrets: Object.keys(secrets).length + (secret && !secrets[i] ? 1 : 0) });
+      story.time += t; story.falls += falls;
       // On the map the lamplighter moves on: to the next level, or down the secret path.
       if (secret) { secrets[i] = true; store.set('secrets', secrets); }
       mapAt = secret ? i : Math.min(i + 1, LF.LEVELS.length - 1); store.set('mapAt', mapAt);
