@@ -777,6 +777,27 @@
           ctx.fillStyle = '#120F2A'; ctx.fillRect(cx - .75, by - 16, 1.5, 11);
           break;
         }
+        case 'ĸ': {
+          // The Shellback: a domed green shell with a pale head and feet poking out; in its
+          // shell, just the shell (spinning lines when it's shooting along; feet peeping out
+          // in the last second and a half before it climbs back out).
+          const inShell = e.state === 'shell' || e.state === 'spin';
+          if (!inShell) {
+            ctx.fillStyle = '#CFE8D8'; ctx.fillRect(cx - 9 + wob, by - 4, 5, 4); ctx.fillRect(cx + 4 - wob, by - 4, 5, 4);
+            ctx.beginPath(); ctx.arc(cx + f * 12, by - 11, 5, 0, TAU); ctx.fill();
+            ctx.fillStyle = '#120F2A'; ctx.fillRect(cx + f * 14 - 1, by - 13, 2, 2);
+          } else if (e.state === 'shell' && e.shellT < 1.5 && !reduced && Math.floor(clock * 10) % 2) {
+            ctx.fillStyle = '#CFE8D8'; ctx.fillRect(cx - 9, by - 3, 5, 3); ctx.fillRect(cx + 4, by - 3, 5, 3);
+          }
+          const sy = inShell ? by : by - 3;
+          ctx.fillStyle = '#2E7D66'; ctx.beginPath(); ctx.ellipse(cx, sy - 3, 12, 13, 0, Math.PI, 0); ctx.fill();
+          ctx.fillStyle = '#E8DDB5'; ctx.fillRect(cx - 12, sy - 4, 24, 4);
+          ctx.strokeStyle = '#7FD8B4'; ctx.lineWidth = 1.5; ctx.beginPath();
+          const rot = e.state === 'spin' && !reduced ? (clock * 30) % 1 : 0;
+          for (let k = -1; k <= 1; k++) { const sx = cx + (k + rot) * 7; ctx.moveTo(sx, sy - 14); ctx.lineTo(sx, sy - 5); }
+          ctx.stroke();
+          break;
+        }
         case 'K': {
           ctx.fillStyle = '#120F2A'; ctx.fillRect(cx - 9 + wob, by - 4, 4, 4); ctx.fillRect(cx + 5 - wob, by - 4, 4, 4);
           ctx.fillStyle = '#CFC6E8';

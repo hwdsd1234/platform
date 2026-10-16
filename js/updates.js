@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'New enemy: the Shellback. Stomp it and it hides in its shell; touch the shell and it shoots off the other way from where you touched it, bouncing back off walls and knocking out any enemy in its path. A shell shooting along hurts you too, so watch for it coming back. Stomp a moving shell to stop it; a shell left lying still climbs back out after 5 seconds.',
       'Every level has fruit now: the few that had none grow at least two (an apple and a power fruit, or the level’s own fruit), and the Star Road levels keep the fruit of the level each is made from.',
       'A star coin you already have is gone from the level when you play it again (no more silver GOT IT coin).',
       'The holes down to the star coins and secret exits aren’t marked any more: finding them is up to you.',

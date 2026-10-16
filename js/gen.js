@@ -170,7 +170,7 @@
   // ---------- generator ----------
   const NAMES_A = ['Ashen', 'Crooked', 'Tallow', 'Sooty', 'Hollow', 'Quiet', 'Gutter', 'Bellrope', 'Candle', 'Smoke', 'Moth', 'Cinder', 'Lamp-black', 'Weeping', 'Brass'];
   const NAMES_B = ['Stair', 'Rooftops', 'Alley', 'Spire', 'Cistern', 'Kilns', 'Wharf', 'Belfry', 'Chimneys', 'Gallery', 'Lane', 'Vaults', 'Steeple', 'Terraces', 'Drain'];
-  const POOL = { 1: ['B'], 2: ['B', 'B', 'F', 'R'], 3: ['B', 'F', 'J', 'K', 'R', 'Z', 'W'], 4: ['B', 'F', 'J', 'K', 'S', 'R', 'Z', 'W', 'A'], 5: ['F', 'J', 'K', 'S', 'G', 'B', 'R', 'Z', 'W', 'A', 'I'] };
+  const POOL = { 1: ['B', 'ĸ'], 2: ['B', 'ĸ', 'F', 'R'], 3: ['B', 'F', 'J', 'K', 'R', 'Z', 'W', 'ĸ'], 4: ['B', 'F', 'J', 'K', 'S', 'R', 'Z', 'W', 'A', 'ĸ'], 5: ['F', 'J', 'K', 'S', 'G', 'B', 'R', 'Z', 'W', 'A', 'I', 'ĸ'] };
 
   LF.generate = function (opts = {}) {
     const seed = (opts.seed ?? Math.floor(Math.random() * 1e9)) >>> 0;

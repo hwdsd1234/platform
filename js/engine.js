@@ -82,6 +82,7 @@
     I: { name: 'Iron golem', w: 30, h: 34, stomp: true, hp: 3, drop: 5, note: 'slow, armored: takes 3 shots or 3 stomps' },
     '*': { name: 'Lava bubble', w: 16, h: 16, stomp: false, drop: 3, note: 'place in lava: hides, then shoots up out of it every few seconds' },
     N: { name: 'Leaping gar', w: 24, h: 12, stomp: true, drop: 2, note: 'place in water: leaps out at you' },
+    'ĸ': { name: 'Shellback', w: 24, h: 20, stomp: true, drop: 1, note: 'walks, turns at edges; stomp it and it hides in its shell (it climbs back out after 5 seconds); touch the shell and it shoots off the other way, knocking out enemies, and it hurts you too' },
     '@': { name: 'TNT cart', w: 28, h: 22, stomp: true, hp: 5, note: 'rolls along; 5 hits of any kind (stomps too) and it blows up, killing everything within 10 blocks (but not you)' },
     // Bosses: wake when you come near, take an exact number of hits (shots or stomps on the
     // head; see BOSS_HITS), and keep the door shut until they fall.
@@ -452,7 +453,7 @@
     if (type === '*') y = ty * TS + 12;
     if (type === 'W') y = ty * TS + 8;
     if (type === '6') y = ty * TS;
-    const vx = { B: -48, K: -72, F: -64, R: -40, Y: -85, I: -30, '@': -36 }[type] || 0;
+    const vx = { B: -48, K: -72, F: -64, R: -40, Y: -85, I: -30, '@': -36, 'ĸ': -44 }[type] || 0;
     // Resize around the spot the enemy is anchored to: its top if it hangs from a ceiling,
     // its middle if it flies or swims, otherwise its feet.
     const scale = tune(tuning, type).size;
@@ -1190,7 +1191,10 @@
 
   // Ground enemies fall when there's nothing under them (placed in mid-air, or their floor
   // crumbled or blinked away), and die if they land in water or lava or leave the level.
-  const WALKERS = new Set(['B', 'K', 'R', 'I', 'S', 'A', '@']);
+  const WALKERS = new Set(['B', 'K', 'R', 'I', 'S', 'A', '@', 'ĸ']);
+  // The Shellback's shell: how long it lies still before it climbs back out, and how fast
+  // it shoots along once kicked.
+  const SHELL_WAIT = 5, SHELL_SPEED = 430;
   function supported(W, e) {
     const ty = Math.floor((e.y + e.h + 1) / TS);
     for (let tx = Math.floor((e.x + 2) / TS); tx <= Math.floor((e.x + e.w - 2) / TS); tx++) if (isFloor(tile(W, tx, ty))) return true;
@@ -1225,6 +1229,37 @@
         e.hurt = Math.max(0, e.hurt - dt);
         const nx = e.x + e.vx * dt;
         const ahead = e.vx < 0 ? nx : nx + e.w;
+        const tx = Math.floor(ahead / TS);
+        const tyBody = Math.floor((e.y + e.h - 1) / TS), below = tile(W, tx, Math.floor((e.y + e.h + 2) / TS));
+        if (isSolid(tile(W, tx, tyBody)) || turnMarker(W, tx, tyBody) || !isFloor(below)) e.vx *= -1;
+        else e.x = nx;
+        e.face = Math.sign(e.vx);
+        break;
+      }
+      case 'ĸ': {
+        // The Shellback: walks like a beetle; stomped, it's a shell lying still (SHELL_WAIT
+        // seconds, then it climbs back out and walks on); kicked, the shell shoots along,
+        // turning back off walls (but not ledges: it falls off them), knocking out any enemy
+        // it runs into (a boss just turns it back).
+        e.stompCool = Math.max(0, e.stompCool - dt);
+        if (e.state === 'shell') {
+          // (Real seconds, whatever pace the level's enemies keep.)
+          if ((e.shellT -= dt / (ENEMY_SPEED * tune(W.def.tuning, e.type).speed)) <= 0) { e.state = 'walk'; e.vx = 44 * (e.face || -1); W.floaters.push({ x: ex, y: e.y - 8, t: 'it’s back out!', life: .8, c: '#9FF0C8' }); }
+          break;
+        }
+        if (e.state === 'spin') {
+          const nx = e.x + e.vx * dt, ahead = e.vx < 0 ? nx : nx + e.w;
+          const tx = Math.floor(ahead / TS), tyBody = Math.floor((e.y + e.h - 1) / TS);
+          if (isSolid(tile(W, tx, tyBody))) { e.vx *= -1; W.emit('clank'); } else e.x = nx;
+          for (const o of W.enemies) {
+            if (o === e || !o.alive || o.phased || !overlap(e, o)) continue;
+            if (isBoss(o)) { e.vx = -Math.sign(o.x - e.x || 1) * SHELL_SPEED; continue; }
+            shootEnemy(W, o, Math.sign(e.vx), null, 'KO', 999);
+          }
+          e.face = Math.sign(e.vx);
+          break;
+        }
+        const nx = e.x + e.vx * dt, ahead = e.vx < 0 ? nx : nx + e.w;
         const tx = Math.floor(ahead / TS);
         const tyBody = Math.floor((e.y + e.h - 1) / TS), below = tile(W, tx, Math.floor((e.y + e.h + 2) / TS));
         if (isSolid(tile(W, tx, tyBody)) || turnMarker(W, tx, tyBody) || !isFloor(below)) e.vx *= -1;
@@ -3060,6 +3095,26 @@
       if (!e.alive || e.phased || !overlap(p, e)) continue;
       const spec = LF.ENEMIES[e.type];
       if (e.type === 'G' && e.fade > .85) continue;
+      // The Shellback (see stepEnemy): stomp it, walking or shooting along, and it's a shell
+      // lying still; touch a still shell and you kick it, off the other way from the side you
+      // touched it on; a shell shooting along hurts you like any enemy (but not in the
+      // moment just after you kick it).
+      if (e.type === 'ĸ' && !(p.rush > 0)) {
+        if (e.stompCool > 0) continue;
+        const top = p.vy > 0 && p.y + p.h - e.y < 14;
+        if (e.state === 'shell') {
+          const dir = p.x + p.w / 2 < e.x + e.w / 2 ? 1 : -1;
+          e.state = 'spin'; e.vx = dir * SHELL_SPEED; e.stompCool = .3;
+          if (top) { p.vy = (input.jump ? -620 : -460) * Math.sqrt(T.gravity); p.jumping = input.jump; p.spun = false; }
+          ring(W, e.x + e.w / 2, e.y + e.h / 2, 26, '159,240,200'); W.emit('stomp', { type: e.type });
+        } else if (top) {
+          e.state = 'shell'; e.shellT = SHELL_WAIT; e.vx = 0; e.stompCool = .3;
+          p.vy = (input.jump ? -620 : -460) * Math.sqrt(T.gravity); p.jumping = input.jump; p.spun = false;
+          W.floaters.push({ x: e.x + e.w / 2, y: e.y - 6, t: 'stomp', life: .8, c: '#FF6B3D' });
+          W.shake = .1; W.emit('stomp', { type: e.type });
+        } else { hurt(W); if (p.dead) return; }
+        continue;
+      }
       // A tomato rush: whatever you touch dies; a boss takes a hit (and flies into its fury,
       // or falls on its last), at most one a stomp's pause apart. Nothing hurts you.
       if (p.rush > 0) {
