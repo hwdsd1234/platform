@@ -699,16 +699,16 @@
     return rows;
   }
   LF.towerKit = { STAGES, stageClimb, joinRuns: (...a) => joinRuns(...a), COURSES: () => COURSES, drainClimb: (...a) => drainClimb(...a) };   // (for testing the stages one by one)
-  // Each tower's stages: every kind once in its first shaft, in an order of its own, then
-  // again (with different fruit and fliers) in its second; floods only up high in the
-  // later towers.
+  // Each tower's stages: every kind once, in an order of its own, half of them in its first
+  // shaft and the rest in its second; floods only up high in the later towers.
   const KINDS = ['ledges', 'springs', 'crumbles', 'lifts', 'blinks', 'chimney', 'ice', 'pillars', 'wheel', 'belts', 'turns', 'shingles'];
   function towerStages(R, t, half) {
     const order = KINDS.slice();
     for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
     // (The rising lava comes right after the door into the second shaft.)
-    if (half === 1 && t >= 12) order.unshift('flood');
-    return order;
+    const mine = half ? order.slice(KINDS.length >> 1) : order.slice(0, KINDS.length >> 1);
+    if (half === 1 && t >= 12) mine.unshift('flood');
+    return mine;
   }
 
   // Castle challenges: each world castle is two of these, then its keeper's hall. Every one
@@ -976,10 +976,11 @@
   ];
   // A castle's parts from its plan: halls joined from their courses, climbs stacked from their
   // stages; the first part has the start and, at its end, a lantern (the keeper's door gets
-  // the other).
+  // the other). (Only the first half of each part's list is built: castles were too long.)
+  const half = list => list.slice(0, Math.ceil(list.length / 2));
   const buildPlan = (R, plan, courses = COURSES) => plan.map((part, n) => part.hall
-    ? joinRuns(part.hall.map((m, i) => courses[m](R, n === 0 && i === 0)), R, n === 0)
-    : stageClimb(R, part.climb, n === 0, n === 0));
+    ? joinRuns(half(part.hall).map((m, i) => courses[m](R, n === 0 && i === 0)), R, n === 0)
+    : stageClimb(R, half(part.climb), n === 0, n === 0));
   function castleOf(k) {
     const c = CASTLES[k];
     const def = {
@@ -1224,12 +1225,12 @@
     if (!castle && !sky) { harden(climb, R, false); harden(run, R, true); }
     // Towers are all climbing: two shafts of stages (see stageClimb), a lantern at the top of
     // the first; the second ends at the boss's door (whose lantern is put in below).
-    // (At least four times as big as the climb, run and arena a tower used to be: more
-    // stages, in turn, till it is.)
+    // (At least twice as big as the climb, run and arena a tower used to be: more stages, in
+    // turn, till it is.)
     let climbs = null;
     if (!def.course && !castle) {
       const room = parts => parts.reduce((n, g) => n + g.reduce((m, row) => m + row.filter(c => c !== '#').length, 0), 0);
-      const want = room([climb, run, arenaRows]) * 4, a = towerStages(R, t, 0), b = towerStages(R, t, 1);
+      const want = room([climb, run, arenaRows]) * 2, a = towerStages(R, t, 0), b = towerStages(R, t, 1);
       for (let k = 0; k < 30; k++) {
         climbs = [stageClimb(R, a, true, true), stageClimb(R, b, false, false)];
         if (room([...climbs, arenaRows]) >= want) break;
@@ -1332,13 +1333,13 @@
   finalMap.flows = [{ mode: 'wave', x0: 70, x1: 84, lo: 18, amp: 3, len: 9, period: 3.2, bottom: 18 }];
   const climbIn = R => castleClimb(R).map(row => row.map(c => (c === 'P' ? 'n' : c)));
   const finalDef = {
-    name: 'Final Bossfight', dark: .82, map: finalMap, giant: 'Ω', bossHits: 4, finalChase: true, clock: 400, hurry: 100,
-    // A long hall of lava (tides, waves, crumbling bridges, hops, bubbles, blinks, lifts,
-    // belts, ice) ending in the drain room, a door, and a tall climb of every kind of stage
-    // with the lava flooding up twice, to the Last Dark's door.
+    name: 'Final Bossfight', dark: .82, map: finalMap, giant: 'Ω', bossHits: 4, finalChase: true, clock: 280, hurry: 100,
+    // A hall of lava (tides, crumbling bridges, hops, bubbles, blinks, pendulums, ice) ending
+    // in the drain room, a door, and a climb of stages with the lava flooding up, to the Last
+    // Dark's door.
     course: R => [
-      joinRuns(['lavaTide', 'lavaWaves', 'crumbleLava', 'springLava', 'lavaHops', 'bubblePits', 'crumbleSpikes', 'blinkLava', 'liftsLava', 'pendulums', 'conveyCrush', 'liftsSpikes', 'icePits', 'iceSteps'].map((m, n) => COURSES[m](R, n === 0)), R, true),
-      drainClimb(R, ['flood', 'ledges', 'springs', 'crumbles', 'lifts', 'blinks', 'chimney', 'ice', 'pillars', 'wheel', 'belts', 'turns', 'shingles', 'crumbles', 'ledges', 'blinks', 'ice', 'pillars']),
+      joinRuns(['lavaTide', 'crumbleLava', 'lavaHops', 'bubblePits', 'blinkLava', 'pendulums', 'icePits'].map((m, n) => COURSES[m](R, n === 0)), R, true),
+      drainClimb(R, ['flood', 'springs', 'lifts', 'chimney', 'pillars', 'wheel', 'turns', 'shingles', 'ice']),
     ],
     signs: [{ x: 2, y: 14.4, t: 'THE LAST DARK · 4 stomps · stomp it when it dives to the floor · after the third: RUN →' }],
   };
