@@ -6,6 +6,8 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'The holes down to the star coins and secret exits aren’t marked any more: finding them is up to you.',
+      'Easier to tell which coins you have: on the map every level shows three big yellow dots (bright for each coin you have); in the HUD and the level info a coin you have is a gold disc, one picked up this run pulses until you finish; and in a level a coin you already have is a silver coin with a tick and GOT IT.',
       'Fruit is back in the Sky Roads: every kind grows there now, and your powers work up there too.',
       'No more portals to the star coins: each secret section is part of the level. Look for a hole in the floor somewhere out of the way, with a floating star coin and “★ COIN ↓” over it: drop in, cross the section to the coin, come back across and climb the ledges up the shaft. (A blue ? and “SECRET ↓” marks the way to a secret exit.) The sign fades to GOT IT once you have that coin.',
       'The map shows each level’s fruit as little pictures on badges of its colour, over the stop. The arrows pointing to fruit off the screen are gone.',

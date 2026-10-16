@@ -516,7 +516,9 @@
       // row over the stop.)
       const fr = fruitsIn(i), x0 = -(fr.length - 1) * 10;
       const dots = fr.map((c, k) => `<g class="fruit-badge" transform="translate(${x0 + k * 20} ${-r - 16})"><circle r="9.5" fill="${LF.FRUITS[c].color}"/><text y="4.5">${FRUIT_ICON[c] || ''}</text></g>`).join('');
-      out += `<g class="${cls}" data-i="${i}" transform="translate(${p.x} ${p.y})"><title>${i + 1}. ${esc(lv.name)}${fruitsIn(i).length ? ' · ' + fruitsIn(i).map(c => LF.FRUITS[c].name).join(', ') : ''}</title>${art.stop(lv, state)}<text class="num" y="${lv.finalFight ? 22 : lv.boss ? 20 : 18}">${i + 1}</text>${badge}${dots}</g>`;
+      // (Three big yellow dots under the number, one for each coin: bright for each you have.)
+      const pips = lv.starOf != null ? '' : [0, 1, 2].map(k => `<circle class="cpip${(coins[i] || [])[k] ? ' got' : ''}" cx="${(k - 1) * 19}" cy="${(lv.finalFight ? 22 : lv.boss ? 20 : 18) + 16}" r="8"/>`).join('');
+      out += `<g class="${cls}" data-i="${i}" transform="translate(${p.x} ${p.y})"><title>${i + 1}. ${esc(lv.name)} · coins ${coinCount(i)}/3${fruitsIn(i).length ? ' · ' + fruitsIn(i).map(c => LF.FRUITS[c].name).join(', ') : ''}</title>${art.stop(lv, state)}<text class="num" y="${lv.finalFight ? 22 : lv.boss ? 20 : 18}">${i + 1}</text>${pips}${badge}${dots}</g>`;
     });
     // The lamplighter, standing over the current stop (or beside the cannon it's at).
     const at = mapHouse != null ? houseSpots[mapHouse] : mapCannon ? (mapCannon.secret != null ? secretCannons[mapCannon.secret] : worlds[mapCannon.world].cannon) : null;
@@ -668,7 +670,7 @@
     $('map-info').innerHTML = `<div>
         <small>World ${lv.world + 1} · chapter ${roman(chapterIndex(mapAt))} · ${esc(lv.chapter)} · level ${mapAt + 1} · key ${levelKey(lv.name)}</small>
         <strong>${esc(lv.name)}</strong>
-        <em>${lv.boss ? 'boss fight · ' : ''}${p ? 'best ' + fmt(p.best) : 'not yet lit'}${hc ? ` · hardcore ${fmt(hc.best)}` : ''} · coins ${[0, 1, 2].map(k => ((coins[mapAt] || [])[k] ? '★' : '☆')).join('')}${fruitsIn(mapAt).length ? ` · fruit: ${fruitsIn(mapAt).map(c => `<span class="fname" style="color:${LF.FRUITS[c].color}">●</span> ${LF.FRUITS[c].name}`).join(', ')}` : ''}${fork}${secret}</em>
+        <em>${lv.boss ? 'boss fight · ' : ''}${p ? 'best ' + fmt(p.best) : 'not yet lit'}${hc ? ` · hardcore ${fmt(hc.best)}` : ''} · coins <span class="info-coins">${[0, 1, 2].map(k => `<i class="hc ${(coins[mapAt] || [])[k] ? 'have' : 'none'}">★</i>`).join('')}</span> ${coinCount(mapAt)}/3${fruitsIn(mapAt).length ? ` · fruit: ${fruitsIn(mapAt).map(c => `<span class="fname" style="color:${LF.FRUITS[c].color}">●</span> ${LF.FRUITS[c].name}`).join(', ')}` : ''}${fork}${secret}</em>
       </div>
       <div class="map-actions">
         <button class="go" data-act="story" data-i="${mapAt}">Play</button>
@@ -1356,7 +1358,9 @@
     $('hud-time').style.color = clock != null && clock <= (W.def.hurry || LF.HURRY) ? '#FF6B3D' : '';
     $('hud-falls').textContent = W.falls;
     $('hud-coins-wrap').hidden = !W.coins.length;
-    if (W.coins.length) $('hud-coins').textContent = W.coins.map(c => (c.taken || c.had ? '★' : '☆')).join('');
+    // (A coin you have is a gold disc; one picked up this run, not yours till you finish, a
+    // pulsing gold ring; one still out there, an empty ring.)
+    if (W.coins.length) $('hud-coins').innerHTML = W.coins.map(c => `<i class="hc ${c.had ? 'have' : c.taken ? 'new' : 'none'}" title="${c.had ? 'got it' : c.taken ? 'picked up: yours when you finish' : 'not found yet'}">★</i>`).join('');
     $('hud-ammo').textContent = W.def.noAmmo ? 'stomp!' : p.ammo;
     const held = Object.keys(p.keys);
     $('hud-keys-wrap').hidden = !held.length;

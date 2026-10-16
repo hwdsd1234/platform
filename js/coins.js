@@ -96,7 +96,7 @@
   // a hole three wide in the floor there, a shaft down through solid rock to the band from row
   // y0 with ledges on alternate sides every three rows (to climb back out by), and at its foot
   // a course of kind running off to one side (whichever it fits), prize ('¢' or '?') at the
-  // end; over the hole, a sign (¤ for a coin, ¿ for a secret exit; see render.js). Every
+  // end. (Nothing marks the hole: it's for you to find.) Every
   // course can be crossed both ways (its jumps are the same out and back), so you can come
   // back with the coin. Changes rows and returns true, or false if there's no room.
   // (dry: only say whether it would fit, changing nothing.)
@@ -124,13 +124,12 @@
       let side = 0;
       for (let r = y0 + 6; r >= y + 2; r -= 3, side ^= 1) rows[r][side ? sx + 2 : sx] = '#';
       rows[y0 + c.end[1]][x0 + at(c.end[0])] = prize;
-      rows[y - 1][x] = prize === '?' ? '¿' : '¤';
       return true;
     }
     return false;
   }
 
-  LF.sections = { addBand, dig, course, KINDS, BAND, MARKS: 'PDLjnĵň?¤¿' };
+  LF.sections = { addBand, dig, course, KINDS, BAND, MARKS: 'PDLjnĵň?' };
 
   // Can the checker b reach the coin just added to t (one that isn't in rows)?
   function coinSeen(t, rows, b, w) {

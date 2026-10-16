@@ -196,6 +196,14 @@
   .map-board .stop { cursor: pointer; }
   .map-board .stop .hit, .map-board .house .hit, .map-board .cannon .hit { fill: transparent; }
   .map-board .stop text { font-family: var(--mono); font-size: 10px; fill: var(--mist-dim); text-anchor: middle; pointer-events: none; }
+  .map-board .cpip { fill: rgba(255,210,74,.15); stroke: rgba(255,210,74,.7); stroke-width: 2px; pointer-events: none; }
+  .map-board .cpip.got { fill: #FFD24A; stroke: #8A5A12; filter: drop-shadow(0 0 3px rgba(255,210,74,.7)); }
+  .hc { display: inline-grid; place-items: center; width: 1.25em; height: 1.25em; margin: 0 1px; border-radius: 50%; font-style: normal; font-size: .8em; line-height: 1; vertical-align: middle; }
+  .hc.have { background: #FFD24A; color: #8A5A12; box-shadow: 0 0 0 1.5px #C9922A, 0 0 8px rgba(255,210,74,.6); }
+  .hc.new { color: #FFE066; box-shadow: 0 0 0 2px #FFD24A; animation: hc-pulse 1s ease-in-out infinite; }
+  .hc.none { color: rgba(217,208,240,.35); box-shadow: 0 0 0 1.5px rgba(217,208,240,.3); }
+  @keyframes hc-pulse { 50% { box-shadow: 0 0 0 2px #FFD24A, 0 0 10px rgba(255,210,74,.8); } }
+  @media (prefers-reduced-motion: reduce) { .hc.new { animation: none; } }
   .map-board .stop .num { font-size: 9px; font-weight: 600; fill: rgba(217,208,240,.75); paint-order: stroke; stroke: rgba(14,12,34,.8); stroke-width: 3px; }
   .map-board .stop.locked { cursor: default; opacity: .4; }
   .map-board .stop.at .post, .map-board .stop.at .tower, .map-board .stop.at .castle { filter: drop-shadow(0 0 6px rgba(255,226,168,.9)); }
@@ -602,33 +610,33 @@
   </div>
 </div>
 
-<script src="js/engine.js?v=184"></script>
-<script src="js/render.js?v=184"></script>
-<script src="js/gen.js?v=184"></script>
-<script src="js/levels-1.js?v=184"></script>
-<script src="js/levels-2.js?v=184"></script>
-<script src="js/levels-3.js?v=184"></script>
-<script src="js/levels-4.js?v=184"></script>
-<script src="js/levels-5.js?v=184"></script>
-<script src="js/levels-6.js?v=184"></script>
-<script src="js/levels-7.js?v=184"></script>
-<script src="js/levels-8.js?v=184"></script>
-<script src="js/levels-9.js?v=184"></script>
-<script src="js/levels-10.js?v=184"></script>
-<script src="js/levels-11.js?v=184"></script>
-<script src="js/levels-12.js?v=184"></script>
-<script src="js/levels-13.js?v=184"></script>
-<script src="js/levels-14.js?v=184"></script>
-<script src="js/checkpoints.js?v=184"></script>
-<script src="js/bosses.js?v=184"></script>
-<script src="js/worlds.js?v=184"></script>
-<script src="js/lengthen.js?v=184"></script>
-<script src="js/coins.js?v=184"></script>
-<script src="js/special.js?v=184"></script>
-<script src="js/secrets.js?v=184"></script>
-<script src="js/awards.js?v=184"></script>
-<script src="js/editor.js?v=184"></script>
-<script src="js/music.js?v=184"></script>
-<script src="js/mapart.js?v=184"></script>
-<script src="js/updates.js?v=184"></script>
-<script src="js/ui.js?v=184"></script>
+<script src="js/engine.js?v=185"></script>
+<script src="js/render.js?v=185"></script>
+<script src="js/gen.js?v=185"></script>
+<script src="js/levels-1.js?v=185"></script>
+<script src="js/levels-2.js?v=185"></script>
+<script src="js/levels-3.js?v=185"></script>
+<script src="js/levels-4.js?v=185"></script>
+<script src="js/levels-5.js?v=185"></script>
+<script src="js/levels-6.js?v=185"></script>
+<script src="js/levels-7.js?v=185"></script>
+<script src="js/levels-8.js?v=185"></script>
+<script src="js/levels-9.js?v=185"></script>
+<script src="js/levels-10.js?v=185"></script>
+<script src="js/levels-11.js?v=185"></script>
+<script src="js/levels-12.js?v=185"></script>
+<script src="js/levels-13.js?v=185"></script>
+<script src="js/levels-14.js?v=185"></script>
+<script src="js/checkpoints.js?v=185"></script>
+<script src="js/bosses.js?v=185"></script>
+<script src="js/worlds.js?v=185"></script>
+<script src="js/lengthen.js?v=185"></script>
+<script src="js/coins.js?v=185"></script>
+<script src="js/special.js?v=185"></script>
+<script src="js/secrets.js?v=185"></script>
+<script src="js/awards.js?v=185"></script>
+<script src="js/editor.js?v=185"></script>
+<script src="js/music.js?v=185"></script>
+<script src="js/mapart.js?v=185"></script>
+<script src="js/updates.js?v=185"></script>
+<script src="js/ui.js?v=185"></script>

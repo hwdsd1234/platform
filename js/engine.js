@@ -234,9 +234,6 @@
       // counting left to right, leads to the k-th n). They join the parts of a tower.
       else if (c === 'j') { W.passages.push({ tx: x, ty: y, x: x * TS, y: (y - 1) * TS + 4, w: 32, h: 60, open: true, glow: 1 }); tiles[y][x] = ' '; }
       else if (c === 'n') { W.entries.push({ tx: x, ty: y }); tiles[y][x] = ' '; }
-      // ¤ and ¿ mark the holes down into secret sections (see coins.js): a star coin's, or the
-      // secret exit's. They're drawn as signs over the hole (render.js).
-      else if (c === '¤' || c === '¿') { (W.holes ||= []).push({ tx: x, ty: y, coin: c === '¤' }); tiles[y][x] = ' '; }
       else if (LF.PORTALS.doors.includes(c)) { (W.portals ||= []).push({ c, tx: x, ty: y, x: x * TS, y: (y - 1) * TS + 4, w: 32, h: 60, open: true, glow: 1 }); tiles[y][x] = ' '; }
       else if (LF.PORTALS.lands.includes(c)) { (W.landings ||= []).push({ c: LF.PORTALS.doors[LF.PORTALS.lands.indexOf(c)], tx: x, ty: y }); tiles[y][x] = ' '; }
       // ¢ is a star coin (three to a story level, see coins.js). def.coinsHave says which of

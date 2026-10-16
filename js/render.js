@@ -421,41 +421,6 @@
     // its arms turning, sparks drifting into the middle, a pulsing glow), so it never looks
     // like the level's own door. When you go through, rings flash out where you went in and
     // where you came out (W.warps).
-    // The sign over a hole down into a secret section (see coins.js), so anyone can tell what's
-    // down there: over a star coin's, the coin itself, bobbing, with ★ COIN ↓ (faded, GOT IT,
-    // once you've got it); over the secret exit's, a blue ? with SECRET ↓.
-    function drawHoleSigns(W) {
-      for (const h of W.holes || []) {
-        const cx = h.tx * TS + 16, top = h.ty * TS + (reduced ? 0 : Math.sin(clock * 2.5 + h.tx) * 3);
-        const label = (t, c) => {
-          ctx.font = '700 11px ui-monospace, monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(14,12,34,.85)'; ctx.strokeText(t, cx, top + 22); ctx.fillStyle = c; ctx.fillText(t, cx, top + 22);
-        };
-        if (!h.coin) {
-          ctx.fillStyle = '#2E4E82'; ctx.beginPath(); ctx.arc(cx, top, 11, 0, TAU); ctx.fill();
-          ctx.strokeStyle = '#9FD8FF'; ctx.lineWidth = 2; ctx.stroke();
-          ctx.font = '700 15px ui-monospace, monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#9FD8FF'; ctx.fillText('?', cx, top + 1);
-          label('SECRET ↓', '#9FD8FF');
-          continue;
-        }
-        // (Its coin: the one down below nearest to it.)
-        const coin = (W.coins || []).filter(c => c.ty > h.ty).sort((a, b) => Math.abs(a.tx - h.tx) - Math.abs(b.tx - h.tx))[0];
-        if (coin && (coin.taken || coin.had)) {
-          ctx.strokeStyle = 'rgba(255,224,102,.6)'; ctx.lineWidth = 2; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.arc(cx, top, 11, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
-          label('GOT IT', 'rgba(255,224,102,.7)');
-          continue;
-        }
-        const g = ctx.createRadialGradient(cx, top, 0, cx, top, 28);
-        g.addColorStop(0, 'rgba(255,224,102,.5)'); g.addColorStop(1, 'rgba(255,224,102,0)'); ctx.fillStyle = g; ctx.fillRect(cx - 28, top - 28, 56, 56);
-        ctx.fillStyle = '#C9922A'; ctx.beginPath(); ctx.arc(cx, top, 11, 0, TAU); ctx.fill();
-        ctx.fillStyle = '#FFD24A'; ctx.beginPath(); ctx.arc(cx, top, 8.5, 0, TAU); ctx.fill();
-        ctx.fillStyle = '#FFF2B0'; ctx.beginPath();
-        for (let n = 0; n < 10; n++) { const a = -Math.PI / 2 + n * Math.PI / 5, rr = n % 2 ? 2.8 : 6.5; ctx.lineTo(cx + Math.cos(a) * rr, top + Math.sin(a) * rr); }
-        ctx.fill();
-        label('★ COIN ↓', '#FFE066');
-      }
-    }
-
     function drawPassage(d) {
       const cx = d.x + 16, cy = d.y + 30, R0 = 22, t = reduced ? 0 : clock;
       // The glow behind it.
@@ -496,7 +461,15 @@
         const bob = reduced ? 0 : Math.sin(clock * 2.5 + c.k) * 3, turn = reduced ? 1 : Math.abs(Math.cos(clock * 1.6 + c.k));
         const r = 12 * (c.taken ? 1 + (1 - c.pop) : 1), a = c.taken ? c.pop : 1;
         ctx.save(); ctx.translate(c.x, c.y + bob); ctx.scale(Math.max(.25, turn), 1); ctx.globalAlpha = a;
-        if (c.had && !c.taken) { ctx.strokeStyle = 'rgba(255,224,102,.55)'; ctx.lineWidth = 2; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.stroke(); ctx.setLineDash([]); }
+        // One you already have: a pale silver coin with a tick, and GOT IT under it.
+        if (c.had && !c.taken) {
+          ctx.globalAlpha = .8;
+          ctx.fillStyle = '#7F8AA8'; ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
+          ctx.fillStyle = '#C9D2E8'; ctx.beginPath(); ctx.arc(0, 0, r - 2.5, 0, TAU); ctx.fill();
+          ctx.strokeStyle = '#3E4A66'; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(-4.5, 0); ctx.lineTo(-1, 3.5); ctx.lineTo(5, -3.5); ctx.stroke();
+          ctx.restore(); ctx.save(); ctx.translate(c.x, c.y + bob);
+          ctx.font = '700 9px ui-monospace, monospace'; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(14,12,34,.85)'; ctx.strokeText('GOT IT', 0, 23); ctx.fillStyle = '#C9D2E8'; ctx.fillText('GOT IT', 0, 23);
+        }
         else {
           ctx.fillStyle = '#C9922A'; ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
           ctx.fillStyle = '#FFD24A'; ctx.beginPath(); ctx.arc(0, 0, r - 2.5, 0, TAU); ctx.fill();
@@ -1393,7 +1366,6 @@
       for (const l of W.lanterns) if (l.lit) out.push({ x: l.x, y: l.y, r: (200 + l.pop * 60) * flick(l.f, .04) });
       if (W.door && W.door.glow > 0) out.push({ x: W.door.x + 16, y: W.door.y + 30, r: 130 * W.door.glow });
       for (const pd of W.passages) out.push({ x: pd.x + 16, y: pd.y + 30, r: 120 });
-      for (const h of W.holes || []) out.push({ x: h.tx * TS + 16, y: h.ty * TS + 10, r: 80 });
       if (W.secret && W.secretSeen) out.push({ x: W.secret.x + 16, y: W.secret.y + 30, r: 90 });
       for (const b of W.projectiles) out.push({ x: b.x + b.w / 2, y: b.y + b.h / 2, r: 60 * Math.max(1, b.w / 10) });
       for (const e of W.enemies) if (e.alive && e.type === 'S') out.push({ x: e.x + 12, y: e.y + 2, r: 34 });
@@ -1662,7 +1634,6 @@
       // Passage doors glow like an open door.
       // (Passage doors glow through the dark as their swirling portals.)
       for (const pd of W.passages) drawPassage(pd);
-      drawHoleSigns(W);
       drawWarps(W);
       const d = W.door;
       if (d && d.glow > 0) {
