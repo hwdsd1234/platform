@@ -789,14 +789,16 @@
     LF.kill(W);
     if (playCtx.kind === 'story') flash('You gave up: your powers and ammo are gone');
   }
-  // Hard restart (Shift+R): the whole level from the very start, every lantern out. It counts
-  // as a death like giving up (in the story your powers and ammo are gone); not in a grove.
+  // Shift+R: straight back to the map (from a test, back to the editor). In the story it
+  // counts like giving up (your powers and ammo are gone) and the level starts over from the
+  // very beginning next time, every lantern out; not in a grove.
   function hardRestart() {
     if (playCtx.kind === 'house') return;
+    if (playCtx.kind === 'test') return ACTIONS.backToEditor();
     if (playCtx.kind === 'story' && !hardcore) { carry = null; store.set('powers', null); store.set('ammo', 0); }
     store.set('midway', null);
-    play(playDef, playCtx);
-    flash(playCtx.kind === 'story' ? 'Back to the start: lanterns out, powers and ammo gone' : 'Back to the start');
+    showMap();
+    flash(playCtx.kind === 'story' ? 'Back to the map: lanterns out, powers and ammo gone' : 'Back to the map');
   }
 
   // ---------- inventory ----------
@@ -965,13 +967,12 @@
       ${keyFor(playCtx) ? `<p class="lede">Level key <b class="lvl-key">${keyFor(playCtx)}</b> · <span class="key-link">${esc(keyLink(keyFor(playCtx)))}</span>${playCtx.kind === 'custom' ? '<br><small>Your own levels’ keys only work in this browser. To share one, use Copy play link in the editor’s Share code.</small>' : ''}</p>` : ''}
       <div class="menu">
         <button class="go" data-act="resume">Resume</button>
-        ${playCtx.kind === 'house' ? '' : '<button class="alt" data-act="giveUp">Give up · R</button><button class="alt" data-act="hardRestart">Restart level · Shift+R</button>'}
+        ${playCtx.kind === 'house' ? '' : '<button class="alt" data-act="giveUp">Give up · R</button><button class="alt" data-act="hardRestart">Back to the map · Shift+R</button>'}
         ${playCtx.kind === 'test' ? '<button class="alt" data-act="backToEditor">Back to editor</button>' : ''}
         ${playCtx.kind === 'random' ? '<button class="alt" data-act="editRandom">Open in editor</button>' : ''}
         ${playCtx.kind !== 'test' && playCtx.kind !== 'story' ? '<button class="alt" data-act="copyToEditor">Copy to editor</button>' : ''}
-        ${playCtx.kind === 'story' || playCtx.kind === 'house' ? '' : '<button class="alt" data-act="menu">Back to the map</button>'}
       </div>
-      ${playCtx.kind === 'story' ? '<p class="lede"><small>No walking out of a story level: finish it, or give up (that counts as a death).</small></p>' : playCtx.kind === 'house' ? '<p class="lede"><small>No giving up in a Fruit Grove: the clock’s running till it’s over.</small></p>' : ''}`);
+      ${playCtx.kind === 'story' ? '<p class="lede"><small>Leaving a story level unfinished counts as giving up: your powers and ammo are gone.</small></p>' : playCtx.kind === 'house' ? '<p class="lede"><small>No giving up in a Fruit Grove: the clock’s running till it’s over.</small></p>' : ''}`);
   }
 
   function cleared() {

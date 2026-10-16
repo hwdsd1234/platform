@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Shift+R now takes you straight back to the map (in a story level it counts as giving up, and the level starts over from the beginning next time).',
       'Swimming sideways is as fast as running on land now (it was about two-thirds the speed).',
       'Pear: stomping an enemy (or bouncing off a raging boss) after the spin lets you glide again.',
       'A star coin you already have is just an outline now: you pass straight through it, and it never counts twice. Coins you pick up only count once you finish the level; die first and that run’s coins are gone.',
