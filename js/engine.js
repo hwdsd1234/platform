@@ -2834,10 +2834,11 @@
       W.emit('splash');
     }
     p.wet = wet;
-    // (A watermelon makes you FAST times quicker on your feet.)
+    // (A watermelon makes you FAST times quicker on your feet. In water you move along just as
+    // fast as you run on land.)
     const T = playerTune(W.def), grav = G * T.gravity, run = RUN * T.run * (p.fast > 0 || p.rush > 0 ? FAST : 1);
     const accel = p.onGround ? (p.ice ? (dir ? 450 : 120) : dir ? 2600 : 2200) : p.lock > 0 ? 250 : (dir ? 1700 : 700) * T.air;
-    p.vx = approach(p.vx, dir * run * (wet ? .65 : 1), accel * dt);
+    p.vx = approach(p.vx, dir * run, accel * dt);
 
     if (input.jumpPressed) { p.buffer = .13; input.jumpPressed = false; } else p.buffer -= dt;
     // (The pear's spin goes on Space (or Z, or the touch jump button), not on Up: Up only

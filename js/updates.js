@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Swimming sideways is as fast as running on land now (it was about two-thirds the speed).',
       'Pear: stomping an enemy (or bouncing off a raging boss) after the spin lets you glide again.',
       'A star coin you already have is just an outline now: you pass straight through it, and it never counts twice. Coins you pick up only count once you finish the level; die first and that run’s coins are gone.',
       'Every coin in a level is got a different way. Each secret section is one of seven kinds: pillar jumps, crumbling blocks, icy pillars, blinking blocks, conveyor belts running backwards, springs over tall walls, or lifts across long spiked pits. A level’s three coins always take three different kinds, and which three changes from level to level.',
