@@ -453,30 +453,21 @@
     }
 
     // Star coins: big gold coins with a star, bobbing and turning; one you've already got from
-    // an earlier run shows as a pale outline, and a just-taken one swells and fades.
+    // an earlier run isn't drawn, and a just-taken one swells and fades.
     function drawCoins(W) {
       for (const c of W.coins || []) {
         if (c.taken && c.pop <= 0) continue;
+        // (One you already have isn't there at all.)
+        if (c.had && !c.taken) continue;
         if (c.taken) c.pop = Math.max(0, c.pop - .04);
         const bob = reduced ? 0 : Math.sin(clock * 2.5 + c.k) * 3, turn = reduced ? 1 : Math.abs(Math.cos(clock * 1.6 + c.k));
         const r = 12 * (c.taken ? 1 + (1 - c.pop) : 1), a = c.taken ? c.pop : 1;
         ctx.save(); ctx.translate(c.x, c.y + bob); ctx.scale(Math.max(.25, turn), 1); ctx.globalAlpha = a;
-        // One you already have: a pale silver coin with a tick, and GOT IT under it.
-        if (c.had && !c.taken) {
-          ctx.globalAlpha = .8;
-          ctx.fillStyle = '#7F8AA8'; ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
-          ctx.fillStyle = '#C9D2E8'; ctx.beginPath(); ctx.arc(0, 0, r - 2.5, 0, TAU); ctx.fill();
-          ctx.strokeStyle = '#3E4A66'; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(-4.5, 0); ctx.lineTo(-1, 3.5); ctx.lineTo(5, -3.5); ctx.stroke();
-          ctx.restore(); ctx.save(); ctx.translate(c.x, c.y + bob);
-          ctx.font = '700 9px ui-monospace, monospace'; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(14,12,34,.85)'; ctx.strokeText('GOT IT', 0, 23); ctx.fillStyle = '#C9D2E8'; ctx.fillText('GOT IT', 0, 23);
-        }
-        else {
-          ctx.fillStyle = '#C9922A'; ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
-          ctx.fillStyle = '#FFD24A'; ctx.beginPath(); ctx.arc(0, 0, r - 2.5, 0, TAU); ctx.fill();
-          ctx.fillStyle = '#FFF2B0'; ctx.beginPath();
-          for (let k = 0; k < 10; k++) { const ang = -Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? 3.2 : 7.5; ctx.lineTo(Math.cos(ang) * rr, Math.sin(ang) * rr); }
-          ctx.fill();
-        }
+        ctx.fillStyle = '#C9922A'; ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#FFD24A'; ctx.beginPath(); ctx.arc(0, 0, r - 2.5, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#FFF2B0'; ctx.beginPath();
+        for (let k = 0; k < 10; k++) { const ang = -Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? 3.2 : 7.5; ctx.lineTo(Math.cos(ang) * rr, Math.sin(ang) * rr); }
+        ctx.fill();
         ctx.restore();
       }
     }

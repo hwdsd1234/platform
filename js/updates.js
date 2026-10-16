@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'A star coin you already have is gone from the level when you play it again (no more silver GOT IT coin).',
       'The holes down to the star coins and secret exits aren’t marked any more: finding them is up to you.',
       'Easier to tell which coins you have: on the map every level shows three big yellow dots (bright for each coin you have); in the HUD and the level info a coin you have is a gold disc, one picked up this run pulses until you finish; and in a level a coin you already have is a silver coin with a tick and GOT IT.',
       'Fruit is back in the Sky Roads: every kind grows there now, and your powers work up there too.',

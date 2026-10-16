@@ -3157,7 +3157,7 @@
     }
 
     // Star coins: touch one to pick it up (it's yours for good when you finish the level; die
-    // first and it isn't). One you already have is only an outline: you pass through it.
+    // first and it isn't). One you already have is gone from the level.
     for (const c of W.coins) {
       if (c.taken || c.had || Math.abs(cx - c.x) > 22 || Math.abs(cy - c.y) > 24) continue;
       c.taken = true; c.pop = 1; (W.coinsGot ||= [])[c.k] = true;
