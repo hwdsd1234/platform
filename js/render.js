@@ -1033,14 +1033,27 @@
     function drawFruit(f) {
       const bob = reduced ? 0 : Math.sin(clock * 3 + f.tx * 1.7) * 2.5;
       const regrow = f.taken ? Math.max(0, 1 - f.regrow / 12) : 1;
-      const s = f.taken ? .35 + regrow * .25 : 1 + f.pop * .3;
+      // (A ripe fruit is drawn a size up, in a halo of its own colour, with a ring that pulses
+      // out from it and two sparkles circling it, so you can spot it from across the screen.)
+      const s = f.taken ? .35 + regrow * .25 : 1.3 + f.pop * .3;
+      const col = (LF.FRUITS[f.type] || LF.FRUITS.a).color;
+      if (!f.taken) {
+        const ph = reduced ? .5 : (clock * .9 + f.tx * .13) % 1;
+        ctx.save(); ctx.translate(f.x, f.y + bob);
+        const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 26);
+        g.addColorStop(0, col + '66'); g.addColorStop(1, col + '00');
+        ctx.fillStyle = g; ctx.fillRect(-26, -26, 52, 52);
+        ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.globalAlpha = (1 - ph) * .8;
+        ctx.beginPath(); ctx.arc(0, 0, 12 + ph * 16, 0, TAU); ctx.stroke();
+        ctx.globalAlpha = 1; ctx.fillStyle = '#FFF6D8';
+        for (const k of [0, Math.PI]) {
+          const a = (reduced ? 0 : clock * 2.4) + k + f.tx, sx = Math.cos(a) * 15, sy = Math.sin(a) * 9;
+          ctx.beginPath(); ctx.moveTo(sx, sy - 3); ctx.lineTo(sx + 1, sy - 1); ctx.lineTo(sx + 3, sy); ctx.lineTo(sx + 1, sy + 1); ctx.lineTo(sx, sy + 3); ctx.lineTo(sx - 1, sy + 1); ctx.lineTo(sx - 3, sy); ctx.lineTo(sx - 1, sy - 1); ctx.fill();
+        }
+        ctx.restore();
+      }
       ctx.save(); ctx.translate(f.x, f.y + bob); ctx.scale(s, s);
       ctx.globalAlpha = f.taken ? .3 : 1;
-      if (!f.taken) {
-        const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 16);
-        g.addColorStop(0, 'rgba(255,240,200,.28)'); g.addColorStop(1, 'rgba(255,240,200,0)');
-        ctx.fillStyle = g; ctx.fillRect(-16, -16, 32, 32);
-      }
       if (f.type === 'a') {
         ctx.fillStyle = '#E5484D'; ctx.beginPath(); ctx.arc(-2.5, 1, 5.5, 0, TAU); ctx.arc(2.5, 1, 5.5, 0, TAU); ctx.fill();
         ctx.fillStyle = '#FF8A8D'; ctx.fillRect(-5, -2, 2.5, 2.5);
@@ -1331,7 +1344,7 @@
     function lights(W) {
       const out = [], p = W.player;
       if (!p.dead) { const f = LF.flamePos(p); out.push({ x: f.x, y: f.y, r: 150 * (p.glow ? 2 : 1) * flick(0, .03) }); }
-      for (const f of W.fruits) if (!f.taken) out.push({ x: f.x, y: f.y, r: 44 });
+      for (const f of W.fruits) if (!f.taken) out.push({ x: f.x, y: f.y, r: 84 * flick(f.tx, .05) });
       for (let k = 0; k < W.lavaTop.length; k += 3) { const l = W.lavaTop[k]; out.push({ x: l.tx * TS + 16, y: l.ty * TS + 10, r: 95 }); }
       for (const f of W.flows || []) for (let x = f.x0; x <= f.x1; x += 3) out.push({ x: x * TS + 16, y: LF.flowSurface(W, f, x * TS + 16) + 8, r: 100 });
       for (const a of W.ammo) if (!a.taken) out.push({ x: a.x, y: a.y, r: a.huge ? 70 : 40 });
@@ -1811,8 +1824,32 @@
       } else {
         drawDarkness(W, cam);
         drawEmissive(W, cam, opts);
+        drawFruitPointers(W, cam);
       }
     };
+
+    // Fruit just off the screen (no further from you than the screen is wide): a little arrow
+    // in the fruit's colour at the edge of the screen, pointing the way to it.
+    function drawFruitPointers(W, cam) {
+      const p = W.player;
+      if (p.dead) return;
+      worldTransform(W, cam, {});
+      const { vw, vh } = R.viewSize(cam), pad = 30, px = p.x + p.w / 2, py = p.y + p.h / 2;
+      const cx = cam.x + vw / 2, cy = cam.y + vh / 2;
+      for (const f of W.fruits) {
+        if (f.taken || Math.hypot(f.x - px, f.y - py) > Math.max(vw, vh)) continue;
+        if (f.x > cam.x && f.x < cam.x + vw && f.y > cam.y && f.y < cam.y + vh) continue;
+        // (Where the line from the middle of the screen to the fruit leaves it.)
+        const dx = f.x - cx, dy = f.y - cy, k = Math.min((vw / 2 - pad) / Math.abs(dx || 1e-6), (vh / 2 - pad) / Math.abs(dy || 1e-6));
+        const ax = cx + dx * k, ay = cy + dy * k, ang = Math.atan2(dy, dx);
+        const col = (LF.FRUITS[f.type] || LF.FRUITS.a).color, pulse = reduced ? 1 : 1 + Math.sin(clock * 5 + f.tx) * .12;
+        ctx.save(); ctx.translate(ax, ay); ctx.scale(pulse * 1.3, pulse * 1.3);
+        ctx.fillStyle = 'rgba(14,12,34,.75)'; ctx.beginPath(); ctx.arc(0, 0, 11, 0, TAU); ctx.fill();
+        ctx.fillStyle = col; ctx.beginPath(); ctx.arc(0, 0, 6, 0, TAU); ctx.fill();
+        ctx.rotate(ang); ctx.beginPath(); ctx.moveTo(18, 0); ctx.lineTo(11, -6); ctx.lineTo(11, 6); ctx.fill();
+        ctx.restore();
+      }
+    }
 
     return R;
   };

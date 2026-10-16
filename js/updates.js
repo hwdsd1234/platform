@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Fruit is much easier to spot: it’s drawn bigger, glows in its own colour (and lights up the dark around it), with a ring pulsing out and sparkles circling it; and fruit just off the screen shows as a coloured arrow at the edge, pointing the way.',
       'Shift+R now takes you straight back to the map (in a story level it counts as giving up, and the level starts over from the beginning next time).',
       'Swimming sideways is as fast as running on land now (it was about two-thirds the speed).',
       'Pear: stomping an enemy (or bouncing off a raging boss) after the spin lets you glide again.',
