@@ -228,12 +228,15 @@
       else if (AMMO[c] && def.noAmmo) tiles[y][x] = ' ';
       else if (AMMO[c]) { W.ammo.push({ big: c !== 'q', huge: c === '$', n: AMMO[c], tx: x, ty: y, x: x * TS + 16, y: y * TS + 20, taken: false }); tiles[y][x] = ' '; }
       else if (c === 'T' || c === 'H') { W.blinks.push({ tx: x, ty: y, c, wait: false }); if (c === 'H') tiles[y][x] = 'h'; }
-      else if (LF.FRUITS[c]) { W.fruits.push({ type: def.sky ? 'a' : c, tx: x, ty: y, x: x * TS + 16, y: y * TS + 18, taken: false, regrow: 0, pop: 0 }); tiles[y][x] = ' '; }
+      else if (LF.FRUITS[c]) { W.fruits.push({ type: c, tx: x, ty: y, x: x * TS + 16, y: y * TS + 18, taken: false, regrow: 0, pop: 0 }); tiles[y][x] = ' '; }
       else if (c === 'D') { W.door = { tx: x, ty: y, x: x * TS, y: (y - 1) * TS + 4, w: 32, h: 60, open: false, glow: 0 }; tiles[y][x] = ' '; }
       // j is a passage door: walk into it and you come out at the matching n (the k-th j,
       // counting left to right, leads to the k-th n). They join the parts of a tower.
       else if (c === 'j') { W.passages.push({ tx: x, ty: y, x: x * TS, y: (y - 1) * TS + 4, w: 32, h: 60, open: true, glow: 1 }); tiles[y][x] = ' '; }
       else if (c === 'n') { W.entries.push({ tx: x, ty: y }); tiles[y][x] = ' '; }
+      // ¤ and ¿ mark the holes down into secret sections (see coins.js): a star coin's, or the
+      // secret exit's. They're drawn as signs over the hole (render.js).
+      else if (c === '¤' || c === '¿') { (W.holes ||= []).push({ tx: x, ty: y, coin: c === '¤' }); tiles[y][x] = ' '; }
       else if (LF.PORTALS.doors.includes(c)) { (W.portals ||= []).push({ c, tx: x, ty: y, x: x * TS, y: (y - 1) * TS + 4, w: 32, h: 60, open: true, glow: 1 }); tiles[y][x] = ' '; }
       else if (LF.PORTALS.lands.includes(c)) { (W.landings ||= []).push({ c: LF.PORTALS.doors[LF.PORTALS.lands.indexOf(c)], tx: x, ty: y }); tiles[y][x] = ' '; }
       // ¢ is a star coin (three to a story level, see coins.js). def.coinsHave says which of
@@ -369,15 +372,6 @@
       W.player.shield = Math.min(2, pw.shield || 0);
       // (One power at a time: an old save carrying more keeps just the first.)
       const one = FLAGS.find(k => pw[k]); if (one) W.player[one] = 1;
-    }
-    // The Sky Roads are pure platforming: up there the wind holds every fruit power but the
-    // apple's shield, and gives them back when you leave (p.held).
-    if (def.sky) {
-      const p = W.player;
-      if (LF.hasPowers(p)) {
-        p.held = LF.powerFlags(p); for (const k of FLAGS) p[k] = 0;
-        W.floaters.push({ x: p.x + p.w / 2, y: p.y - 18, t: 'the wind holds your fruit here (apples work)', life: 2.4, c: '#DCE8FF' });
-      }
     }
     W.got = {};   // fruit picked up, by type
     // Back into a level whose lanterns you'd lit last time (def.resume = { lit: [lantern

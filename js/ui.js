@@ -21,6 +21,7 @@
   // Star coins you've got, by level: coins[i] = [true/false ×3] (kept once you finish the level).
   let coins = store.get('coins', {});
   const coinCount = i => (coins[i] || []).filter(Boolean).length;
+  const FRUIT_ICON = { a: '🍎', o: '🍊', b: '🍌', m: '🍉', p: '🍐', 'ƥ': '🍍', 'ǥ': '🍇', 'ƫ': '🍑', 'ɯ': '🥭', s: '🍓', 'ç': '🍒', 'ƀ': '🫐', 'ŧ': '🍅' };
   // The kinds of fruit growing in level i (as their map letters), power fruits first.
   const fruitCache = {};
   const fruitsIn = i => fruitCache[i] || (fruitCache[i] = (() => {
@@ -511,8 +512,10 @@
       let badge = '';
       if (secrets[i]) badge = `<text class="badge found" x="${r + 2}" y="${-r - 14}">★</text>`;
       else if (lv.secretTo != null && progress[i]) badge = `<text class="badge hint" x="${r + 2}" y="${-r - 14}">?</text>`;
-      // (A dot for each kind of fruit that grows there, in its colour, up on the left.)
-      const dots = fruitsIn(i).map((c, k) => `<circle class="fdot" cx="${-r - 4 - k * 11}" cy="${-r - 6}" r="4.6" fill="${LF.FRUITS[c].color}"/>`).join('');
+      // (Each kind of fruit that grows there, as its picture on a badge of its colour, in a
+      // row over the stop.)
+      const fr = fruitsIn(i), x0 = -(fr.length - 1) * 10;
+      const dots = fr.map((c, k) => `<g class="fruit-badge" transform="translate(${x0 + k * 20} ${-r - 16})"><circle r="9.5" fill="${LF.FRUITS[c].color}"/><text y="4.5">${FRUIT_ICON[c] || ''}</text></g>`).join('');
       out += `<g class="${cls}" data-i="${i}" transform="translate(${p.x} ${p.y})"><title>${i + 1}. ${esc(lv.name)}${fruitsIn(i).length ? ' · ' + fruitsIn(i).map(c => LF.FRUITS[c].name).join(', ') : ''}</title>${art.stop(lv, state)}<text class="num" y="${lv.finalFight ? 22 : lv.boss ? 20 : 18}">${i + 1}</text>${badge}${dots}</g>`;
     });
     // The lamplighter, standing over the current stop (or beside the cannon it's at).
@@ -805,7 +808,7 @@
   // Fruit you've gathered (in Fruit Groves), up to INV_MAX of each. Tab opens it, on the map
   // only (not in a level): using a fruit gets you ready for your next level. Powers last until you
   // die, and carry on from level to level (carry: { shield, boost, dbl }). Not in Hardcore.
-  const INV_MAX = 999, FRUIT_ICON = { a: '🍎', o: '🍊', b: '🍌', m: '🍉', p: '🍐', 'ƥ': '🍍', 'ǥ': '🍇', 'ƫ': '🍑', 'ɯ': '🥭', s: '🍓', 'ç': '🍒', 'ƀ': '🫐', 'ŧ': '🍅' };
+  const INV_MAX = 999;
   let inventory = { ...Object.fromEntries(Object.keys(LF.FRUITS).map(t => [t, 0])), ...store.get('inventory', {}) };
   for (const t in inventory) if (!LF.FRUITS[t]) delete inventory[t];   // (fruit that's since gone, like the pear)
   let carry = store.get('powers', null), invFrom = null;
@@ -865,7 +868,7 @@
         <li><kbd>E</kbd> fire: tap for one shot, hold for autofire; shots splash 1 block · <kbd>X</kbd> explosive round (2 ammo, 3-block blast) · <kbd>A</kbd> kill shot (3 ammo): kills whatever it hits in one go, golems and carts too (a boss takes it as one hit) · every shot counts as one hit (a grenade one per blast, up to three), so golems take 3 and TNT carts 5 (stomps count too); a TNT blast kills everything near it but you · <kbd>Q</kbd> bouncing grenade (3 ammo) · <kbd>D</kbd> dynamite (4 ammo): thrown, it falls and sits where it lands, and after a 3-second fuse kills everything within 5 blocks, golems and carts too (a boss takes it as one hit; it never hurts you) · <kbd>Shift</kbd>+<kbd>D</kbd> big dynamite (8 ammo, 10 blocks) · hold any of them to keep firing · hold <kbd>Shift</kbd> for a big shot: 2× size and blast, 2× ammo · ammo crates are hidden through each level; big crates hold 10, huge ones 25; enemies drop 1–5 ammo when killed, more for tougher ones (TNT carts drop none)</li>
         <li>Keys open the locked-door blocks you touch, one block at a time; you keep the key</li>
         <li>Water is safe: you sink slowly and can jump as often as you like</li>
-        <li>Fruit: 🍎 shield (a second apple doubles it) · 🍊 jump boost · 🍌 double jump · 🍉 speed · 🍐 glide (hold <kbd>↑</kbd> or jump while falling; press <kbd>Space</kbd> in mid-air for a big lift, after which you can't glide and fall steadily till you land (wall jumps don't give it back); letting go of <kbd>↑</kbd> and pressing it again just keeps you gliding) · 🍍 spikes don't hurt · 🍇 double ammo from enemies · 🍑 stronger swimming · 🥭 a slower clock · 🍓 wall grip · 🍒 ammo magnet · 🫐 night eyes (twice the light) · only one fruit power besides the apple's shield works at a time: a new fruit takes the place of the last · powers last until you die; powers and leftover ammo carry on to the next level · in the Sky Roads only apples work: the wind holds your other powers and gives them back when you leave</li>
+        <li>Fruit: 🍎 shield (a second apple doubles it) · 🍊 jump boost · 🍌 double jump · 🍉 speed · 🍐 glide (hold <kbd>↑</kbd> or jump while falling; press <kbd>Space</kbd> in mid-air for a big lift, after which you can't glide and fall steadily till you land (wall jumps don't give it back); letting go of <kbd>↑</kbd> and pressing it again just keeps you gliding) · 🍍 spikes don't hurt · 🍇 double ammo from enemies · 🍑 stronger swimming · 🥭 a slower clock · 🍓 wall grip · 🍒 ammo magnet · 🫐 night eyes (twice the light) · 🍅 second chance (a hit with no shield is taken by the tomato, then 5 seconds of speed, a high jump, and touching kills) · only one fruit power besides the apple's shield works at a time: a new fruit takes the place of the last · powers last until you die; powers and leftover ammo carry on to the next level</li>
         <li>Towers have no guns: the boss falls to 3 stomps, but each stomp throws it into a 10-second fury: it glows red and rampages round the arena, leaping (with a slam where it lands) or darting about dropping bombs, and throwing rings of embers, rocks from the ceiling and fire round your feet; then it's worn out and stands dazed for a moment: stomp it then · its last fury (one stomp left) adds its own signature move · the Last Dark takes 5 stomps and you can't stomp it again until it calms down · your ammo waits for you outside</li>
         <li>Neo: when a slab sits right over your ledge, flush with its edge, run off the edge, jump at once and steer straight back in to land on top (miss, and you just drop back)</li>
         <li>Wheels turn their platforms round and round: ride one to the top · in the Sky Roads there's no floor at all, just the long drop</li>

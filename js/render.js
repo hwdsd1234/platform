@@ -421,6 +421,41 @@
     // its arms turning, sparks drifting into the middle, a pulsing glow), so it never looks
     // like the level's own door. When you go through, rings flash out where you went in and
     // where you came out (W.warps).
+    // The sign over a hole down into a secret section (see coins.js), so anyone can tell what's
+    // down there: over a star coin's, the coin itself, bobbing, with ★ COIN ↓ (faded, GOT IT,
+    // once you've got it); over the secret exit's, a blue ? with SECRET ↓.
+    function drawHoleSigns(W) {
+      for (const h of W.holes || []) {
+        const cx = h.tx * TS + 16, top = h.ty * TS + (reduced ? 0 : Math.sin(clock * 2.5 + h.tx) * 3);
+        const label = (t, c) => {
+          ctx.font = '700 11px ui-monospace, monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(14,12,34,.85)'; ctx.strokeText(t, cx, top + 22); ctx.fillStyle = c; ctx.fillText(t, cx, top + 22);
+        };
+        if (!h.coin) {
+          ctx.fillStyle = '#2E4E82'; ctx.beginPath(); ctx.arc(cx, top, 11, 0, TAU); ctx.fill();
+          ctx.strokeStyle = '#9FD8FF'; ctx.lineWidth = 2; ctx.stroke();
+          ctx.font = '700 15px ui-monospace, monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#9FD8FF'; ctx.fillText('?', cx, top + 1);
+          label('SECRET ↓', '#9FD8FF');
+          continue;
+        }
+        // (Its coin: the one down below nearest to it.)
+        const coin = (W.coins || []).filter(c => c.ty > h.ty).sort((a, b) => Math.abs(a.tx - h.tx) - Math.abs(b.tx - h.tx))[0];
+        if (coin && (coin.taken || coin.had)) {
+          ctx.strokeStyle = 'rgba(255,224,102,.6)'; ctx.lineWidth = 2; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.arc(cx, top, 11, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+          label('GOT IT', 'rgba(255,224,102,.7)');
+          continue;
+        }
+        const g = ctx.createRadialGradient(cx, top, 0, cx, top, 28);
+        g.addColorStop(0, 'rgba(255,224,102,.5)'); g.addColorStop(1, 'rgba(255,224,102,0)'); ctx.fillStyle = g; ctx.fillRect(cx - 28, top - 28, 56, 56);
+        ctx.fillStyle = '#C9922A'; ctx.beginPath(); ctx.arc(cx, top, 11, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#FFD24A'; ctx.beginPath(); ctx.arc(cx, top, 8.5, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#FFF2B0'; ctx.beginPath();
+        for (let n = 0; n < 10; n++) { const a = -Math.PI / 2 + n * Math.PI / 5, rr = n % 2 ? 2.8 : 6.5; ctx.lineTo(cx + Math.cos(a) * rr, top + Math.sin(a) * rr); }
+        ctx.fill();
+        label('★ COIN ↓', '#FFE066');
+      }
+    }
+
     function drawPassage(d) {
       const cx = d.x + 16, cy = d.y + 30, R0 = 22, t = reduced ? 0 : clock;
       // The glow behind it.
@@ -1358,6 +1393,7 @@
       for (const l of W.lanterns) if (l.lit) out.push({ x: l.x, y: l.y, r: (200 + l.pop * 60) * flick(l.f, .04) });
       if (W.door && W.door.glow > 0) out.push({ x: W.door.x + 16, y: W.door.y + 30, r: 130 * W.door.glow });
       for (const pd of W.passages) out.push({ x: pd.x + 16, y: pd.y + 30, r: 120 });
+      for (const h of W.holes || []) out.push({ x: h.tx * TS + 16, y: h.ty * TS + 10, r: 80 });
       if (W.secret && W.secretSeen) out.push({ x: W.secret.x + 16, y: W.secret.y + 30, r: 90 });
       for (const b of W.projectiles) out.push({ x: b.x + b.w / 2, y: b.y + b.h / 2, r: 60 * Math.max(1, b.w / 10) });
       for (const e of W.enemies) if (e.alive && e.type === 'S') out.push({ x: e.x + 12, y: e.y + 2, r: 34 });
@@ -1626,6 +1662,7 @@
       // Passage doors glow like an open door.
       // (Passage doors glow through the dark as their swirling portals.)
       for (const pd of W.passages) drawPassage(pd);
+      drawHoleSigns(W);
       drawWarps(W);
       const d = W.door;
       if (d && d.glow > 0) {
@@ -1824,32 +1861,9 @@
       } else {
         drawDarkness(W, cam);
         drawEmissive(W, cam, opts);
-        drawFruitPointers(W, cam);
       }
     };
 
-    // Fruit just off the screen (no further from you than the screen is wide): a little arrow
-    // in the fruit's colour at the edge of the screen, pointing the way to it.
-    function drawFruitPointers(W, cam) {
-      const p = W.player;
-      if (p.dead) return;
-      worldTransform(W, cam, {});
-      const { vw, vh } = R.viewSize(cam), pad = 30, px = p.x + p.w / 2, py = p.y + p.h / 2;
-      const cx = cam.x + vw / 2, cy = cam.y + vh / 2;
-      for (const f of W.fruits) {
-        if (f.taken || Math.hypot(f.x - px, f.y - py) > Math.max(vw, vh)) continue;
-        if (f.x > cam.x && f.x < cam.x + vw && f.y > cam.y && f.y < cam.y + vh) continue;
-        // (Where the line from the middle of the screen to the fruit leaves it.)
-        const dx = f.x - cx, dy = f.y - cy, k = Math.min((vw / 2 - pad) / Math.abs(dx || 1e-6), (vh / 2 - pad) / Math.abs(dy || 1e-6));
-        const ax = cx + dx * k, ay = cy + dy * k, ang = Math.atan2(dy, dx);
-        const col = (LF.FRUITS[f.type] || LF.FRUITS.a).color, pulse = reduced ? 1 : 1 + Math.sin(clock * 5 + f.tx) * .12;
-        ctx.save(); ctx.translate(ax, ay); ctx.scale(pulse * 1.3, pulse * 1.3);
-        ctx.fillStyle = 'rgba(14,12,34,.75)'; ctx.beginPath(); ctx.arc(0, 0, 11, 0, TAU); ctx.fill();
-        ctx.fillStyle = col; ctx.beginPath(); ctx.arc(0, 0, 6, 0, TAU); ctx.fill();
-        ctx.rotate(ang); ctx.beginPath(); ctx.moveTo(18, 0); ctx.lineTo(11, -6); ctx.lineTo(11, 6); ctx.fill();
-        ctx.restore();
-      }
-    }
 
     return R;
   };

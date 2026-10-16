@@ -3,23 +3,23 @@
 // They're meant to be hard to get: the level is split into thirds along its length, and in
 // each, in the most out-of-the-way place there (the highest above the way most people go, or in
 // a tall level the furthest to the side), away from the start, doors, lanterns and the secret
-// exit, and not in a boss's arena, stands a portal down into a secret section: a run of hard
-// jumps under the level with the coin at the end, and a portal back. Where no section fits,
+// exit, and not in a boss's arena, a hole in the floor leads down into a secret section: a run
+// of hard jumps under the level with the coin at the end, and back. Where no section fits,
 // the coin sits out in the open in that out-of-the-way spot. The secret exits (secrets.js)
 // are hidden at the end of secret sections the same way, with LF.sections. Load after
 // lengthen.js, before secrets.js.
 (() => {
   const LF = window.LF;
   const cache = new Map();
-  const AWAY = 4;   // tiles to keep clear of the start, doors, lanterns and other portals
+  const AWAY = 4;   // tiles to keep clear of the start, doors, lanterns and other holes
   const floor = c => '#=CiTH<>O123d'.includes(c);
 
   // The secret sections: a run of hard jumps, built into a band of rock added under the level
-  // (BAND rows, only under columns that were solid at the bottom: a pit stays a pit). A portal
-  // up in the level leads down into one; it starts on a ledge, then it's jump after jump
+  // (BAND rows, only under columns that were solid at the bottom: a pit stays a pit). A hole
+  // in the level's floor leads down into one (see dig); it starts on a ledge, then it's jump after jump
   // between pillars one tile wide, as far apart as you can jump (up two, across four; level,
   // across five; down, across five or six), over a floor of spikes, with bats in the way; at
-  // the end, on a ledge, the prize, and (for a coin) a portal back out to beside the first.
+  // the end, on a ledge, the prize.
   const BAND = 11;
   // The kinds of secret section, each a different way to get through (a level's three coins
   // each get a different one, and which three changes from level to level):
@@ -34,7 +34,7 @@
   const KINDS = ['pillars', 'crumbles', 'ice', 'blinks', 'belts', 'springs', 'lifts'];
   // A course of kind with n obstacles, as rows of characters BAND tall (row 0 the rock above
   // it, rows 1-8 open, row 9 the spiked floor); returns { g, start: [x, y], end: [x, y] }
-  // (end: where the prize goes; the portal back is two on).
+  // (end: where the prize goes).
   function course(n, seed, kind = 'pillars') {
     let r = seed >>> 0;
     const rnd = k => { r = (Math.imul(r ^ r >>> 15, 2246822507) + 1013904223) >>> 0; return r % k; };
@@ -52,14 +52,14 @@
       return dx;
     };
     if (kind === 'pillars') for (let k = 0; k < n; k++) {
-      const dx = hop(4, [[-2, 4], [-1, 4], [0, 5], [1, 5], [2, 6]]);
+      const dx = hop(4, [[-2, 4], [-1, 4], [0, 5], [1, 4], [2, 4]]);
       col(x, y + 1);
       if (k % 3 === 1) g[Math.max(2, y - 3)][x - (dx >> 1)] = 'F';
     } else if (kind === 'crumbles') for (let k = 0; k < n; k++) {
-      hop(4, [[-1, 3], [0, 4], [1, 4]], 7);
+      hop(4, [[-1, 3], [0, 4], [1, 3]], 7);
       g[y + 1][x] = 'C';
     } else if (kind === 'ice') for (let k = 0; k < n; k++) {
-      hop(4, [[-1, 4], [0, 5], [1, 5]]);
+      hop(4, [[-1, 4], [0, 5], [1, 4]]);
       col(x, y + 1, 'i'); col(x + 1, y + 1, 'i'); x++;
     } else if (kind === 'blinks') for (let k = 0; k < n; k++) {
       hop(4, [[-1, 3], [0, 3], [1, 3]], 7);
@@ -79,8 +79,8 @@
       x += 9; col(x, y + 1); col(x + 1, y + 1); col(x + 2, y + 1); x += 2;
       g[Math.max(2, y - 3)][x - 6] = 'F';
     }
-    // The end: a ledge four wide (after springs, down beyond the last wall).
-    if (kind === 'springs') { x += 3; y = 8; }
+    // The end: a ledge four wide (after springs, past one more spring, for the way back).
+    if (kind === 'springs') { x += 3; g[9][x] = 'O'; x += 2; y = 8; }
     for (let k = 1; k <= 4; k++) col(x + k, y + 1);
     const w = x + 6;
     return { g: g.map(row => row.slice(0, w).map((c, cx) => (cx === w - 1 ? '#' : c))), start: [2, y1], end: [x + 2, y] };
@@ -92,44 +92,45 @@
     for (let k = 0; k < BAND; k++) rows.push(bottom.map(c => (c === '.' ? '.' : '#')));
     return h;
   }
-  // Build a course into the band (starting at row y0) where there's room, as wide as can be
-  // up to 8 jumps (at least 4); null if there's no room. Returns where its start and end are.
-  function section(rows, y0, seed, kind) {
-    const w = rows[0].length;
-    const solidCol = x => { for (let r = y0; r < y0 + BAND; r++) if (rows[r][x] !== '#') return false; return true; };
-    for (let n = 8; n >= 4; n--) {
+  // Dig a secret section down from spot [x, y] (somewhere out of the way, standing on rock):
+  // a hole three wide in the floor there, a shaft down through solid rock to the band from row
+  // y0 with ledges on alternate sides every three rows (to climb back out by), and at its foot
+  // a course of kind running off to one side (whichever it fits), prize ('¢' or '?') at the
+  // end; over the hole, a sign (¤ for a coin, ¿ for a secret exit; see render.js). Every
+  // course can be crossed both ways (its jumps are the same out and back), so you can come
+  // back with the coin. Changes rows and returns true, or false if there's no room.
+  // (dry: only say whether it would fit, changing nothing.)
+  function dig(rows, [x, y], prize, seed, y0, kind, levelH = y0, dry = false) {
+    const w = rows[0].length, sx = x - 1;
+    if (sx < 2 || sx + 4 >= w || y < 3) return false;
+    // (Open air over the hole, and ground beside it on at least one side to climb out onto;
+    // below, the shaft cuts through whatever's there (rock, or open air: LF.analyze then makes
+    // sure nothing's spoilt), but never through water, lava or anything built there.)
+    for (let c = sx; c <= sx + 2; c++) if (rows[y][c] !== '.' || rows[y - 1][c] !== '.') return false;
+    if (![sx - 1, sx + 3].some(c => rows[y][c] === '.' && rows[y - 1][c] === '.' && floor(rows[y + 1][c]))) return false;
+    for (let c = sx; c <= sx + 2; c++) for (let r = y + 1; r < y0; r++) if (rows[r][c] !== '#' && (rows[r][c] !== '.' || r >= levelH)) return false;
+    const solidCol = c => { if (c < 0 || c >= w) return false; for (let r = y0; r < y0 + BAND; r++) if (rows[r][c] !== '#') return false; return true; };
+    for (let n = 8; n >= 4; n--) for (const flip of [false, true]) {
       const c = course(n, seed, kind), cw = c.g[0].length;
-      for (let x0 = 4; x0 + cw + 3 < w; x0++) {
-        let ok = true;
-        // (With rock a few tiles thick either side, between it and any other.)
-        for (let x = x0 - 4; x <= x0 + cw + 3 && ok; x++) if (x < 0 || x >= w || !solidCol(x)) ok = false;
-        if (!ok) continue;
-        c.g.forEach((row, r) => row.forEach((ch, x) => { rows[y0 + r][x0 + x] = ch; }));
-        return { start: [x0 + c.start[0], y0 + c.start[1]], end: [x0 + c.end[0], y0 + c.end[1]] };
-      }
+      // (Mirrored, the course runs off to the left, its belts still running back the way you came.)
+      const g = flip ? c.g.map(row => row.slice().reverse().map(ch => (ch === '<' ? '>' : ch === '>' ? '<' : ch))) : c.g;
+      const at = j => (flip ? cw - 1 - j : j), x0 = flip ? sx - (cw - 4) : sx - 1;
+      let ok = true;
+      for (let cx = x0 - 1; cx <= x0 + cw && ok; cx++) if (!solidCol(cx)) ok = false;
+      if (!ok) continue;
+      if (dry) return true;
+      g.forEach((row, r) => row.forEach((ch, j) => { rows[y0 + r][x0 + j] = ch; }));
+      for (let r = y + 1; r <= y0; r++) for (let cx = sx; cx <= sx + 2; cx++) rows[r][cx] = '.';
+      let side = 0;
+      for (let r = y0 + 6; r >= y + 2; r -= 3, side ^= 1) rows[r][side ? sx + 2 : sx] = '#';
+      rows[y0 + c.end[1]][x0 + at(c.end[0])] = prize;
+      rows[y - 1][x] = prize === '?' ? '¿' : '¤';
+      return true;
     }
-    return null;
-  }
-  // Hide prize ('¢' or '?') at the end of a secret section: a portal (pair letter k) standing
-  // at spot [x, y] (somewhere out of the way) leads down into a course in the band from row
-  // y0, the prize at its end; for a coin, a portal back (letter k + 1) lets you out two tiles
-  // to the first portal's side. False if there's no room (rows are then left as they were).
-  function hideOpen(rows, [x, y], prize, seed, y0, k, kind) {
-    const t = rows.map(r => r.slice()), D = LF.PORTALS.doors, Lnd = LF.PORTALS.lands;
-    const air = (cx, cy) => t[cy]?.[cx] === '.', ground = (cx, cy) => floor(t[cy + 1]?.[cx] || '.');
-    const side = [1, -1].find(d => [0, 1, 2].every(j => air(x + j * d, y) && air(x + j * d, y - 1)) && ground(x, y) && ground(x + 2 * d, y));
-    if (!side) return false;
-    const sec = section(t, y0, seed, kind);
-    if (!sec) return false;
-    t[y][x] = D[k];
-    t[sec.start[1]][sec.start[0]] = Lnd[k];
-    t[sec.end[1]][sec.end[0]] = prize;
-    if (prize !== '?') { t[sec.end[1]][sec.end[0] + 2] = D[k + 1]; t[y][x + 2 * side] = Lnd[k + 1]; }
-    rows.splice(0, rows.length, ...t);
-    return true;
+    return false;
   }
 
-  LF.sections = { addBand, hideOpen, course, KINDS, BAND, MARKS: 'PDLjnĵň?ⓐⓑⓒⓓⓔⓕⓖⒶⒷⒸⒹⒺⒻⒼ' };
+  LF.sections = { addBand, dig, course, KINDS, BAND, MARKS: 'PDLjnĵň?¤¿' };
 
   // Can the checker b reach the coin just added to t (one that isn't in rows)?
   function coinSeen(t, rows, b, w) {
@@ -166,17 +167,34 @@
     // no room left in the last.)
     const bands = [];
     const used = [], slots = [];
+    // Can you get everywhere (every lantern, the door) from spot o? (Climbing back out of a
+    // secret section, with the coin, you come out there; the way back across a course and up
+    // its shaft is always open, so that's all that matters.) And how long to keep trying.
+    const back = new Map(), until = Date.now() + 1000;
+    const backFrom = o => {
+      const key = o.y * w + o.x;
+      if (!back.has(key)) back.set(key, LF.analyze({ ...def, map: map.map((r, y) => (y === o.y ? r.slice(0, o.x) + 'P' + r.slice(o.x + 1) : r).replace(/P/g, (c, x) => (y === o.y && x === o.x ? 'P' : '.'))) }).ok);
+      return back.get(key);
+    };
     for (let k = 0; k < 3; k++) {
       const a0 = span * k / 3, a1 = span * (k + 1) / 3, inBand = (x, y) => along(x, y) >= a0 && along(x, y) < a1;
       const apart = (x, y) => used.every(([ux, uy]) => Math.abs(ux - x) > 8 || Math.abs(uy - y) > 6);
       let done = false;
-      // A portal, out of the way, down into a secret section (portal letters 1+2k down, 2+2k
-      // back: 0 is the secret exit's, see secrets.js).
-      if (a.ok) for (const o of open.filter(p => inBand(p.x, p.y) && apart(p.x, p.y)).sort((p, q) => q.score - p.score).slice(0, 12)) {
+      // A hole, out of the way, down into a secret section (and you must be able to get back
+      // out of it again with the coin and still finish the level).
+      // (Every spot is tried, most out of the way first, but only so many get the full check.)
+      let withBand = null;
+      if (a.ok) for (const o of open.filter(p => inBand(p.x, p.y) && apart(p.x, p.y)).sort((p, q) => q.score - p.score)) {
+        if (Date.now() > until) break;
         let t = null, nb = null;
-        for (const y0 of bands) { const c = rows.map(r => r.slice()); if (hideOpen(c, [o.x, o.y], '¢', hash(def.name) + k, y0, 1 + 2 * k, kinds[k])) { t = c; break; } }
-        if (!t) { const c = rows.map(r => r.slice()); nb = addBand(c); if (hideOpen(c, [o.x, o.y], '¢', hash(def.name) + k, nb, 1 + 2 * k, kinds[k])) t = c; }
-        if (!t) continue;
+        const seed = hash(def.name) + k, y0 = bands.find(b0 => dig(rows, [o.x, o.y], '¢', seed, b0, kinds[k], h, true));
+        if (y0 != null) { t = rows.map(r => r.slice()); dig(t, [o.x, o.y], '¢', seed, y0, kinds[k], h); }
+        else {
+          // (A new band under the rest, made once for this coin.)
+          withBand ||= (() => { const c = rows.map(r => r.slice()); return { c, y0: addBand(c) }; })();
+          if (dig(withBand.c, [o.x, o.y], '¢', seed, withBand.y0, kinds[k], h, true)) { t = withBand.c.map(r => r.slice()); nb = withBand.y0; dig(t, [o.x, o.y], '¢', seed, nb, kinds[k], h); }
+        }
+        if (!t || !backFrom(o)) continue;
         const b = LF.analyze({ ...def, map: t.map(r => r.join('')) });
         if (!b.ok || b.litOk !== a.litOk || !coinSeen(t, rows, b, w)) continue;
         rows = t; used.push([o.x, o.y]); done = true; if (nb != null) bands.push(nb); break;

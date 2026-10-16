@@ -1352,8 +1352,7 @@
   const PURE = 10;
   const powerFruit = Object.keys(LF.FRUITS).filter(t => t !== 'a');
   const isFruit = c => !!LF.FRUITS[c];
-  const story = out.filter(d => !d.boss && !d.sky && Array.isArray(d.map));
-  for (const d of out) if (!d.boss && d.sky && Array.isArray(d.map)) d.map = d.map.map(row => [...row].map(c => (isFruit(c) ? 'a' : c)).join(''));   // (only apples work in the Sky Roads)
+  const story = out.filter(d => !d.boss && Array.isArray(d.map));
   for (const d of story) if (d.melon) d.pureFruit = 'm'; else if (d.pear) d.pureFruit = 'p';
   const pool = story.filter(d => !d.pureFruit);
   powerFruit.forEach((t, n) => {
