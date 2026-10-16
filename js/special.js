@@ -2,7 +2,7 @@
 // world, opened by holding every star coin in that world (ui.js). Each is a level from that
 // world (the one in the middle of it), just as long as it is when you play it there (see
 // lengthen.js), made far harder:
-// - no fruit and no big ammo crates;
+// - no big ammo crates (the fruit stays);
 // - tough enemies all along the way (and quicker than anywhere else), fliers in the air;
 // - spikes on the floor wherever the way through still holds (each batch checked with
 //   LF.analyze, and taken back if it doesn't);
@@ -14,14 +14,17 @@
   const cache = new Map();
   const FOES = ['K', 'R', 'S', 'A', 'J', 'G', 'I', 'Z'], FLIERS = ['W', 'F', 'Z'];
   const near = (marks, x, y, d) => marks.some(([mx, my]) => Math.abs(mx - x) <= d && Math.abs(my - y) <= d);
+  // The level a Star Road level is made from: the one in the middle of its world.
+  LF.starSource = def => {
+    const w = LF.WORLDS[def.starOf], L = LF.LEVELS;
+    const pool = []; for (let i = w.first; i <= w.last; i++) if (!L[i].boss && L[i].starOf == null) pool.push(L[i]);
+    return pool[Math.floor(pool.length / 2)];
+  };
   LF.starLevel = def => {
     if (def.starOf == null) return def;
     if (cache.has(def.name)) return cache.get(def.name);
-    const w = LF.WORLDS[def.starOf], L = LF.LEVELS;
-    const pool = []; for (let i = w.first; i <= w.last; i++) if (!L[i].boss && L[i].starOf == null) pool.push(L[i]);
-    const src = pool[Math.floor(pool.length / 2)];
-    const base = LF.lengthen(src);
-    let rows = LF.normalize(base.map).map(r => [...r].map(c => (LF.FRUITS[c] || c === 'Q' || c === '$' ? '.' : c)));
+    const src = LF.starSource(def), base = LF.lengthen(src);
+    let rows = LF.normalize(base.map).map(r => [...r].map(c => (c === 'Q' || c === '$' ? '.' : c)));
     const h = rows.length, wd = rows[0].length, R = LF.rng(4040 + def.starOf * 97);
     const marks = []; rows.forEach((r, y) => r.forEach((c, x) => { if ('PDLjn'.includes(c)) marks.push([x, y]); }));
     const ok = rs => LF.analyze({ ...base, map: rs.map(r => r.join('')) }).ok;

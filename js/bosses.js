@@ -1364,17 +1364,20 @@
     }
   });
   let turn = 0;
+  const mixed = () => (turn++ % 3 === 2 ? powerFruit[Math.floor(turn / 3) % powerFruit.length] : 'a');
   for (const d of story) {
-    if (d.pureFruit) {
-      d.map = d.map.map(row => [...row].map(c => (isFruit(c) ? d.pureFruit : c)).join(''));
-      // (At least a couple of its fruit, on open spots standing on stone, if it has fewer.)
-      for (let have = d.map.join('').split(d.pureFruit).length - 1; have < 2;) {
-        const y = d.map.findIndex((row, y) => y && d.map[y + 1] && [...row].some((c, x) => c === '.' && '#=i'.includes(d.map[y + 1][x]) && !isFruit(row[x - 1] || '') ));
-        if (y < 0) break;
-        const x = [...d.map[y]].findIndex((c, x) => c === '.' && '#=i'.includes(d.map[y + 1][x]) && !isFruit(d.map[y][x - 1] || ''));
-        d.map[y] = d.map[y].slice(0, x) + d.pureFruit + d.map[y].slice(x + 1); have++;
-      }
-    } else d.map = d.map.map(row => [...row].map(c => (isFruit(c) ? (turn++ % 3 === 2 ? powerFruit[Math.floor(turn / 3) % powerFruit.length] : 'a') : c)).join(''));
+    if (d.pureFruit) d.map = d.map.map(row => [...row].map(c => (isFruit(c) ? d.pureFruit : c)).join(''));
+    else d.map = d.map.map(row => [...row].map(c => (isFruit(c) ? mixed() : c)).join(''));
+    // (Every level has at least a couple of fruit, on open spots standing on stone, spread
+    // along it: its own, or the mix, a power fruit among them.)
+    const rows = LF.normalize(d.map), spots = [];
+    rows.forEach((row, y) => [...row].forEach((c, x) => { if (y && rows[y + 1] && c === '.' && '#=i'.includes(rows[y + 1][x]) && rows[y - 1][x] === '.') spots.push([x, y]); }));
+    for (let have = [...rows.join('')].filter(isFruit).length, k = 0; have < 2 && spots.length; have++, k++) {
+      const [x, y] = spots[Math.floor(spots.length * (k + 1) / 3)];
+      const c = d.pureFruit || (k ? powerFruit[(turn++) % powerFruit.length] : 'a');
+      rows[y] = rows[y].slice(0, x) + c + rows[y].slice(x + 1);
+    }
+    d.map = rows;
   }
   // ---- The Star Road ----
   // After the last level, a special world: a level for each world (see special.js, which

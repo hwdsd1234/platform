@@ -25,7 +25,8 @@
   // The kinds of fruit growing in level i (as their map letters), power fruits first.
   const fruitCache = {};
   const fruitsIn = i => fruitCache[i] || (fruitCache[i] = (() => {
-    const m = LF.LEVELS[i].map, seen = new Set(Array.isArray(m) ? [...m.join('')].filter(c => LF.FRUITS[c]) : []);
+    // (A Star Road level grows what the level it's made from does.)
+    const lv = LF.LEVELS[i], m = (lv.starOf != null && LF.starSource ? LF.starSource(lv) : lv).map, seen = new Set(Array.isArray(m) ? [...m.join('')].filter(c => LF.FRUITS[c]) : []);
     return [...seen].sort((x, y) => (x === 'a') - (y === 'a'));
   })());
   const worldCoins = k => { const w = LF.WORLDS[k]; let have = 0, all = 0; for (let i = w.first; i <= w.last; i++) { have += coinCount(i); all += 3; } return { have, all }; };
