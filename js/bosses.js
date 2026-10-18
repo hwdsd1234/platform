@@ -1261,6 +1261,12 @@
       if (spot != null) g[y][spot] = 'L';
       break;
     }
+    // A Shellback in the arena, near the way in: kick its shell into the boss for a hit.
+    if (!def.finalChase) {
+      let put = false;
+      for (let y = h - 2; y > arena.y && !put; y--) for (let x = arena.x + 4; x < arena.x + 12 && !put; x++)
+        if (g[y][x] === '.' && g[y - 1][x] === '.' && LF.isSolid(g[y + 1][x]) && ![-2, -1, 0, 1, 2].some(d => 'nPLjD0'.includes(g[y][x + d]))) { g[y][x] = 'ĸ'; put = true; }
+    }
     const out = {
       // No guns in a tower: the boss falls to 3 stomps, and flies into a fury after each.
       ...def, map: g.map(row => row.join('')), noDoor: true, bossEnds: true, arenaX: arena.x, noAmmo: true, bossFury: true, bossHits: def.bossHits ?? (castle ? 5 : 3), castle: !!castle,

@@ -1523,7 +1523,8 @@
     e.face = Math.sign(e.vx);
   }
   // A kicked Shellback shell sliding along (on the ground or flying off a ledge): it turns
-  // back off walls and knocks out any enemy it runs into (a boss just turns it back). On a
+  // back off walls and knocks out any enemy it runs into (a boss takes a hit and turns it
+  // back). On a
   // slope it speeds up going down, goes all the way up one at no less than SHELL_SPEED, and
   // flies off the top; on the flat it settles back to SHELL_SPEED.
   function shellSlide(W, e, dt) {
@@ -1539,7 +1540,18 @@
     if (grounded && !(e.vy < 0)) onSlope(W, e, true);
     for (const o of W.enemies) {
       if (o === e || !o.alive || o.phased || !overlap(e, o)) continue;
-      if (isBoss(o)) { e.vx = -Math.sign(o.x - e.x || 1) * SHELL_SPEED; continue; }
+      // (A boss takes a hit, as from a stomp (none while it rages), and the shell bounces back.)
+      if (isBoss(o)) {
+        const dir = Math.sign(o.x - e.x || 1);
+        if (!(o.fury > 0) && W.clock - (o.shellHitAt ?? -9) > .6) {
+          o.shellHitAt = W.clock; W.shake = Math.max(W.shake, .2);
+          W.floaters.push({ x: o.x + o.w / 2, y: o.y - 10, t: 'shell hit!', life: .9, c: '#9FF0C8' });
+          W.emit('stomp', { type: o.type });
+          shootEnemy(W, o, dir, null, 'shell');
+        }
+        e.vx = -dir * SHELL_SPEED; e.x -= dir * 6;
+        continue;
+      }
       shootEnemy(W, o, Math.sign(e.vx), null, 'KO', 999);
     }
     e.face = Math.sign(e.vx);
