@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'A Shellback about to come out of its shell warns you: for its last 2 seconds it shakes (harder and harder), its feet poke out, a red ! pulses over it, and it glows so you see it in the dark.',
       'Slopes join up: put slopes side by side or corner to corner (even with nothing under them) and they make one ramp, a peak or a dip that you and the Shellbacks walk straight along. The steep back of a slope is a wall.',
       'Kicked Shellback shells now go all the way up a slope (no slower than a kick), fly up off the top and land again; one that hits the steep back of a slope bounces off it like a wall.',
       'Sloped ground: most story levels now have little hills on their flat stretches (ramps up, a top, ramps down), often with a Shellback on top, and any single-block step in the ground is a slope. You walk up and down them; a Shellback’s shell left on a slope slides off down it on its own, kicked downhill it speeds up, and kicked uphill it slows, stops and comes rolling back at you. (Slopes are in the level editor too.)',

@@ -791,22 +791,31 @@
         }
         case 'ĸ': {
           // The Shellback: a domed green shell with a pale head and feet poking out; in its
-          // shell, just the shell (spinning lines when it's shooting along; feet peeping out
-          // in the last second and a half before it climbs back out).
+          // shell, just the shell (spinning lines when it's shooting along).
           const inShell = e.state === 'shell' || e.state === 'spin';
           if (!inShell) {
             ctx.fillStyle = '#CFE8D8'; ctx.fillRect(cx - 9 + wob, by - 4, 5, 4); ctx.fillRect(cx + 4 - wob, by - 4, 5, 4);
             ctx.beginPath(); ctx.arc(cx + f * 12, by - 11, 5, 0, TAU); ctx.fill();
             ctx.fillStyle = '#120F2A'; ctx.fillRect(cx + f * 14 - 1, by - 13, 2, 2);
-          } else if (e.state === 'shell' && e.shellT < 1.5 && !reduced && Math.floor(clock * 10) % 2) {
-            ctx.fillStyle = '#CFE8D8'; ctx.fillRect(cx - 9, by - 3, 5, 3); ctx.fillRect(cx + 4, by - 3, 5, 3);
           }
+          // About to come out (its last SHELL_WARN seconds): it shakes, harder and harder, its
+          // feet poke out, and a red ! pulses over it.
+          const SHELL_WARN = 2, warn = e.state === 'shell' && e.shellT < SHELL_WARN, urge = warn ? 1 - e.shellT / SHELL_WARN : 0;
+          if (warn) {
+            ctx.fillStyle = '#CFE8D8'; ctx.fillRect(cx - 9, by - 3, 5, 3); ctx.fillRect(cx + 4, by - 3, 5, 3);
+            const pulse = reduced ? 1 : .75 + .25 * Math.sin(clock * 14);
+            ctx.save(); ctx.translate(cx, by - 30); ctx.scale(pulse, pulse);
+            ctx.fillStyle = '#FF4D3D'; ctx.beginPath(); ctx.arc(0, 0, 8, 0, TAU); ctx.fill();
+            ctx.fillStyle = '#FFF1CF'; ctx.font = '700 12px ui-monospace, monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('!', 0, 1);
+            ctx.restore();
+          }
+          const kx = cx + (warn && !reduced ? Math.sin(clock * 60) * (1 + urge * 2.5) : 0);
           const sy = inShell ? by : by - 3;
-          ctx.fillStyle = '#2E7D66'; ctx.beginPath(); ctx.ellipse(cx, sy - 3, 12, 13, 0, Math.PI, 0); ctx.fill();
-          ctx.fillStyle = '#E8DDB5'; ctx.fillRect(cx - 12, sy - 4, 24, 4);
+          ctx.fillStyle = '#2E7D66'; ctx.beginPath(); ctx.ellipse(kx, sy - 3, 12, 13, 0, Math.PI, 0); ctx.fill();
+          ctx.fillStyle = '#E8DDB5'; ctx.fillRect(kx - 12, sy - 4, 24, 4);
           ctx.strokeStyle = '#7FD8B4'; ctx.lineWidth = 1.5; ctx.beginPath();
           const rot = e.state === 'spin' && !reduced ? (clock * 30) % 1 : 0;
-          for (let k = -1; k <= 1; k++) { const sx = cx + (k + rot) * 7; ctx.moveTo(sx, sy - 14); ctx.lineTo(sx, sy - 5); }
+          for (let k = -1; k <= 1; k++) { const sx = kx + (k + rot) * 7; ctx.moveTo(sx, sy - 14); ctx.lineTo(sx, sy - 5); }
           ctx.stroke();
           break;
         }
@@ -1381,6 +1390,8 @@
       for (const f of W.flows || []) for (let x = f.x0; x <= f.x1; x += 3) out.push({ x: x * TS + 16, y: LF.flowSurface(W, f, x * TS + 16) + 8, r: 100 });
       for (const a of W.ammo) if (!a.taken) out.push({ x: a.x, y: a.y, r: a.huge ? 70 : 40 });
       for (const k of W.keys) if (!k.taken) out.push({ x: k.x, y: k.y, r: 60 });
+      // (A Shellback about to come out of its shell glows, so you see its warning in the dark.)
+      for (const e of W.enemies) if (e.alive && e.type === 'ĸ' && e.state === 'shell' && e.shellT < 2) out.push({ x: e.x + e.w / 2, y: e.y - 10, r: 70 });
       for (const b of W.bullets) out.push({ x: b.x, y: b.y, r: 45 * (b.s || 1) });
       for (const b of W.ammoFly) out.push({ x: b.x, y: b.y, r: 28 });
       for (const t of W.traps) if (t.type === 'bar') { const bs = LF.barBalls(t); out.push({ x: bs[2].x, y: bs[2].y, r: 90 }); }
