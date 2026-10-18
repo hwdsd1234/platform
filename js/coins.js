@@ -158,7 +158,8 @@
     for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++)
       if ((map[y][x] === '.' || map[y][x] === '~') && clear(x, y) && reach(x, y)) open.push({ x, y, score: away(x, y) });
     if (open.length < 3) { cache.set(def.name, def); return def; }
-    const along = tall ? (x, y) => h - 1 - y : x => x, span = tall ? h : w;
+    // (In a tower or castle the thirds are of the way up to the boss's arena, which gets none.)
+    const along = tall ? (x, y) => h - 1 - y : x => x, span = tall ? h : def.arenaX ? def.arenaX - 6 : w;
     let rows = map.map(r => r.split(''));
     // Each coin's section is a different kind, and which three changes from level to level.
     const kinds = KINDS.slice().sort((p, q) => hash(def.name + p) - hash(def.name + q));
@@ -204,6 +205,13 @@
       }
       // (Where this third's coin went, so it's coin k wherever it is: see engine.js.)
       for (let y = 0; y < rows.length; y++) for (let x = 0; x < w; x++) if (rows[y][x] === '¢' && !slots.some(([sx, sy]) => sx === x && sy === y)) slots.push([x, y]);
+    }
+    // (A third with nowhere for its coin: it goes in the most out-of-the-way spot left anywhere,
+    // so every level has its three.)
+    while (slots.length < 3) {
+      const o = open.filter(p => rows[p.y][p.x] === map[p.y][p.x] && slots.every(([sx, sy]) => Math.abs(sx - p.x) > 8 || Math.abs(sy - p.y) > 6)).sort((p, q) => q.score - p.score)[0];
+      if (!o) break;
+      rows[o.y][o.x] = '¢'; slots.push([o.x, o.y]);
     }
     const out = { ...def, map: rows.map(r => r.join('')), coinSlots: slots };
     cache.set(def.name, out);
