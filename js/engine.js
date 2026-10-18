@@ -190,7 +190,30 @@
   // Portals into and out of the secret sections (see coins.js): a door ⓐ…ⓖ takes you to the
   // landing with the same letter, Ⓐ…Ⓖ (with more than one of a letter, paired left to right).
   LF.PORTALS = { doors: 'ⓐⓑⓒⓓⓔⓕⓖ', lands: 'ⒶⒷⒸⒹⒺⒻⒼ' };
-  const isFloor = LF.isFloor = c => isSolid(c) || c === '=';
+  const isFloor = LF.isFloor = c => isSolid(c) || c === '=' || !!SLOPES[c];
+  // Slopes: / rises to the right (up from the floor on its left to the top of the block on its
+  // right), \\ to the left. You walk up and down them; on one, a Shellback's shell slides.
+  // They're open tiles with a surface across them (slopeAt), not solid ones.
+  const SLOPES = LF.SLOPES = { '/': 1, '\\': -1 };
+  const slopeAt = (c, tx, ty, px) => { const u = Math.max(0, Math.min(TS, px - tx * TS)); return c === '/' ? ty * TS + TS - u : ty * TS + u; };
+  // The slope under e's middle, if its feet are on or in one: { y: its surface there, c, down:
+  // which way is downhill }.
+  function slopeUnder(W, e) {
+    const fx = e.x + e.w / 2, tx = Math.floor(fx / TS), row = Math.floor((e.y + e.h - 1) / TS);
+    for (const ty of [row, row + 1]) {
+      const c = tile(W, tx, ty);
+      if (SLOPES[c]) return { y: slopeAt(c, tx, ty, fx), c, down: -SLOPES[c] };
+    }
+    return null;
+  }
+  // Stand e on the slope under it: pushed up out of it, or (stick: walking down it) kept on it.
+  function onSlope(W, e, stick) {
+    const s = slopeUnder(W, e);
+    if (!s || e.vy < 0) return null;
+    const d = s.y - (e.y + e.h);
+    if (d < 0 || (stick && d < 14)) { e.y = s.y - e.h; e.vy = 0; return s; }
+    return null;
+  }
   const blocksPlat = c => isSolid(c) || c === '|' || c === '^' || c === '=';
 
   function tile(W, tx, ty) {
@@ -484,12 +507,19 @@
     if (!dx) return false;
     e.x += dx;
     const top = Math.floor(e.y / TS), bot = Math.floor((e.y + e.h - .01) / TS);
-    if (dx > 0) {
-      const tx = Math.floor((e.x + e.w - .001) / TS);
-      for (let ty = top; ty <= bot; ty++) if (isSolid(tile(W, tx, ty))) { e.x = tx * TS - e.w; return true; }
-    } else {
-      const tx = Math.floor(e.x / TS);
-      for (let ty = top; ty <= bot; ty++) if (isSolid(tile(W, tx, ty))) { e.x = (tx + 1) * TS; return true; }
+    const tx = dx > 0 ? Math.floor((e.x + e.w - .001) / TS) : Math.floor(e.x / TS);
+    for (let ty = top; ty <= bot; ty++) {
+      if (!isSolid(tile(W, tx, ty))) continue;
+      // (Feet just under the top of the block ahead, as at the high end of a slope: step up
+      // onto it, if there's room.)
+      const lift = e.y + e.h - ty * TS;
+      if (ty === bot && lift > 0 && lift <= 14 && !(e.vy < 0)) {
+        let room = true;
+        for (let r = Math.floor((ty * TS - e.h) / TS); r < ty && room; r++) if (isSolid(tile(W, tx, r))) room = false;
+        if (room) { e.y = ty * TS - e.h; return false; }
+      }
+      e.x = dx > 0 ? tx * TS - e.w : (tx + 1) * TS;
+      return true;
     }
     return false;
   }
@@ -1198,6 +1228,8 @@
   // it shoots along once kicked.
   const SHELL_WAIT = 5, SHELL_SPEED = 430;
   function supported(W, e) {
+    const s = slopeUnder(W, e);
+    if (s && s.y - (e.y + e.h) < 14) return true;
     const ty = Math.floor((e.y + e.h + 1) / TS);
     for (let tx = Math.floor((e.x + 2) / TS); tx <= Math.floor((e.x + e.w - 2) / TS); tx++) if (isFloor(tile(W, tx, ty))) return true;
     return false;
@@ -1225,19 +1257,14 @@
         return;
       }
       e.vy = 0;
+      onSlope(W, e, true);
     }
     const p = W.player;
     const px = p.x + p.w / 2, py = p.y + p.h / 2, ex = e.x + e.w / 2, ey = e.y + e.h / 2;
     switch (e.type) {
       case 'B': case 'K': case '@': {
         e.hurt = Math.max(0, e.hurt - dt);
-        const nx = e.x + e.vx * dt;
-        const ahead = e.vx < 0 ? nx : nx + e.w;
-        const tx = Math.floor(ahead / TS);
-        const tyBody = Math.floor((e.y + e.h - 1) / TS), below = tile(W, tx, Math.floor((e.y + e.h + 2) / TS));
-        if (isSolid(tile(W, tx, tyBody)) || turnMarker(W, tx, tyBody) || !isFloor(below)) e.vx *= -1;
-        else e.x = nx;
-        e.face = Math.sign(e.vx);
+        walk(W, e, dt);
         break;
       }
       case 'ĸ': {
@@ -1246,17 +1273,15 @@
         // (see shellSlide), flying on off ledges as it falls.
         e.stompCool = Math.max(0, e.stompCool - dt);
         if (e.state === 'shell') {
+          // (Lying on a slope, it slides off down it, shooting along like a kicked one.)
+          const sl = slopeUnder(W, e);
+          if (sl && sl.y - (e.y + e.h) < 4) { e.state = 'spin'; e.vx = sl.down * 80; W.floaters.push({ x: ex, y: e.y - 8, t: 'it slides!', life: .8, c: '#9FF0C8' }); break; }
           // (Real seconds, whatever pace the level's enemies keep.)
           if ((e.shellT -= dt / (ENEMY_SPEED * tune(W.def.tuning, e.type).speed)) <= 0) { e.state = 'walk'; e.vx = 44 * (e.face || -1); W.floaters.push({ x: ex, y: e.y - 8, t: 'it’s back out!', life: .8, c: '#9FF0C8' }); }
           break;
         }
         if (e.state === 'spin') { shellSlide(W, e, dt); break; }
-        const nx = e.x + e.vx * dt, ahead = e.vx < 0 ? nx : nx + e.w;
-        const tx = Math.floor(ahead / TS);
-        const tyBody = Math.floor((e.y + e.h - 1) / TS), below = tile(W, tx, Math.floor((e.y + e.h + 2) / TS));
-        if (isSolid(tile(W, tx, tyBody)) || turnMarker(W, tx, tyBody) || !isFloor(below)) e.vx *= -1;
-        else e.x = nx;
-        e.face = Math.sign(e.vx);
+        walk(W, e, dt);
         break;
       }
       case 'X': {
@@ -1474,12 +1499,29 @@
     }
   }
 
-  // A kicked Shellback shell sliding along (on the ground or flying off a ledge): it turns
-  // back off walls and knocks out any enemy it runs into (a boss just turns it back).
-  function shellSlide(W, e, dt) {
+  // A walker on its way: on along the floor (up and down slopes), turning at walls, edges and
+  // stop markers.
+  function walk(W, e, dt) {
     const nx = e.x + e.vx * dt, ahead = e.vx < 0 ? nx : nx + e.w, tx = Math.floor(ahead / TS);
-    const blocked = [e.y, e.y + e.h - 1].some(y => isSolid(tile(W, tx, Math.floor(y / TS))));
-    if (blocked) { e.vx *= -1; W.emit('clank'); } else e.x = nx;
+    const tyBody = Math.floor((e.y + e.h - 1) / TS), below = tile(W, tx, Math.floor((e.y + e.h + 2) / TS));
+    if (turnMarker(W, tx, tyBody) || (!isFloor(below) && !isFloor(tile(W, tx, tyBody)) && !slopeUnder(W, e))) e.vx *= -1;
+    else if (moveX(W, e, e.vx * dt)) e.vx *= -1;
+    else onSlope(W, e, true);
+    e.face = Math.sign(e.vx);
+  }
+  // A kicked Shellback shell sliding along (on the ground or flying off a ledge): it turns
+  // back off walls and knocks out any enemy it runs into (a boss just turns it back). On a
+  // slope it speeds up going down and slows going up (and comes back down if it stops); on
+  // the flat it settles back to SHELL_SPEED.
+  function shellSlide(W, e, dt) {
+    const sl = slopeUnder(W, e), grounded = sl ? sl.y - (e.y + e.h) < 4 : supported(W, e);
+    if (sl && grounded) {
+      e.vx += sl.down * 700 * dt;
+      if (Math.abs(e.vx) < 30) e.vx = sl.down * 30;
+    } else if (grounded) e.vx = Math.sign(e.vx || 1) * approach(Math.abs(e.vx), SHELL_SPEED, 260 * dt);
+    e.vx = Math.max(-620, Math.min(620, e.vx));
+    if (moveX(W, e, e.vx * dt)) { e.vx *= -1; W.emit('clank'); }
+    if (grounded) onSlope(W, e, true);
     for (const o of W.enemies) {
       if (o === e || !o.alive || o.phased || !overlap(e, o)) continue;
       if (isBoss(o)) { e.vx = -Math.sign(o.x - e.x || 1) * SHELL_SPEED; continue; }
@@ -3032,6 +3074,8 @@
         if (u.c === 'C' && !W.crumbles.some(c => c.tx === u.tx && c.ty === u.ty)) W.crumbles.push({ tx: u.tx, ty: u.ty, t: 0, state: 'shake' });
       }
     } else if (hit && hit.dir === 'up') { p.vy = 0; p.jumping = false; }
+    // On a slope: stood on its surface (and kept on it walking down).
+    if (onSlope(W, p, !wasAir)) { p.onGround = true; p.coyote = .1; }
 
     if (!p.onGround && p.vy >= 0 && !dropping) {
       for (const pl of W.plats) {

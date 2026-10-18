@@ -933,6 +933,7 @@
     if (def.starOf != null && LF.starLevel) def = LF.starLevel(def);
     else if ((ctx.kind === 'story' || ctx.kind === 'practice') && LF.lengthen) def = LF.lengthen(def);
     // Three star coins in it (coins.js); the ones you've already got show faded.
+    if ((ctx.kind === 'story' || ctx.kind === 'practice') && LF.addSlopes) def = LF.addSlopes(def);
     if ((ctx.kind === 'story' || ctx.kind === 'practice') && LF.addCoins) def = { ...LF.addCoins(def), coinsHave: coins[ctx.index] || [] };
     playDef = def; playCtx = ctx;
     // (While you're in a story level, the save says so: see leftMidLevel.)

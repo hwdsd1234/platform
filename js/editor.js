@@ -19,6 +19,8 @@
     { c: 'H', label: 'Blink B', group: 'Terrain', chip: '#7FB0E0', note: 'starts gone — swaps with Blink A every 2s' },
     { c: '<', label: 'Belt ←', group: 'Terrain', chip: '#FF9A2E', glyph: '‹', note: 'conveyor: carries you left' },
     { c: '>', label: 'Belt →', group: 'Terrain', chip: '#FF9A2E', glyph: '›', note: 'conveyor: carries you right' },
+    { c: '/', label: 'Slope ↗', group: 'Terrain', chip: '#8F81AB', glyph: '◢', note: 'ground rising to the right: put it on stone, with a block of stone to its right one higher' },
+    { c: '\\', label: 'Slope ↖', group: 'Terrain', chip: '#8F81AB', glyph: '◣', note: 'ground rising to the left: put it on stone, with a block of stone to its left one higher' },
     { c: 'i', label: 'Ice', group: 'Terrain', chip: '#9FC6E8', note: 'slippery: hard to stop on' },
     { c: 'd', label: 'Shingle', group: 'Terrain', chip: '#A8604A', note: 'falls soon after you land on it, grows back' },
     { c: 'ð', label: 'Cracked shingle', group: 'Terrain', chip: '#7D7088', note: 'falls soon after you land on it, and never grows back' },

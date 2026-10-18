@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Sloped ground: most story levels now have little hills on their flat stretches (ramps up, a top, ramps down), often with a Shellback on top, and any single-block step in the ground is a slope. You walk up and down them; a Shellback’s shell left on a slope slides off down it on its own, kicked downhill it speeds up, and kicked uphill it slows, stops and comes rolling back at you. (Slopes are in the level editor too.)',
       'Practice mode: every item in your inventory is yours without end (×∞). What you use goes on your practice runs only; your own items and powers stay just as they were.',
       'No more underground sections for star coins: each coin is up in the level itself, in the hardest spot to get to in its part of it (high above the usual way, on a lonely little ledge, floating up where you have to jump for it). Nothing marks them. (Secret exits still hide at the end of their sections.)',
       'The pear’s spin now lifts you three quarters as high as the banana’s double jump (a little higher than the last change made it).',

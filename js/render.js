@@ -175,7 +175,7 @@
     function drawTiles(W, cam, opts) {
       const { x0, x1, y0, y1 } = visibleRange(W, cam);
       const t = (x, y) => LF.tile(W, x, y);
-      const looksSolid = c => LF.isSolid(c) || (c === 'l' && (!W.secretSeen || opts.edit));
+      const looksSolid = c => LF.isSolid(c) || !!LF.SLOPES[c] || (c === 'l' && (!W.secretSeen || opts.edit));
       for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
         const c = W.tiles[ty][tx], x = tx * TS, y = ty * TS;
         // False walls (l) look just like the stone around them until the secret is found
@@ -283,6 +283,18 @@
           if (!LF.isSolid(t(tx, ty + 1))) for (let k = 0; k < 3; k++) {
             ctx.fillStyle = '#C8E2F5'; ctx.beginPath(); ctx.moveTo(x + 4 + k * 10, y + TS); ctx.lineTo(x + 8 + k * 10, y + TS + 7 - k % 2 * 3); ctx.lineTo(x + 12 + k * 10, y + TS); ctx.fill();
           }
+        } else if (c === '/' || c === '\\') {
+          // A slope: the stone under its surface, a lit edge along the top.
+          const up = c === '/';
+          ctx.save(); ctx.beginPath();
+          if (up) { ctx.moveTo(x, y + TS); ctx.lineTo(x + TS, y); ctx.lineTo(x + TS, y + TS); }
+          else { ctx.moveTo(x, y); ctx.lineTo(x + TS, y + TS); ctx.lineTo(x, y + TS); }
+          ctx.closePath(); ctx.clip();
+          drawStone(W, tx, ty, x, y, '#5E5173', '#4C4062');
+          ctx.restore();
+          ctx.strokeStyle = '#A99CC4'; ctx.lineWidth = 3; ctx.beginPath();
+          if (up) { ctx.moveTo(x, y + TS - 1); ctx.lineTo(x + TS, y + 1); } else { ctx.moveTo(x, y + 1); ctx.lineTo(x + TS, y + TS - 1); }
+          ctx.stroke();
         } else if (c === '<' || c === '>') {
           const d = c === '>' ? 1 : -1;
           drawStone(W, tx, ty, x, y + 8, '#4C4062', '#3B3150');
