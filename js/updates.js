@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Fixed: a star coin’s way in could be somewhere only lava reaches (in the last bossfight, inside the rising lava). The holes down to coins and secret exits now keep clear of moving lava and stay a few tiles from any lava at all.',
       'Fixed: towers and castles had only two star coins (one tower only one) since they got shorter. Every level has its three again: in a tower or castle they’re spread along the way up to the boss’s arena.',
       'Towers and castles are much shorter, a bit under half as long as before: a tower’s two shafts share its stages between them (every kind once, not twice), each castle builds the first half of its halls and climbs, and the last castle before the Last Dark is half the length (with 280 seconds on its clock).',
       'New enemy: the Shellback. Stomp it and it hides in its shell; touch the shell and it shoots off the other way from where you touched it, bouncing back off walls and knocking out any enemy in its path. A shell shooting along hurts you too, so watch for it coming back. Stomp a moving shell to stop it; a shell left lying still climbs back out after 5 seconds.',

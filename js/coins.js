@@ -145,7 +145,13 @@
     map.forEach((r, y) => [...r].forEach((c, x) => { if (LF.sections.MARKS.includes(c)) marks.push([x, y]); }));
     const a = LF.analyze({ ...def, map });
     const reach = (x, y) => (a.ok ? a.seen[y * w + x] : y + 1 < h && floor(map[y + 1][x]));
-    const clear = (x, y) => !marks.some(([mx, my]) => Math.abs(mx - x) <= AWAY && Math.abs(my - y) <= AWAY) && !(def.arenaX && x >= def.arenaX - 6);
+    // (Nowhere moving lava can reach either: its columns, from as high as it ever comes,
+    // less a few rows, down.)
+    // Nor right by still lava (four tiles either way, two up or down): no hopping past lava to
+    // get in, or to get back out.
+    const lava = (x, y) => (def.flows || []).some(f => x >= f.x0 - 2 && x <= f.x1 + 2 && y >= Math.min(f.hi ?? f.lo, f.lo - (f.amp || 0)) - 4) ||
+      map.slice(Math.max(0, y - 2), y + 3).some(r => r.slice(Math.max(0, x - 4), x + 5).includes('!'));
+    const clear = (x, y) => !marks.some(([mx, my]) => Math.abs(mx - x) <= AWAY && Math.abs(my - y) <= AWAY) && !(def.arenaX && x >= def.arenaX - 6) && !lava(x, y);
     const tall = h > w * 1.2;
     // How out of the way a spot is: in a wide level, how far it is above the lowest place you
     // can stand in its column (where the way through mostly runs); in a tall one, how far it is

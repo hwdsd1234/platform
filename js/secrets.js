@@ -29,7 +29,7 @@
     if (!a0.ok || !P || !D) return false;
     const spots = [];
     for (let y = 2; y < h - 1; y++) for (let x = 2; x < w - 2; x++)
-      if (seen[y * w + x] && G[y][x] === '.' && x + 5 < xMax && P.y - y >= minUp && !nearAny(marks, x, y)) spots.push({ x, y, score: Math.hypot(x - P.x, y - P.y) + Math.hypot(x - D.x, y - D.y) + ((x * 7 + y * 13) % 11) });
+      if (seen[y * w + x] && G[y][x] === '.' && x + 5 < xMax && P.y - y >= minUp && !nearAny(marks, x, y) && !(lv.flows || lv.map.flows || []).some(f => x >= f.x0 - 2 && x <= f.x1 + 2 && y >= Math.min(f.hi ?? f.lo, f.lo - (f.amp || 0)) - 4) && !G.slice(Math.max(0, y - 2), y + 3).some(r => r.slice(Math.max(0, x - 4), x + 5).includes('!'))) spots.push({ x, y, score: Math.hypot(x - P.x, y - P.y) + Math.hypot(x - D.x, y - D.y) + ((x * 7 + y * 13) % 11) });
     spots.sort((a, b) => b.score - a.score);
     for (const o of spots.slice(0, 30)) {
       const t = g.map(r => r.split('')), y0 = LF.sections.addBand(t), kinds = LF.sections.KINDS;
