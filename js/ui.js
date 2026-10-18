@@ -787,7 +787,7 @@
   // the pause menu) so you start at the last one next time, unless you play another first.
   function saveMidway() {
     if (playCtx.kind !== 'story' || !W || W.cleared || !W.lanternLit) return;
-    store.set('midway', { index: playCtx.index, lit: W.lanterns.map((l, k) => (l.lit ? k : -1)).filter(k => k >= 0), cp: W.checkpoint, boss: W.cpBoss });
+    store.set('midway', { index: playCtx.index, lit: W.lanterns.map((l, k) => (l.lit ? k : -1)).filter(k => k >= 0), cp: W.checkpoint, boss: W.cpBoss, chase: !!W.chasing });
   }
 
   function giveUp() {

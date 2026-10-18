@@ -213,6 +213,7 @@
       door: null, start: { tx: 1, ty: h - 2 }, clock: 0, time: 0, falls: 0, shake: 0,
       deadTimer: 0, cleared: false, events: [],
     };
+    W.emit = (type, data) => W.events.push({ type, data });
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
       const c = tiles[y][x];
       if (c === 'P') { W.start = { tx: x, ty: y }; tiles[y][x] = ' '; }
@@ -382,6 +383,14 @@
       if (W.door && W.lanterns.every(l => l.lit) && !W.enemies.some(isBoss)) W.door.open = true;
       // (The clock is what that checkpoint gives you: see cpClock.)
       if (def.deadline) { W.cpBoss = W.bossClock = !!def.resume.boss; setClock(W, LF.cpClock(W)); }
+      // Back after dying on the Last Dark's run: it's one stomp from the end and already
+      // after you, starting well behind.
+      const ld = def.resume.chase && def.finalChase && W.enemies.find(e => e.type === 'Ω+');
+      if (ld) {
+        ld.hp = 1; ld.awake = true;
+        startChase(W, ld, { x: W.player.x - TS * 14, y: W.player.y });
+        W.floaters.push({ x: W.player.x + W.player.w / 2, y: W.player.y - 30, t: 'back on the run… RUN →', life: 2.4, c: '#FF4D3D' });
+      }
     }
     // def.noSpawnInv (Hardcore): no invincible second at the start or after respawning.
     if (def.noSpawnInv) W.player.inv = 0;
@@ -389,7 +398,6 @@
     // (In a tower its arena comes last, and the horde sleeps till you get there.)
     if (W.horde) W.horde.f = playerAlong(W.horde, W.player) - HORDE_BACK;
     if (W.horde && def.arenaX) W.horde.dormant = true;
-    W.emit = (type, data) => W.events.push({ type, data });
     // Star coins are numbered by the third of the level they're in (start to end: left to
     // right, or bottom to top in a tall level), not by where they are, which can change with
     // an update: so the coin you got from a third stays got, and can't be got again.
@@ -632,7 +640,7 @@
     for (const f of W.flows) if (f.trigger != null || f.triggerY != null) Object.assign(f, { s: (f.mode === 'fall' ? f.hi : f.lo) * TS, on: false, t: 0 });
     // (Cracked shingles you'd broken are back, for another go.)
     for (const pl of W.plats) if (pl.once && pl.state === 'gone') Object.assign(pl, { state: 'idle', t: 0, y: pl.oy, prevY: pl.oy });
-    for (const e of W.enemies) if (e.alive && e.chase) { e.chase.x = W.player.x - TS * 14; e.chase.t = 1; }
+    for (const e of W.enemies) if (e.alive && e.chase) { e.chase.x = W.player.x - TS * 14; e.chase.t = 0; }
     // The clock goes back to what your checkpoint gives you (see cpClock).
     if (W.def.deadline) { W.bossClock = !!W.cpBoss; setClock(W, LF.cpClock(W)); }
     for (const a of W.ammo) a.taken = false;
@@ -1494,24 +1502,31 @@
     W.shake = Math.max(W.shake, .3); W.emit('roar');
   }
   // The Last Dark's last stand: one stomp from the end, it grows to three times its size,
-  // the arena's far wall breaks open, and it comes after you, through anything, faster the
-  // further behind it falls. Touch it and you're done for. At the end of the run waits a
-  // TNT cart: touch that and it rolls back into the Last Dark and blows it apart.
-  function startChase(W, e) {
-    e.chase = { t: 0, x: e.x + e.w / 2, y: e.y + e.h / 2 }; e.phased = true; e.k = 1;
+  // the arena's far wall breaks open, and after CHASE_WAIT seconds it comes after you,
+  // through anything: a little quicker the further behind it falls, but never as quick as
+  // you run (CHASE_MIN to CHASE_MAX), so it only catches you if you stop or slip. Touch it
+  // and you're done for. At the end of the run waits a TNT cart: touch that and it rolls
+  // back into the Last Dark and blows it apart. (Die on the run and you come back to it,
+  // the Last Dark one stomp from the end and already after you: see createWorld.)
+  const CHASE_WAIT = 2.5, CHASE_MIN = 150, CHASE_MAX = 235;
+  function startChase(W, e, from) {
+    e.chase = { t: 0, x: from ? from.x : e.x + e.w / 2, y: from ? from.y : e.y + e.h / 2 }; e.phased = true; e.k = 1;
     e.fury = 0; e.dazed = 0; e.rest = 0; W.chasing = true;
     for (const [x, y] of W.chaseGate || []) { W.tiles[y][x] = ' '; burst(W, x * TS + 16, y * TS + 16, 6, ['#8F81AB', '#463C6B', '#FF6B3D'], 160, 300, 3); }
     W.floaters.push({ x: e.x + e.w / 2, y: e.y - 40, t: 'THE LAST DARK GROWS… RUN →', life: 3, c: '#FF4D3D' });
     W.shake = Math.max(W.shake, .8); W.emit('roar'); W.emit('unlock');
   }
   function stepChase(W, e, dt) {
+    // (On the real clock, whatever pace the level's enemies keep: it must never outrun you.)
+    dt /= ENEMY_SPEED * tune(W.def.tuning, e.type).speed;
     const c = e.chase, p = W.player, px = p.x + p.w / 2, py = p.y + p.h / 2;
     c.t += dt; e.k = Math.min(3, 1 + c.t * 1.3);
-    if (c.t > 1.6 && !p.dead) c.x += Math.max(170, Math.min(420, 170 + (px - c.x - TS * 9) * 1.2)) * dt;
+    if (c.t > CHASE_WAIT && !p.dead) c.x += Math.max(CHASE_MIN, Math.min(CHASE_MAX, CHASE_MIN + (px - c.x - TS * 12) * .5)) * dt;
     c.y += (Math.min(py, (W.h - 2) * TS - e.h * e.k / 2) - c.y) * Math.min(1, dt * 2);
     e.x = c.x - e.w / 2; e.y = c.y - e.h / 2; e.face = 1;
     if (Math.random() < dt * 40) burst(W, c.x - e.w * e.k * .4, c.y + (Math.random() - .5) * e.h * e.k, 1, ['#463C6B', '#0E0C22', '#FF4D3D'], 80, -40, 4);
-    const hw = e.w * e.k * .38, hh = e.h * e.k * .42;
+    // (Its deadly part: the dark body, not the haze round it.)
+    const hw = e.w * e.k * .3, hh = e.h * e.k * .34;
     if (!p.dead && Math.abs(px - c.x) < hw + p.w / 2 && Math.abs(py - c.y) < hh + p.h / 2) kill(W);
   }
   function stepChaseCart(W, dt) {

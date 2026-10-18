@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'The Last Dark’s run is fairer: it waits 2.5 seconds before it comes after you, it never moves as fast as you run (it only catches you if you stop or slip), its deadly part is just its dark body, and if you die on the run you come back to the run (the Last Dark one stomp from the end, already after you, well behind) instead of fighting it all over again.',
       'Fixed: a star coin’s way in could be somewhere only lava reaches (in the last bossfight, inside the rising lava). The holes down to coins and secret exits now keep clear of moving lava and stay a few tiles from any lava at all.',
       'Fixed: towers and castles had only two star coins (one tower only one) since they got shorter. Every level has its three again: in a tower or castle they’re spread along the way up to the boss’s arena.',
       'Towers and castles are much shorter, a bit under half as long as before: a tower’s two shafts share its stages between them (every kind once, not twice), each castle builds the first half of its halls and climbs, and the last castle before the Last Dark is half the length (with 280 seconds on its clock).',
