@@ -6,6 +6,8 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Slopes join up: put slopes side by side or corner to corner (even with nothing under them) and they make one ramp, a peak or a dip that you and the Shellbacks walk straight along. The steep back of a slope is a wall.',
+      'Kicked Shellback shells now go all the way up a slope (no slower than a kick), fly up off the top and land again; one that hits the steep back of a slope bounces off it like a wall.',
       'Sloped ground: most story levels now have little hills on their flat stretches (ramps up, a top, ramps down), often with a Shellback on top, and any single-block step in the ground is a slope. You walk up and down them; a Shellback’s shell left on a slope slides off down it on its own, kicked downhill it speeds up, and kicked uphill it slows, stops and comes rolling back at you. (Slopes are in the level editor too.)',
       'Practice mode: every item in your inventory is yours without end (×∞). What you use goes on your practice runs only; your own items and powers stay just as they were.',
       'No more underground sections for star coins: each coin is up in the level itself, in the hardest spot to get to in its part of it (high above the usual way, on a lonely little ledge, floating up where you have to jump for it). Nothing marks them. (Secret exits still hide at the end of their sections.)',

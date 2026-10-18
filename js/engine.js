@@ -198,13 +198,19 @@
   const slopeAt = (c, tx, ty, px) => { const u = Math.max(0, Math.min(TS, px - tx * TS)); return c === '/' ? ty * TS + TS - u : ty * TS + u; };
   // The slope under e's middle, if its feet are on or in one: { y: its surface there, c, down:
   // which way is downhill }.
+  // (Slopes join up: going from one to the next, a row up or down, the surface carries on, so
+  // the row over the feet is looked at too, and the highest surface no more than a step up
+  // from them is the one.)
   function slopeUnder(W, e) {
-    const fx = e.x + e.w / 2, tx = Math.floor(fx / TS), row = Math.floor((e.y + e.h - 1) / TS);
-    for (const ty of [row, row + 1]) {
+    const fx = e.x + e.w / 2, tx = Math.floor(fx / TS), feet = e.y + e.h, row = Math.floor((feet - 1) / TS);
+    let best = null;
+    for (const ty of [row - 1, row, row + 1]) {
       const c = tile(W, tx, ty);
-      if (SLOPES[c]) return { y: slopeAt(c, tx, ty, fx), c, down: -SLOPES[c] };
+      if (!SLOPES[c]) continue;
+      const y = slopeAt(c, tx, ty, fx);
+      if (y >= feet - 14 && (!best || y < best.y)) best = { y, c, down: -SLOPES[c] };
     }
-    return null;
+    return best;
   }
   // Stand e on the slope under it: pushed up out of it, or (stick: walking down it) kept on it.
   function onSlope(W, e, stick) {
@@ -509,11 +515,16 @@
     const top = Math.floor(e.y / TS), bot = Math.floor((e.y + e.h - .01) / TS);
     const tx = dx > 0 ? Math.floor((e.x + e.w - .001) / TS) : Math.floor(e.x / TS);
     for (let ty = top; ty <= bot; ty++) {
-      if (!isSolid(tile(W, tx, ty))) continue;
+      const c = tile(W, tx, ty);
+      // (A slope's steep side, the back of it, is a wall: run into it below its top and you
+      // stop. Its sloping side you just walk up.)
+      if (SLOPES[c] && Math.sign(dx) === -SLOPES[c] && e.y + e.h > slopeAt(c, tx, ty, dx > 0 ? e.x + e.w : e.x) + e.w / 2 + 16) { e.x = dx > 0 ? tx * TS - e.w : (tx + 1) * TS; return true; }
+      if (!isSolid(c)) continue;
       // (Feet just under the top of the block ahead, as at the high end of a slope: step up
-      // onto it, if there's room.)
-      const lift = e.y + e.h - ty * TS;
-      if (ty === bot && lift > 0 && lift <= 14 && !(e.vy < 0)) {
+      // onto it, if there's room. On a slope its front reaches the block while its middle,
+      // which it stands on, is still a little lower: so a little more, there.)
+      const lift = e.y + e.h - ty * TS, most = slopeUnder(W, e) ? e.w / 2 + 16 : 14;
+      if (ty === bot && lift > 0 && lift <= most && !(e.vy < 0)) {
         let room = true;
         for (let r = Math.floor((ty * TS - e.h) / TS); r < ty && room; r++) if (isSolid(tile(W, tx, r))) room = false;
         if (room) { e.y = ty * TS - e.h; return false; }
@@ -1247,12 +1258,14 @@
     // (TNT carts take stomps one at a time, like golems.)
     if (e.type === '@') { e.hurt = Math.max(0, e.hurt - dt); e.stompCool = Math.max(0, e.stompCool - dt); }
     if (WALKERS.has(e.type)) {
-      if (!supported(W, e)) {
+      if (!supported(W, e) || e.vy < 0) {
         // (A Shellback's shell, kicked, flies on off the ledge as it falls.)
         if (e.type === 'ĸ' && e.state === 'spin') shellSlide(W, e, dt);
         e.vy = Math.min(MAXFALL, (e.vy || 0) + G * dt);
         const hit = moveY(W, e, e.vy * dt, false);
         if (hit && hit.dir === 'down') e.vy = 0;
+        if (hit && hit.dir === 'up') e.vy = 0;
+        onSlope(W, e, false);
         if (e.y > W.h * TS + 40 || hazardHit(W, e)) e.alive = false;
         return;
       }
@@ -1511,17 +1524,19 @@
   }
   // A kicked Shellback shell sliding along (on the ground or flying off a ledge): it turns
   // back off walls and knocks out any enemy it runs into (a boss just turns it back). On a
-  // slope it speeds up going down and slows going up (and comes back down if it stops); on
-  // the flat it settles back to SHELL_SPEED.
+  // slope it speeds up going down, goes all the way up one at no less than SHELL_SPEED, and
+  // flies off the top; on the flat it settles back to SHELL_SPEED.
   function shellSlide(W, e, dt) {
-    const sl = slopeUnder(W, e), grounded = sl ? sl.y - (e.y + e.h) < 4 : supported(W, e);
-    if (sl && grounded) {
-      e.vx += sl.down * 700 * dt;
-      if (Math.abs(e.vx) < 30) e.vx = sl.down * 30;
-    } else if (grounded) e.vx = Math.sign(e.vx || 1) * approach(Math.abs(e.vx), SHELL_SPEED, 260 * dt);
+    const sl = slopeUnder(W, e), grounded = !(e.vy < 0) && (sl ? sl.y - (e.y + e.h) < 4 : supported(W, e));
+    const uphill = !!(sl && grounded && Math.sign(e.vx) === -sl.down);
+    if (sl && grounded && Math.sign(e.vx || sl.down) === sl.down) e.vx += sl.down * 700 * dt;
+    else if (grounded) e.vx = Math.sign(e.vx || 1) * approach(Math.abs(e.vx), SHELL_SPEED, 260 * dt);
+    // (Over the top of a slope it was going up, it flies up off it, and comes down again.)
+    if (e.climbing && !uphill && grounded) { e.vy = -Math.abs(e.vx) * 1.3; W.emit('hop'); }
+    e.climbing = uphill;
     e.vx = Math.max(-620, Math.min(620, e.vx));
     if (moveX(W, e, e.vx * dt)) { e.vx *= -1; W.emit('clank'); }
-    if (grounded) onSlope(W, e, true);
+    if (grounded && !(e.vy < 0)) onSlope(W, e, true);
     for (const o of W.enemies) {
       if (o === e || !o.alive || o.phased || !overlap(e, o)) continue;
       if (isBoss(o)) { e.vx = -Math.sign(o.x - e.x || 1) * SHELL_SPEED; continue; }
