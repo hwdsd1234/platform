@@ -4,9 +4,9 @@
   const TS = LF.TS = 32;
   const G = 2100, MAXFALL = 900, RUN = 250, JUMP = 700, SPRING = 1080;
   const FAST = 1.4;
-  // The pear: the slowest you fall gliding, the lift of its spin (about a tile and a bit, well
-  // short of the banana's double jump), the fastest you fall after it.
-  const GLIDE_FALL = 95, GLIDE_LIFT = 400, SPUN_FALL = 300;
+  // The pear: the slowest you fall gliding, how high its spin lifts you (as a share of the
+  // banana's double jump at full height), the fastest you fall after it.
+  const GLIDE_FALL = 95, SPIN_HEIGHT = .75, SPUN_FALL = 300;
   const WALL_SLIDE = 110, WALL_KICK = 330, BOOST = 1.22, REGROW = 12, SINK = 55;
 
   // Per-level player settings, set in the editor's Player dialog (def.player).
@@ -2922,7 +2922,8 @@
       // The pear's spin: a small lift in mid-air, once (after the acorn of the Mario games). After
       // it you can't glide and fall at up to SPUN_FALL till you land: a wall jump doesn't give
       // it back (or you could spin your way up any wall).
-      p.vy = Math.min(p.vy, -GLIDE_LIFT); p.spun = true; p.buffer = 0; p.jumping = false; p.sx = 1.2; p.sy = .85;
+      // (The banana's double jump goes up at .9 of a jump; height goes with the square of that.)
+      p.vy = Math.min(p.vy, -jumpV * .9 * Math.sqrt(SPIN_HEIGHT)); p.spun = true; p.buffer = 0; p.jumping = false; p.sx = 1.2; p.sy = .85;
       burst(W, p.x + p.w / 2, p.y + p.h / 2, 12, ['#C5D94A', '#E4F08A'], 120, 60, 2.5);
       ring(W, p.x + p.w / 2, p.y + p.h / 2, 24, '197,217,74', .3);
       W.emit('djump');

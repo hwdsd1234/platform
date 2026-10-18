@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'The pear’s spin now lifts you three quarters as high as the banana’s double jump (a little higher than the last change made it).',
       'A kicked Shellback shell that slides off a ledge keeps flying forward as it falls, instead of dropping straight down.',
       'The pear’s spin lifts you much less now (about a tile, down from about three), so the banana’s double jump is the one for real height.',
       'The Last Dark’s arena has a pear now, right by the wall that breaks open: grab it and glide over the worst of the run.',
