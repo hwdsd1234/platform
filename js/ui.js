@@ -44,12 +44,12 @@
   // Later additions say which save version brought them in (lv.since): the Storm Heights
   // and the Sky Spire came with version 6, the Melon Vault with 7, the High Winds with 8,
   // the Neo Ledges with 9, the world castles with 10, the Pear Cliffs with 11, the sunken
-  // castles with 12, the Star Road (at the very end) with 14. With 13, two castles went (one castle a world): Lighthouse Castle and
+  // castles with 12, the Star Road (at the very end) with 14, the Shell Hills with 15. With 13, two castles went (one castle a world): Lighthouse Castle and
   // Rat Castle, the sunken castles taking their places; Drowned Castle moved to after the
   // Pear Cliffs. So a save's numbering is rebuilt as it was (GONE puts the old castles back
   // where they stood), each level found again by name; a cleared castle that's gone counts
   // as its world's castle cleared.
-  const SAVE_V = 14;
+  const SAVE_V = 15;
   const GONE = [{ name: 'Lighthouse Castle', after: 'Sunken Keep', now: 'Sunken Keep' }, { name: 'Rat Castle', after: 'The Long Glide', now: 'Drowned Castle' }];
   if (levelsV < SAVE_V) {
     let old = LF.LEVELS.map((lv, i) => ({ name: lv.name, since: lv.since || 0, boss: lv.boss, giantFight: lv.giantFight, i }));
@@ -63,8 +63,8 @@
     const byName = Object.fromEntries(LF.LEVELS.map((lv, i) => [lv.name, i]));
     const was = old.map(o => o.i);
     const move = book => Object.fromEntries(Object.entries(book).flatMap(([k, v]) => { const o = old[k]; if (!o) return []; if (o.i != null) return [[o.i, v]]; return o.now != null && byName[o.now] != null ? [[byName[o.now], v]] : []; }));
-    progress = move(progress); progressHC = move(progressHC);
-    store.set('progress', progress); store.set('progressHC', progressHC);
+    progress = move(progress); progressHC = move(progressHC); coins = move(coins);
+    store.set('progress', progress); store.set('progressHC', progressHC); store.set('coins', coins);
     store.set('secrets', move(store.get('secrets', {}))); store.set('houses', move(store.get('houses', {})));
     const at = old[store.get('mapAt', 0)];
     store.set('mapAt', at ? (at.i ?? byName[at.now] ?? 0) : 0); store.set('midway', null); store.set('launch', null);

@@ -6,6 +6,9 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'New chapter: the Shell Hills, five Shellback levels at the end of Old Town, just before Candle Keep: Shell Hill, Rolling Ridge, Shell Alley (thornbacks you can only shell), Ramp Jump and The Shell Pit. Hills, ridges, ramps and dips, and Shellbacks everywhere.',
+      'You can wall-slide and wall-jump off the steep back of a slope, like any wall.',
+      'Your saved progress, coins and secrets move to the right levels now that the Shell Hills are in.',
       'Kicked Shellback shells hit bosses: a boss a shell runs into takes a hit, just like a stomp (sending a tower boss into its fury, or finishing it), and the shell bounces back. A boss in a fury shrugs shells off. Most boss arenas now have a Shellback near the way in to use.',
       'A Shellback about to come out of its shell warns you: for its last 2 seconds it shakes (harder and harder), its feet poke out, a red ! pulses over it, and it glows so you see it in the dark.',
       'Slopes join up: put slopes side by side or corner to corner (even with nothing under them) and they make one ramp, a peak or a dip that you and the Shellbacks walk straight along. The steep back of a slope is a wall.',

@@ -1290,6 +1290,8 @@
     if (n % 10 === 0 && FIGHTS[n / 10 - 1]) out.push({ ...tower(arena(n / 10 - 1, Math.floor((n / 10 - 1) / 5)), 300 + n), chapter, boss: true });
     else if (n % 10 === 5 && GIANT_FIGHTS[(n - 5) / 10]) out.push({ ...tower(giantArena((n - 5) / 10), 300 + n), chapter, boss: true });
     const chapterEnds = regular[i + 1] && regular[i + 1].chapter !== chapter;
+    // The Shell Hills (levels-15.js) close Old Town, before its castle.
+    if (chapterEnds && chapter === 'The Hollow Spire') out.push(...(LF.SHELL_LEVELS || []));
     // A world's last chapter ends at its castle (in two worlds, a sunken one).
     if (chapterEnds && sunkenAfter[chapter] != null) out.push(sunkenOf(sunkenAfter[chapter]));
     if (chapterEnds && castleAfter[chapter] != null) out.push(castleOf(castleAfter[chapter]));

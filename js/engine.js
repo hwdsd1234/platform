@@ -2878,7 +2878,11 @@
   function wallBeside(W, p, side) {
     const tx = Math.floor(side > 0 ? (p.x + p.w + 1) / TS : (p.x - 1) / TS);
     const top = Math.floor((p.y + 4) / TS), bot = Math.floor((p.y + p.h - 4) / TS);
-    for (let ty = top; ty <= bot; ty++) if (isSolid(tile(W, tx, ty))) return true;
+    for (let ty = top; ty <= bot; ty++) {
+      const c = tile(W, tx, ty);
+      // (A slope's steep back is a wall too: slide down it, jump off it.)
+      if (isSolid(c) || SLOPES[c] === -side) return true;
+    }
     return false;
   }
 
