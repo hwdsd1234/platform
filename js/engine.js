@@ -1216,6 +1216,8 @@
     if (e.type === '@') { e.hurt = Math.max(0, e.hurt - dt); e.stompCool = Math.max(0, e.stompCool - dt); }
     if (WALKERS.has(e.type)) {
       if (!supported(W, e)) {
+        // (A Shellback's shell, kicked, flies on off the ledge as it falls.)
+        if (e.type === 'ĸ' && e.state === 'spin') shellSlide(W, e, dt);
         e.vy = Math.min(MAXFALL, (e.vy || 0) + G * dt);
         const hit = moveY(W, e, e.vy * dt, false);
         if (hit && hit.dir === 'down') e.vy = 0;
@@ -1240,27 +1242,15 @@
       }
       case 'ĸ': {
         // The Shellback: walks like a beetle; stomped, it's a shell lying still (SHELL_WAIT
-        // seconds, then it climbs back out and walks on); kicked, the shell shoots along,
-        // turning back off walls (but not ledges: it falls off them), knocking out any enemy
-        // it runs into (a boss just turns it back).
+        // seconds, then it climbs back out and walks on); kicked, the shell shoots along
+        // (see shellSlide), flying on off ledges as it falls.
         e.stompCool = Math.max(0, e.stompCool - dt);
         if (e.state === 'shell') {
           // (Real seconds, whatever pace the level's enemies keep.)
           if ((e.shellT -= dt / (ENEMY_SPEED * tune(W.def.tuning, e.type).speed)) <= 0) { e.state = 'walk'; e.vx = 44 * (e.face || -1); W.floaters.push({ x: ex, y: e.y - 8, t: 'it’s back out!', life: .8, c: '#9FF0C8' }); }
           break;
         }
-        if (e.state === 'spin') {
-          const nx = e.x + e.vx * dt, ahead = e.vx < 0 ? nx : nx + e.w;
-          const tx = Math.floor(ahead / TS), tyBody = Math.floor((e.y + e.h - 1) / TS);
-          if (isSolid(tile(W, tx, tyBody))) { e.vx *= -1; W.emit('clank'); } else e.x = nx;
-          for (const o of W.enemies) {
-            if (o === e || !o.alive || o.phased || !overlap(e, o)) continue;
-            if (isBoss(o)) { e.vx = -Math.sign(o.x - e.x || 1) * SHELL_SPEED; continue; }
-            shootEnemy(W, o, Math.sign(e.vx), null, 'KO', 999);
-          }
-          e.face = Math.sign(e.vx);
-          break;
-        }
+        if (e.state === 'spin') { shellSlide(W, e, dt); break; }
         const nx = e.x + e.vx * dt, ahead = e.vx < 0 ? nx : nx + e.w;
         const tx = Math.floor(ahead / TS);
         const tyBody = Math.floor((e.y + e.h - 1) / TS), below = tile(W, tx, Math.floor((e.y + e.h + 2) / TS));
@@ -1482,6 +1472,20 @@
         break;
       }
     }
+  }
+
+  // A kicked Shellback shell sliding along (on the ground or flying off a ledge): it turns
+  // back off walls and knocks out any enemy it runs into (a boss just turns it back).
+  function shellSlide(W, e, dt) {
+    const nx = e.x + e.vx * dt, ahead = e.vx < 0 ? nx : nx + e.w, tx = Math.floor(ahead / TS);
+    const blocked = [e.y, e.y + e.h - 1].some(y => isSolid(tile(W, tx, Math.floor(y / TS))));
+    if (blocked) { e.vx *= -1; W.emit('clank'); } else e.x = nx;
+    for (const o of W.enemies) {
+      if (o === e || !o.alive || o.phased || !overlap(e, o)) continue;
+      if (isBoss(o)) { e.vx = -Math.sign(o.x - e.x || 1) * SHELL_SPEED; continue; }
+      shootEnemy(W, o, Math.sign(e.vx), null, 'KO', 999);
+    }
+    e.face = Math.sign(e.vx);
   }
 
   // ---------- bosses ----------
