@@ -1320,6 +1320,8 @@
     r(20, 10, 26, 10, '='); r(33, 10, 39, 10, '=');
     r(27, 7, 32, 7, '=');
     s(30, 9, '0');
+    // A pear by the wall that breaks open, for the run: glide over the worst of it.
+    s(55, 16, 'p');
     r(59, 1, 59, 16, 'Ħ');
     // The run.
     r(59, 17, 69, 18);
