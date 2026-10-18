@@ -4,7 +4,9 @@
   const TS = LF.TS = 32;
   const G = 2100, MAXFALL = 900, RUN = 250, JUMP = 700, SPRING = 1080;
   const FAST = 1.4;
-  const GLIDE_FALL = 95, GLIDE_LIFT = 640, SPUN_FALL = 300;   // the pear: the slowest you fall gliding, the lift of its spin, the fastest you fall after it
+  // The pear: the slowest you fall gliding, the lift of its spin (about a tile and a bit, well
+  // short of the banana's double jump), the fastest you fall after it.
+  const GLIDE_FALL = 95, GLIDE_LIFT = 400, SPUN_FALL = 300;
   const WALL_SLIDE = 110, WALL_KICK = 330, BOOST = 1.22, REGROW = 12, SINK = 55;
 
   // Per-level player settings, set in the editor's Player dialog (def.player).
@@ -48,7 +50,7 @@
     o: { name: 'Orange', power: 'Jump boost', color: '#FF9A2E', note: 'higher jumps, until you die' },
     b: { name: 'Banana', power: 'Double jump', color: '#FFE066', note: 'jump again in mid-air, until you die' },
     m: { name: 'Watermelon', power: 'Speed', color: '#4CAF50', note: 'run faster, until you die' },
-    p: { name: 'Pear', power: 'Glide', color: '#C5D94A', note: 'hold up (or jump) while falling to glide down slowly; press Space in mid-air for a big lift, after which you can’t glide and fall steadily till you land, until you die' },
+    p: { name: 'Pear', power: 'Glide', color: '#C5D94A', note: 'hold up (or jump) while falling to glide down slowly; press Space in mid-air for a small lift, after which you can’t glide and fall steadily till you land, until you die' },
     s: { name: 'Strawberry', power: 'Wall grip', color: '#F0506E', note: 'slide down walls at a third of the speed, until you die' },
     'ç': { name: 'Cherry', power: 'Ammo magnet', color: '#B3123A', note: 'ammo crates within 4 blocks fly to you, until you die' },
     'ƥ': { name: 'Pineapple', power: 'Spike-proof', color: '#F2C94C', note: 'spikes don’t hurt you (lava and spiked pendulums still do), until you die' },
@@ -2913,7 +2915,7 @@
       p.trail = .25; p.trailC = '255,224,102';
       W.emit('djump');
     } else if (spin && p.glide && !p.onGround && !p.spun && !wet) {
-      // The pear's spin: a big lift in mid-air, once (after the acorn of the Mario games). After
+      // The pear's spin: a small lift in mid-air, once (after the acorn of the Mario games). After
       // it you can't glide and fall at up to SPUN_FALL till you land: a wall jump doesn't give
       // it back (or you could spin your way up any wall).
       p.vy = Math.min(p.vy, -GLIDE_LIFT); p.spun = true; p.buffer = 0; p.jumping = false; p.sx = 1.2; p.sy = .85;
