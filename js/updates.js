@@ -6,6 +6,8 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Practice mode: every item in your inventory is yours without end (×∞). What you use goes on your practice runs only; your own items and powers stay just as they were.',
+      'No more underground sections for star coins: each coin is up in the level itself, in the hardest spot to get to in its part of it (high above the usual way, on a lonely little ledge, floating up where you have to jump for it). Nothing marks them. (Secret exits still hide at the end of their sections.)',
       'The pear’s spin now lifts you three quarters as high as the banana’s double jump (a little higher than the last change made it).',
       'A kicked Shellback shell that slides off a ledge keeps flying forward as it falls, instead of dropping straight down.',
       'The pear’s spin lifts you much less now (about a tile, down from about three), so the banana’s double jump is the one for real height.',

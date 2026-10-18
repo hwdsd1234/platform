@@ -815,6 +815,9 @@
   let inventory = { ...Object.fromEntries(Object.keys(LF.FRUITS).map(t => [t, 0])), ...store.get('inventory', {}) };
   for (const t in inventory) if (!LF.FRUITS[t]) delete inventory[t];   // (fruit that's since gone, like the pear)
   let carry = store.get('powers', null), invFrom = null;
+  // Practice: every item is yours without end, and what you use goes on the practice runs
+  // only (practiceCarry), never on your real powers or items.
+  let practiceCarry = null;
   function saveCarry(p) {
     carry = p.shield || LF.hasPowers(p) ? { shield: p.shield, ...LF.powerFlags(p) } : null;
     store.set('powers', carry);
@@ -837,17 +840,24 @@
     $('inv').innerHTML = `<div class="inv-card">
       <header><h2>Inventory</h2><button class="mini" id="inv-close">Close · Tab</button></header>
       <ul class="inv-items">${Object.entries(LF.FRUITS).map(([t, f]) => `<li>
-        <span class="inv-icon">${FRUIT_ICON[t]}</span><div><b>${f.name} ×${inventory[t] || 0}</b><small>${esc(f.note)}</small></div>
-        <button class="mini go-mini" data-use="${t}" ${(inventory[t] || 0) > 0 && !hardcore && !practice ? '' : 'disabled'}>Use</button></li>`).join('')}</ul>
-      <p class="lede">${practice ? 'Practice is on: your items stay put till you turn it off.' : hardcore ? 'Hardcore is on: no fruit.' : `Ready for your next level: ${powersText(now)}`}</p>
+        <span class="inv-icon">${FRUIT_ICON[t]}</span><div><b>${f.name} ×${practice ? '∞' : inventory[t] || 0}</b><small>${esc(f.note)}</small></div>
+        <button class="mini go-mini" data-use="${t}" ${(practice || (inventory[t] || 0) > 0) && !hardcore ? '' : 'disabled'}>Use</button></li>`).join('')}</ul>
+      <p class="lede">${practice ? `Practice is on: every item without end, for practice runs only (your own items stay put). Ready for your next practice run: ${powersText(practiceCarry || {})}` : hardcore ? 'Hardcore is on: no fruit.' : `Ready for your next level: ${powersText(now)}`}</p>
       <p class="inv-note">Gather fruit in the fruit houses on the map (each one’s grove grows back an hour after you’ve been in, even while you’re away; fruit in a level only grows back while you play it). Powers last until you die and carry on from level to level. Ammo left over when you clear a level carries on too, until you die${hardcore ? '' : ` (you have ${store.get('ammo', 0)})`}.</p>
     </div>`;
     $('inv-close').addEventListener('click', closeInventory);
     for (const b of $('inv').querySelectorAll('[data-use]')) b.addEventListener('click', () => useItem(b.dataset.use));
   }
   function useItem(t) {
-    if (hardcore || !(inventory[t] > 0)) return;
-    if (practice) return flash('Practice is on: nothing you use or get counts (turn it off to use your items)');
+    if (hardcore) return;
+    if (practice) {
+      const target = { shield: 0, airJumps: 0, ...(practiceCarry || {}) };
+      if (!LF.applyFruit(target, t)) return flash('You already have that power');
+      practiceCarry = { shield: target.shield, ...LF.powerFlags(target) };
+      flash(`${FRUIT_ICON[t]} ${LF.FRUITS[t].power} (practice)`); SFX.fruit && SFX.fruit();
+      return renderInventory();
+    }
+    if (!(inventory[t] > 0)) return;
     const target = { shield: 0, airJumps: 0, ...(carry || {}) };
     if (!LF.applyFruit(target, t)) return flash('You already have that power');
     inventory[t]--; store.set('inventory', inventory);
@@ -941,7 +951,7 @@
       withPowers = { ...withPowers, toMapOnDeath: true, ...(mw && mw.index === ctx.index ? { resume: mw } : {}) };
       if (!mw || mw.index !== ctx.index) store.set('midway', null);
     }
-    if (ctx.kind === 'practice') withPowers = { ...withPowers, carryAmmo: 40 };
+    if (ctx.kind === 'practice') withPowers = { ...withPowers, carryAmmo: 40, ...(practiceCarry ? { powers: practiceCarry } : {}) };
     // Every level but a timed one (a Fruit Grove) has a clock set by how long it is (see
     // clockFor), and a tower's boss arena adds 100 seconds more (a castle's, 200); not in
     // practice or when testing in the editor.
@@ -1220,7 +1230,7 @@
       if (practice) return play(LF.LEVELS[+d.i], { kind: 'practice', index: +d.i });
       story = +d.i === 0 ? { time: 0, falls: 0 } : story; play(LF.LEVELS[+d.i], { kind: 'story', index: +d.i });
     },
-    togglePractice: () => { practice = !practice; store.set('practice', practice); mapCannon = null; mapHouse = null; renderMap(false); flash(practice ? 'Practice on: every level open · Z/X set and clear checkpoints · nothing counts: no progress, awards, items or carried powers' : 'Practice off'); },
+    togglePractice: () => { practice = !practice; store.set('practice', practice); practiceCarry = null; mapCannon = null; mapHouse = null; renderMap(false); flash(practice ? 'Practice on: every level open · Z/X set and clear checkpoints · nothing counts: no progress, awards, items or carried powers' : 'Practice off'); },
     select: showMap,
     yours: showYours,
     help: showHelp,

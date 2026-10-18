@@ -1,13 +1,14 @@
-// Lanternfall: star coins, and the secret sections they're hidden at the end of. Every story
-// level, tower and castle has three (¢), placed when you play it (the same every time).
-// They're meant to be hard to get: the level is split into thirds along its length, and in
-// each, in the most out-of-the-way place there (the highest above the way most people go, or in
-// a tall level the furthest to the side), away from the start, doors, lanterns and the secret
-// exit, and not in a boss's arena, a hole in the floor leads down into a secret section: a run
-// of hard jumps under the level with the coin at the end, and back. Where no section fits,
-// the coin sits out in the open in that out-of-the-way spot. The secret exits (secrets.js)
-// are hidden at the end of secret sections the same way, with LF.sections. Load after
-// lengthen.js, before secrets.js.
+// Lanternfall: star coins. Every story level, tower and castle has three (¢), placed when
+// you play it (the same every time), in the hardest places to get to: the level is split into
+// thirds along its length (in a tower or castle, the way up to the boss's arena), and in each
+// the coin goes where it's most out of the way (the highest above the way most people go, or
+// in a tall level the furthest to the side) and loneliest (a little ledge with little else
+// round it), floating two tiles up so you jump for it; away from the start, doors, lanterns
+// and the secret exit, out of moving lava's reach and away from lava. Nothing marks them.
+//
+// The secret exits (secrets.js) are hidden at the end of secret sections with LF.sections:
+// a hole in the floor somewhere out of the way leads down a shaft into a run of hard jumps
+// in a band of rock under the level. Load after lengthen.js, before secrets.js.
 (() => {
   const LF = window.LF;
   const cache = new Map();
@@ -21,8 +22,7 @@
   // across five; down, across five or six), over a floor of spikes, with bats in the way; at
   // the end, on a ledge, the prize.
   const BAND = 11;
-  // The kinds of secret section, each a different way to get through (a level's three coins
-  // each get a different one, and which three changes from level to level):
+  // The kinds of secret section, each a different way to get through:
   // - pillars: one tile wide, as far apart as you can jump (up two, across four; level, across
   //   five; down, across five or six), over spikes, with bats in the way;
   // - crumbles: single crumbling blocks hanging over spikes (keep moving);
@@ -131,12 +131,6 @@
 
   LF.sections = { addBand, dig, course, KINDS, BAND, MARKS: 'PDLjnĵň?' };
 
-  // Can the checker b reach the coin just added to t (one that isn't in rows)?
-  function coinSeen(t, rows, b, w) {
-    for (let y = 0; y < t.length; y++) for (let x = 0; x < w; x++) if (t[y][x] === '¢' && rows[y]?.[x] !== '¢') return !!b.seen[y * w + x];
-    return false;
-  }
-  const hash = s => { let h = 7; for (const ch of s) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return h; };
   LF.addCoins = def => {
     if (!def || !Array.isArray(def.map) || def.timeLimit) return def;
     if (cache.has(def.name)) return cache.get(def.name);
@@ -160,62 +154,33 @@
     for (let x = 0; x < w; x++) for (let y = h - 2; y >= 0; y--) if (reach(x, y) && floor(map[y + 1][x])) { low[x] = y; break; }
     for (let y = 0; y < h; y++) { const xs = []; for (let x = 0; x < w; x++) if (reach(x, y)) xs.push(x); if (xs.length) mid[y] = xs[xs.length >> 1]; }
     const away = (x, y) => (tall ? Math.abs(x - (mid[y] ?? x)) : low[x] >= 0 ? low[x] - y : 0) + ((x * 7 + y * 13) % 5) * .3;
+    // How hard a spot is to get to: how out of the way it is, and how lonely (a little ledge
+    // with little else you can stand on round it). The coin floats two tiles over the ledge
+    // (when there's room), so you jump for it there.
+    const ok = (x, y) => x >= 0 && x < w && y >= 0 && y < h && reach(x, y);
+    const lonely = (x, y) => { let n = 0; for (let dy = -2; dy <= 2; dy++) for (let dx = -3; dx <= 3; dx++) if (ok(x + dx, y + dy)) n++; return Math.max(0, 8 - n / 2); };
     const open = [];
-    for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++)
-      if ((map[y][x] === '.' || map[y][x] === '~') && clear(x, y) && reach(x, y)) open.push({ x, y, score: away(x, y) });
+    for (let y = 3; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+      const air = c => c === '.' || c === '~';
+      if (!ok(x, y) || !floor(map[y + 1][x]) || !air(map[y][x])) continue;
+      const cy = air(map[y - 1][x]) && air(map[y - 2][x]) ? y - 2 : y;
+      if (clear(x, cy)) open.push({ x, y: cy, score: away(x, y) + lonely(x, y) });
+    }
     if (open.length < 3) { cache.set(def.name, def); return def; }
     // (In a tower or castle the thirds are of the way up to the boss's arena, which gets none.)
     const along = tall ? (x, y) => h - 1 - y : x => x, span = tall ? h : def.arenaX ? def.arenaX - 6 : w;
-    let rows = map.map(r => r.split(''));
-    // Each coin's section is a different kind, and which three changes from level to level.
-    const kinds = KINDS.slice().sort((p, q) => hash(def.name + p) - hash(def.name + q));
-    // (The secret sections go in bands of rock under the level, a new band whenever there's
-    // no room left in the last.)
-    const bands = [];
-    const used = [], slots = [];
-    // Can you get everywhere (every lantern, the door) from spot o? (Climbing back out of a
-    // secret section, with the coin, you come out there; the way back across a course and up
-    // its shaft is always open, so that's all that matters.) And how long to keep trying.
-    const back = new Map(), until = Date.now() + 1000;
-    const backFrom = o => {
-      const key = o.y * w + o.x;
-      if (!back.has(key)) back.set(key, LF.analyze({ ...def, map: map.map((r, y) => (y === o.y ? r.slice(0, o.x) + 'P' + r.slice(o.x + 1) : r).replace(/P/g, (c, x) => (y === o.y && x === o.x ? 'P' : '.'))) }).ok);
-      return back.get(key);
-    };
+    const rows = map.map(r => r.split('')), slots = [];
+    const apart = (x, y) => slots.every(([sx, sy]) => Math.abs(sx - x) > 8 || Math.abs(sy - y) > 6);
+    const best = list => list.filter(p => apart(p.x, p.y)).sort((p, q) => q.score - p.score)[0];
+    // The hardest spot in each third (its coin is coin k: see engine.js); a third with
+    // nowhere for its coin, the hardest spot left anywhere, so every level has its three.
     for (let k = 0; k < 3; k++) {
-      const a0 = span * k / 3, a1 = span * (k + 1) / 3, inBand = (x, y) => along(x, y) >= a0 && along(x, y) < a1;
-      const apart = (x, y) => used.every(([ux, uy]) => Math.abs(ux - x) > 8 || Math.abs(uy - y) > 6);
-      let done = false;
-      // A hole, out of the way, down into a secret section (and you must be able to get back
-      // out of it again with the coin and still finish the level).
-      // (Every spot is tried, most out of the way first, but only so many get the full check.)
-      let withBand = null;
-      if (a.ok) for (const o of open.filter(p => inBand(p.x, p.y) && apart(p.x, p.y)).sort((p, q) => q.score - p.score)) {
-        if (Date.now() > until) break;
-        let t = null, nb = null;
-        const seed = hash(def.name) + k, y0 = bands.find(b0 => dig(rows, [o.x, o.y], '¢', seed, b0, kinds[k], h, true));
-        if (y0 != null) { t = rows.map(r => r.slice()); dig(t, [o.x, o.y], '¢', seed, y0, kinds[k], h); }
-        else {
-          // (A new band under the rest, made once for this coin.)
-          withBand ||= (() => { const c = rows.map(r => r.slice()); return { c, y0: addBand(c) }; })();
-          if (dig(withBand.c, [o.x, o.y], '¢', seed, withBand.y0, kinds[k], h, true)) { t = withBand.c.map(r => r.slice()); nb = withBand.y0; dig(t, [o.x, o.y], '¢', seed, nb, kinds[k], h); }
-        }
-        if (!t || !backFrom(o)) continue;
-        const b = LF.analyze({ ...def, map: t.map(r => r.join('')) });
-        if (!b.ok || b.litOk !== a.litOk || !coinSeen(t, rows, b, w)) continue;
-        rows = t; used.push([o.x, o.y]); done = true; if (nb != null) bands.push(nb); break;
-      }
-      if (!done) {
-        const o = open.filter(p => inBand(p.x, p.y) && apart(p.x, p.y) && rows[p.y][p.x] === map[p.y][p.x]).sort((p, q) => q.score - p.score)[0];
-        if (o) { rows[o.y][o.x] = '¢'; used.push([o.x, o.y]); }
-      }
-      // (Where this third's coin went, so it's coin k wherever it is: see engine.js.)
-      for (let y = 0; y < rows.length; y++) for (let x = 0; x < w; x++) if (rows[y][x] === '¢' && !slots.some(([sx, sy]) => sx === x && sy === y)) slots.push([x, y]);
+      const a0 = span * k / 3, a1 = span * (k + 1) / 3;
+      const o = best(open.filter(p => along(p.x, p.y) >= a0 && along(p.x, p.y) < a1));
+      if (o) { rows[o.y][o.x] = '¢'; slots.push([o.x, o.y]); }
     }
-    // (A third with nowhere for its coin: it goes in the most out-of-the-way spot left anywhere,
-    // so every level has its three.)
     while (slots.length < 3) {
-      const o = open.filter(p => rows[p.y][p.x] === map[p.y][p.x] && slots.every(([sx, sy]) => Math.abs(sx - p.x) > 8 || Math.abs(sy - p.y) > 6)).sort((p, q) => q.score - p.score)[0];
+      const o = best(open);
       if (!o) break;
       rows[o.y][o.x] = '¢'; slots.push([o.x, o.y]);
     }
