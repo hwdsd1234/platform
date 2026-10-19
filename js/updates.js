@@ -6,6 +6,9 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'A kicked shell that comes to a gap just one block wide bounces back off it with a little hop and keeps going, instead of falling in.',
+      'Fixed: a shell thrown at a wall close by could come straight back through you without hurting you. Now one coming back at you always hurts.',
+      'Pears, the best fruit, are twice as common: they grow alone in 20 levels (the other power fruits in 10) and turn up twice as often among the mixed fruit.',
       'New chapter: the Shell Slopes, five more Shellback levels at the end of the Waterfront, just before Sunken Keep, all about carrying shells (S) and throwing them on slopes: Carry Hill, Downhill Bowling, Twin Peaks, Shell Valley and Slope Gauntlet (a golem that takes three shells).',
       'Fewer extra enemies: levels are no longer filled up to 5 bats and 5 beetles, and towers and castles are back to the same at least 10 Shellbacks as every other level.',
       'Every tower and castle has at least 30 Shellbacks on the way up to its boss, and every boss arena has at least two apples.',

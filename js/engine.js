@@ -1548,11 +1548,12 @@
     e.vx = Math.max(-620, Math.min(620, e.vx));
     if (moveX(W, e, e.vx * dt)) { e.vx *= -1; W.emit('clank'); }
     if (grounded && !(e.vy < 0)) onSlope(W, e, true);
-    // A pit just one block wide under its middle: it drops into it, instead of skimming over.
-    if (grounded && !sl) {
-      const cx = Math.floor((e.x + e.w / 2) / TS), row = Math.floor((e.y + e.h + 2) / TS);
-      if (!isFloor(tile(W, cx, row)) && isFloor(tile(W, cx - 1, row)) && isFloor(tile(W, cx + 1, row)) && !isSolid(tile(W, cx, row - 1))) {
-        e.x = cx * TS + (TS - e.w) / 2; e.vx = 0; e.drop = true; e.y += 2; W.emit('clank');
+    // A gap just one block wide ahead: it bounces back off it, with a little hop, and keeps
+    // going (it doesn't skim over, or fall in).
+    if (grounded && !sl && e.vx) {
+      const d = Math.sign(e.vx), fx = Math.floor((d > 0 ? e.x + e.w + 1 : e.x - 1) / TS), row = Math.floor((e.y + e.h + 2) / TS);
+      if (!isFloor(tile(W, fx, row)) && isFloor(tile(W, fx + d, row)) && isFloor(tile(W, fx - d, row)) && !isSolid(tile(W, fx, row - 1))) {
+        e.vx = -e.vx; e.vy = -260; e.x -= d * 2; W.emit('clank');
       }
     }
     shellHits(W, e, Math.sign(e.vx));
@@ -3212,7 +3213,10 @@
       // touched it on; a shell shooting along hurts you like any enemy (but not in the
       // moment just after you kick it).
       if (e.type === 'ĸ' && !(p.rush > 0)) {
-        if (e.state === 'carried' || e.stompCool > 0) continue;
+        // (Just kicked or thrown it can't hurt you, but only while it's going away from you:
+        // one that comes straight back off a wall does.)
+        const coming = e.state === 'spin' && Math.sign(e.vx) === Math.sign(p.x + p.w / 2 - (e.x + e.w / 2));
+        if (e.state === 'carried' || (e.stompCool > 0 && !coming)) continue;
         const top = p.vy > 0 && p.y + p.h - e.y < 14;
         // (Holding S, run into a shell lying still: you pick it up and carry it.)
         if (e.state === 'shell' && input.carry && !p.carrying && !top) {

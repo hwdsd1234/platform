@@ -1367,16 +1367,17 @@
   // theirs). Everywhere else the fruit's mixed: two spots in three grow apples, and the
   // power fruits share the rest equally, in turn. (lv.pureFruit tells lengthen.js what the
   // extra sections should grow.)
-  const PURE = 10;
-  const powerFruit = Object.keys(LF.FRUITS).filter(t => t !== 'a');
+  // (Pears, the best of them, are twice as common: twice the pure levels, twice the turns.)
+  const PURE = 10, TWICE = { p: 2 };
+  const powerFruit = Object.keys(LF.FRUITS).filter(t => t !== 'a').flatMap(t => Array(TWICE[t] || 1).fill(t));
   const isFruit = c => !!LF.FRUITS[c];
   const story = out.filter(d => !d.boss && Array.isArray(d.map));
   for (const d of story) if (d.melon) d.pureFruit = 'm'; else if (d.pear) d.pureFruit = 'p';
   const pool = story.filter(d => !d.pureFruit);
-  powerFruit.forEach((t, n) => {
-    const want = PURE - story.filter(d => d.pureFruit === t).length;
+  [...new Set(powerFruit)].forEach((t, n, kinds) => {
+    const want = PURE * (TWICE[t] || 1) - story.filter(d => d.pureFruit === t).length;
     for (let k = 0; k < want; k++) {
-      let at = Math.floor(((k + (n + .5) / powerFruit.length) / want) * pool.length) % pool.length;
+      let at = Math.floor(((k + (n + .5) / kinds.length) / want) * pool.length) % pool.length;
       while (pool[at].pureFruit) at = (at + 1) % pool.length;
       pool[at].pureFruit = t;
     }
