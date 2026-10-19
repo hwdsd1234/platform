@@ -792,7 +792,7 @@
         case 'ĸ': {
           // The Shellback: a domed green shell with a pale head and feet poking out; in its
           // shell, just the shell (spinning lines when it's shooting along).
-          const inShell = e.state === 'shell' || e.state === 'spin';
+          const inShell = e.state === 'shell' || e.state === 'spin' || e.state === 'carried';
           if (!inShell) {
             ctx.fillStyle = '#CFE8D8'; ctx.fillRect(cx - 9 + wob, by - 4, 5, 4); ctx.fillRect(cx + 4 - wob, by - 4, 5, 4);
             ctx.beginPath(); ctx.arc(cx + f * 12, by - 11, 5, 0, TAU); ctx.fill();

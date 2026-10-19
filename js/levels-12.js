@@ -267,4 +267,38 @@
       isle(90, 8, 6); s(94, 7, 'D');
     }, 9),
   ];
+
+  // Headhitters: over the takeoff of some of the jumps between islands (the edge of an island
+  // with a gap after it and the next island within a jump), a slab of stone hangs three tiles
+  // up, so a full jump bumps your head: keep it low and flat. About one jump in two, no
+  // more than MAX_HEADHITTERS a level, each kept only if the level can still be finished
+  // (LF.analyze).
+  const MAX_HEADHITTERS = 6;
+  const floorC = c => c === '#' || c === '=' || c === 'i' || c === 'C';
+  for (const lv of LF.SKY_LEVELS) {
+    if (!Array.isArray(lv.map)) continue;
+    const rows = LF.normalize(lv.map).map(r => r.split('')), h = rows.length, w = rows[0].length;
+    const at = (x, y) => (y >= 0 && y < h && x >= 0 && x < w ? rows[y][x] : '#');
+    const ok0 = LF.analyze({ ...lv, map: rows.map(r => r.join('')) }).ok;
+    let n = 0, jumps = 0;
+    for (let y = 5; y < h - 1 && n < MAX_HEADHITTERS; y++) for (let x = 3; x < w - 6 && n < MAX_HEADHITTERS; x++) {
+      for (const d of [1, -1]) {
+        // The edge of an island: ground here, none just past it, air over both.
+        if (!floorC(at(x, y + 1)) || at(x, y) !== '.' || floorC(at(x + d, y + 1)) || at(x + d, y) !== '.') continue;
+        // The next island within 2 to 4 tiles, level or a row down (never up: with your head
+        // held down, you couldn't make it).
+        const land = [2, 3, 4].find(k => [0, 1].some(dy => floorC(at(x + d * k, y + 1 + dy)) && at(x + d * k, y + dy) === '.'));
+        if (!land) continue;
+        if (jumps++ % 2) continue;
+        // The slab: three wide, over the edge, three tiles of air under it (and nothing there).
+        const xs = [x - d, x, x + d], sy = y - 4;
+        if (xs.some(cx => [sy, sy + 1, sy + 2, sy + 3].some(cy => at(cx, cy) !== '.'))) continue;
+        const keep = xs.map(cx => rows[sy][cx]);
+        xs.forEach(cx => { rows[sy][cx] = '#'; });
+        if (ok0 && !LF.analyze({ ...lv, map: rows.map(r => r.join('')) }).ok) { xs.forEach((cx, k) => { rows[sy][cx] = keep[k]; }); continue; }
+        n++;
+      }
+    }
+    if (n) { lv.map = rows.map(r => r.join('')); lv.headhitters = n; }
+  }
 })();

@@ -1257,7 +1257,7 @@
     }
     // (TNT carts take stomps one at a time, like golems.)
     if (e.type === '@') { e.hurt = Math.max(0, e.hurt - dt); e.stompCool = Math.max(0, e.stompCool - dt); }
-    if (WALKERS.has(e.type)) {
+    if (WALKERS.has(e.type) && e.state !== 'carried') {
       if (!supported(W, e) || e.vy < 0) {
         // (A Shellback's shell, kicked, flies on off the ledge as it falls.)
         if (e.type === 'ĸ' && e.state === 'spin') shellSlide(W, e, dt);
@@ -1266,6 +1266,8 @@
         if (hit && hit.dir === 'down') e.vy = 0;
         if (hit && hit.dir === 'up') e.vy = 0;
         onSlope(W, e, false);
+        // (A shell that dropped into a narrow pit lies still where it lands.)
+        if (e.drop && hit && hit.dir === 'down') { e.drop = false; e.state = 'shell'; e.shellT = SHELL_WAIT; e.vx = 0; }
         if (e.y > W.h * TS + 40 || hazardHit(W, e)) e.alive = false;
         return;
       }
@@ -1285,6 +1287,14 @@
         // seconds, then it climbs back out and walks on); kicked, the shell shoots along
         // (see shellSlide), flying on off ledges as it falls.
         e.stompCool = Math.max(0, e.stompCool - dt);
+        // Carried (see stepPlayer): held out in front of you; it can't come out of its shell,
+        // and it knocks out whatever it touches. Put down when you let go, or die.
+        if (e.state === 'carried') {
+          if (p.carrying !== e || p.dead) { e.state = 'shell'; e.shellT = SHELL_WAIT; e.vx = 0; if (p.carrying === e) p.carrying = null; break; }
+          e.x = p.x + p.w / 2 + p.face * 15 - e.w / 2; e.y = p.y + p.h - e.h - 4; e.face = p.face;
+          shellHits(W, e, p.face);
+          break;
+        }
         if (e.state === 'shell') {
           // (Lying on a slope, it slides off down it, shooting along like a kicked one.)
           const sl = slopeUnder(W, e);
@@ -1538,9 +1548,20 @@
     e.vx = Math.max(-620, Math.min(620, e.vx));
     if (moveX(W, e, e.vx * dt)) { e.vx *= -1; W.emit('clank'); }
     if (grounded && !(e.vy < 0)) onSlope(W, e, true);
+    // A pit just one block wide under its middle: it drops into it, instead of skimming over.
+    if (grounded && !sl) {
+      const cx = Math.floor((e.x + e.w / 2) / TS), row = Math.floor((e.y + e.h + 2) / TS);
+      if (!isFloor(tile(W, cx, row)) && isFloor(tile(W, cx - 1, row)) && isFloor(tile(W, cx + 1, row)) && !isSolid(tile(W, cx, row - 1))) {
+        e.x = cx * TS + (TS - e.w) / 2; e.vx = 0; e.drop = true; e.y += 2; W.emit('clank');
+      }
+    }
+    shellHits(W, e, Math.sign(e.vx));
+  }
+  // What a shell (kicked or carried) hits: any enemy it runs into is knocked out (a boss takes
+  // a hit, as from a stomp, none while it rages, and a kicked shell bounces back off it).
+  function shellHits(W, e, sgn) {
     for (const o of W.enemies) {
       if (o === e || !o.alive || o.phased || !overlap(e, o)) continue;
-      // (A boss takes a hit, as from a stomp (none while it rages), and the shell bounces back.)
       if (isBoss(o)) {
         const dir = Math.sign(o.x - e.x || 1);
         if (!(o.fury > 0) && W.clock - (o.shellHitAt ?? -9) > .6) {
@@ -1549,12 +1570,12 @@
           W.emit('stomp', { type: o.type });
           shootEnemy(W, o, dir, null, 'shell');
         }
-        e.vx = -dir * SHELL_SPEED; e.x -= dir * 6;
+        if (e.state === 'spin') { e.vx = -dir * SHELL_SPEED; e.x -= dir * 6; }
         continue;
       }
-      shootEnemy(W, o, Math.sign(e.vx), null, 'KO', 999);
+      shootEnemy(W, o, sgn, null, 'KO', 999);
     }
-    e.face = Math.sign(e.vx);
+    if (e.state === 'spin') e.face = Math.sign(e.vx);
   }
 
   // ---------- bosses ----------
@@ -2920,6 +2941,13 @@
 
   function stepPlayer(W, p, input, dt) {
     const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
+    // S (carry): carrying a shell, a press lets it go, kicked off ahead of you. (Picking one
+    // up is in the enemy checks below: hold S and run into a shell lying still.)
+    const carryPress = !!input.carryPressed; input.carryPressed = false;
+    if (p.carrying && (carryPress || p.dead)) {
+      const s = p.carrying; p.carrying = null;
+      if (s.alive && !p.dead) { s.state = 'spin'; s.vx = p.face * SHELL_SPEED; s.stompCool = .3; s.x = p.x + p.w / 2 + p.face * (p.w / 2 + 2) - (p.face > 0 ? 0 : s.w); W.emit('stomp', { type: s.type }); }
+    }
     // Standing at the cannon and pressing ↓ climbs in.
     const cn = W.cannon;
     if (cn && cn.state === 'idle' && input.down && p.onGround && Math.abs(p.x + p.w / 2 - cn.x) < 26 && Math.abs(p.y + p.h - cn.y) < 8) {
@@ -3182,8 +3210,14 @@
       // touched it on; a shell shooting along hurts you like any enemy (but not in the
       // moment just after you kick it).
       if (e.type === 'ĸ' && !(p.rush > 0)) {
-        if (e.stompCool > 0) continue;
+        if (e.state === 'carried' || e.stompCool > 0) continue;
         const top = p.vy > 0 && p.y + p.h - e.y < 14;
+        // (Holding S, run into a shell lying still: you pick it up and carry it.)
+        if (e.state === 'shell' && input.carry && !p.carrying && !top) {
+          e.state = 'carried'; e.vx = 0; p.carrying = e; W.emit('hop');
+          W.floaters.push({ x: e.x + e.w / 2, y: e.y - 10, t: 'S to let go', life: 1.2, c: '#9FF0C8' });
+          continue;
+        }
         if (e.state === 'shell') {
           const dir = p.x + p.w / 2 < e.x + e.w / 2 ? 1 : -1;
           e.state = 'spin'; e.vx = dir * SHELL_SPEED; e.stompCool = .3;
@@ -3295,8 +3329,10 @@
 
     // Star coins: touch one to pick it up (it's yours for good when you finish the level; die
     // first and it isn't). One you already have is gone from the level.
+    // (A shell you've kicked or are carrying picks a coin up for you too.)
+    const shellOn = c => W.enemies.some(s => s.type === 'ĸ' && s.alive && (s.state === 'spin' || s.state === 'carried') && Math.abs(s.x + s.w / 2 - c.x) < s.w / 2 + 10 && Math.abs(s.y + s.h / 2 - c.y) < s.h / 2 + 10);
     for (const c of W.coins) {
-      if (c.taken || c.had || Math.abs(cx - c.x) > 22 || Math.abs(cy - c.y) > 24) continue;
+      if (c.taken || c.had || (!(Math.abs(cx - c.x) <= 22 && Math.abs(cy - c.y) <= 24) && !shellOn(c))) continue;
       c.taken = true; c.pop = 1; (W.coinsGot ||= [])[c.k] = true;
       burst(W, c.x, c.y, 26, ['#FFE066', '#FFF6C2', '#FFB547'], 180, 120, 3);
       ring(W, c.x, c.y, 40, '255,224,102', .5);

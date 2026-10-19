@@ -6,6 +6,10 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Carry a Shellback shell: hold S and run into a shell lying still to pick it up (it can’t come out of its shell while you hold it, and it knocks out whatever it touches); press S again to let it go, kicked off ahead of you.',
+      'Shellback shells pick up star coins for you, kicked or carried.',
+      'A kicked shell that comes to a pit just one block wide drops into it, instead of skimming over.',
+      'Headhitter jumps in the Sky Roads: over some of the jumps between islands a slab of stone hangs low, so a full jump bumps your head. Keep those jumps low and flat.',
       'New chapter: the Shell Hills, five Shellback levels at the end of Old Town, just before Candle Keep: Shell Hill, Rolling Ridge, Shell Alley (thornbacks you can only shell), Ramp Jump and The Shell Pit. Hills, ridges, ramps and dips, and Shellbacks everywhere.',
       'You can wall-slide and wall-jump off the steep back of a slope, like any wall.',
       'Your saved progress, coins and secrets move to the right levels now that the Shell Hills are in.',
