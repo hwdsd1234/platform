@@ -276,12 +276,15 @@
       else if (c === 'Ŧ') { W.chaseCart = { x: x * TS + 2, y: (y + 1) * TS - 22, w: 28, h: 22, state: 'idle', vx: 0 }; tiles[y][x] = ' '; }
       // + is a cannon: climb in with ↓ and it fires you out of the level (that finishes it).
       else if (c === '+') { W.cannon = { x: x * TS + 16, y: (y + 1) * TS, state: 'idle', t: 0 }; tiles[y][x] = ' '; }
-      // ? is a secret exit: a second door, always open, tucked away somewhere.
+      // ? is a secret exit: a second door, always open, in a hard spot to get to.
       // (Next to a false wall (l) it's in a hidden room: it looks like rock until you step in.)
       else if (c === '?') {
         const hidden = [rows[y][x - 1], rows[y][x + 1], rows[y - 1]?.[x]].includes('l');
         W.secret = { tx: x, ty: y, x: x * TS, y: (y - 1) * TS + 4, w: 32, h: 60, open: true, glow: 1, secret: true, hidden };
         tiles[y][x] = hidden ? 'l' : ' ';
+        // (Out in the open, it's there to see from the start: it's getting to it that's hard.
+        // Only one behind a false wall, in a level from the editor, waits to be found.)
+        if (!hidden) W.secretSeen = true;
       }
       else if (c === 'M' || c === 'V') {
         W.plats.push({ axis: c === 'M' ? 'x' : 'y', x: x * TS, y: y * TS, ox: x * TS, oy: y * TS, w: TS * 2, h: 12, v: 70, dir: 1, dx: 0, dy: 0, prevY: y * TS });
@@ -512,9 +515,9 @@
       if (!isSolid(c)) continue;
       // (Feet just under the top of the block ahead, as at the high end of a slope: step up
       // onto it, if there's room. On a slope its front reaches the block while its middle,
-      // which it stands on, is still a little lower: so a little more, there.)
+      // which it stands on, is still a little lower: so a little more, there. Not falling.)
       const lift = e.y + e.h - ty * TS, most = slopeUnder(W, e) ? e.w / 2 + 16 : 14;
-      if (ty === bot && lift > 0 && lift <= most && !(e.vy < 0)) {
+      if (ty === bot && lift > 0 && lift <= most && !(e.vy < 0) && !(e.vy > 100)) {
         let room = true;
         for (let r = Math.floor((ty * TS - e.h) / TS); r < ty && room; r++) if (isSolid(tile(W, tx, r))) room = false;
         if (room) { e.y = ty * TS - e.h; return false; }
@@ -1259,8 +1262,6 @@
         if (hit && hit.dir === 'down') e.vy = 0;
         if (hit && hit.dir === 'up') e.vy = 0;
         onSlope(W, e, false);
-        // (A shell that dropped into a narrow pit lies still where it lands.)
-        if (e.drop && hit && hit.dir === 'down') { e.drop = false; e.state = 'shell'; e.shellT = SHELL_WAIT; e.vx = 0; }
         if (e.y > W.h * TS + 40 || hazardHit(W, e, true)) e.alive = false;
         return;
       }
@@ -1548,12 +1549,15 @@
     e.vx = Math.max(-620, Math.min(620, e.vx));
     if (moveX(W, e, e.vx * dt)) { e.vx *= -1; W.emit('clank'); }
     if (grounded && !(e.vy < 0)) onSlope(W, e, true);
-    // A gap just one block wide ahead: it bounces back off it, with a little hop, and keeps
-    // going (it doesn't skim over, or fall in).
-    if (grounded && !sl && e.vx) {
-      const d = Math.sign(e.vx), fx = Math.floor((d > 0 ? e.x + e.w + 1 : e.x - 1) / TS), row = Math.floor((e.y + e.h + 2) / TS);
-      if (!isFloor(tile(W, fx, row)) && isFloor(tile(W, fx + d, row)) && isFloor(tile(W, fx - d, row)) && !isSolid(tile(W, fx, row - 1))) {
-        e.vx = -e.vx; e.vy = -260; e.x -= d * 2; W.emit('clank');
+    // A gap just one block wide under its middle: it drops into it (it doesn't skim over),
+    // still spinning, and goes on bouncing about wherever it lands (off the gap's sides, or
+    // along the floor it comes down on).
+    // (Narrower than the gap, it has nothing under it there: so this is looked at whenever it's
+    // level with the floor, not only when it's standing on it.)
+    const cx = Math.floor((e.x + e.w / 2) / TS), row = Math.floor((e.y + e.h + 2) / TS);
+    if (!sl && !(e.vy < 0) && e.y + e.h - row * TS > -8) {
+      if (!isFloor(tile(W, cx, row)) && isFloor(tile(W, cx - 1, row)) && isFloor(tile(W, cx + 1, row)) && !isSolid(tile(W, cx, row - 1))) {
+        e.x = cx * TS + (TS - e.w) / 2; e.y += 2; e.vy = Math.max(e.vy || 0, 160); W.emit('clank');
       }
     }
     shellHits(W, e, Math.sign(e.vx));

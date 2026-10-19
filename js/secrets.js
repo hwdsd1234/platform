@@ -5,7 +5,7 @@
 // world's index. Load after worlds.js, so the worlds and level indexes are final.
 //
 // The door goes in the hardest spot to get to in the level itself, out of the way and high up,
-// unseen until you come near. (Leaving by it gets you only its cannon on the map: see ui.js.)
+// in plain sight. (Leaving by it gets you only its cannon on the map: see ui.js.)
 (() => {
   const LF = window.LF, L = LF.LEVELS, WORLDS = LF.WORLDS;
   const floor = c => c === '#' || c === '=';
@@ -20,8 +20,7 @@
 
   // Hide a secret door in level lv (left of column xMax and, for a tower, at least minUp rows
   // above the start): in the hardest spot to get to, as far from the start and the door as it
-  // can be and high up (unseen until you come near). Out of moving lava's reach and away from
-  // lava. True if it found a spot.
+  // can be and high up. Out of moving lava's reach and away from lava. True if it found a spot.
   function hardSpot(lv, xMax = Infinity, minUp = -Infinity) {
     const g = LF.normalize(lv.map).map(row => row.split('')), h = g.length, w = g[0].length;
     const seen = LF.analyze(lv).seen, P = find(g, 'P'), D = find(g, 'D') || lastDoor(g), marks = landmarks(g);

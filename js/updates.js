@@ -6,6 +6,8 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Secret exits are always in sight now (glowing blue from the moment the level starts): the trick is getting to them.',
+      'A kicked shell that comes to a gap just one block wide falls into it, still spinning, and goes on bouncing about wherever it lands: off the sides of a pit, or along the floor below.',
       'A kicked shell that comes to a gap just one block wide bounces back off it with a little hop and keeps going, instead of falling in.',
       'Fixed: a shell thrown at a wall close by could come straight back through you without hurting you. Now one coming back at you always hurts.',
       'Pears, the best fruit, are twice as common: they grow alone in 20 levels (the other power fruits in 10) and turn up twice as often among the mixed fruit.',

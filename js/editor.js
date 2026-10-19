@@ -33,7 +33,7 @@
     { c: 'P', label: 'Start', group: 'Level', chip: '#D9D0F0' },
     { c: 'L', label: 'Lantern', group: 'Level', chip: '#FFB547' },
     { c: 'D', label: 'Door', group: 'Level', chip: '#8F81AB' },
-    { c: '?', label: 'Secret exit', group: 'Level', chip: '#7FB0E0', note: 'a second door, always open, unseen until you come near: leaving by it opens a secret path on the map' },
+    { c: '?', label: 'Secret exit', group: 'Level', chip: '#7FB0E0', note: 'a second door, always open and always in sight (unless behind a false wall): leaving by it opens a secret path on the map' },
     { c: 'j', label: 'Passage door', group: 'Level', chip: '#FFB547', note: 'walk in to come out at the matching entry (the 1st door, left to right, leads to the 1st entry…)' },
     { c: 'n', label: 'Passage entry', group: 'Level', chip: '#FFE2A8', note: 'where a passage door lets you out' },
     { c: '+', label: 'Cannon', group: 'Level', chip: '#5C3B24', note: 'press ↓ beside it to climb in and be fired out: that finishes the level' },
