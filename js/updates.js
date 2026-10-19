@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Carrying a shell: stomping something no longer breaks it, and anything that would hurt you breaks the shell instead (you’re unhurt). Lava and falls still don’t forgive.',
       'One Shellback shell is enough for an iron golem or a TNT cart now (kicked or carried; a cart still blows up, sparing you). Bosses still take a shell as one hit.',
       'Secret exits are always in sight now (glowing blue from the moment the level starts): the trick is getting to them.',
       'A kicked shell that comes to a gap just one block wide falls into it, still spinning, and goes on bouncing about wherever it lands: off the sides of a pit, or along the floor below.',

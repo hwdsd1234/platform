@@ -636,6 +636,14 @@
   function hurt(W) {
     const p = W.player;
     if (p.dead || p.inv > 0) return;
+    // Carrying a shell, it takes the hit: it breaks, and you're unhurt (a moment's grace).
+    if (p.carrying && p.carrying.alive) {
+      const s = p.carrying; s.alive = false; p.carrying = null; p.inv = .8;
+      burst(W, s.x + s.w / 2, s.y + s.h / 2, 14, ['#2E7D66', '#7FD8B4', '#E8DDB5'], 160, 400);
+      W.floaters.push({ x: s.x + s.w / 2, y: s.y - 8, t: 'the shell breaks', life: .9, c: '#9FF0C8' });
+      W.shake = .12; W.emit('shield');
+      return;
+    }
     if (!p.shield && p.tomato) return tomatoSave(W, p);
     if (!p.shield) return kill(W);
     // p.shield counts layers: 1, or 2 after a second apple. A hit takes one off.
@@ -1286,9 +1294,10 @@
         if (e.state === 'carried') {
           if (p.carrying !== e || p.dead) { e.state = 'shell'; e.shellT = SHELL_WAIT; e.vx = 0; if (p.carrying === e) p.carrying = null; break; }
           e.x = p.x + p.w / 2 + p.face * 15 - e.w / 2; e.y = p.y + p.h - e.h - 4; e.face = p.face;
-          // (Whatever it touches goes down, golems and TNT carts too (a boss takes one hit),
-          // and the shell breaks.)
-          const o = W.enemies.find(o => o !== e && o.alive && !o.phased && overlap(e, o));
+          // (Whatever it runs into goes down, golems and TNT carts too (a boss takes one hit),
+          // and the shell breaks. Not what you're stomping, though: that's an ordinary stomp.)
+          const stomping = o => p.vy > 0 && p.y + p.h - o.y < 18 && overlap(p, o);
+          const o = W.enemies.find(o => o !== e && o.alive && !o.phased && overlap(e, o) && !stomping(o));
           if (o) {
             if (!(isBoss(o) && o.fury > 0)) { W.emit('stomp', { type: o.type }); shootEnemy(W, o, p.face, null, isBoss(o) ? 'shell' : 'KO', isBoss(o) ? 1 : 999); }
             e.alive = false; p.carrying = null;
