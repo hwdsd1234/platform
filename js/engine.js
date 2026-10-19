@@ -1274,9 +1274,10 @@
   // The Shellback's shell: how long it lies still before it climbs back out, and how fast
   // it shoots along once kicked.
   const SHELL_WAIT = 5, SHELL_SPEED = 430;
-  // A shell jump (throw it down under you in mid-air, see stepPlayer), and a stomp on a shell
-  // in mid-air: how hard you spring up.
-  const SHELL_JUMP = 820, AIR_STOMP = 720;
+  // A stomp on a Shellback or its shell in mid-air (flying off the top of a slope, or off a
+  // ledge): how hard you spring up off it. That's the shell jump: throw a shell at a wall, get
+  // ahead of it while it's away, and as it comes back and flies off a slope, stomp it in the air.
+  const AIR_STOMP = 720;
   function supported(W, e) {
     const s = slopeUnder(W, e);
     if (s && s.y - (e.y + e.h) < 14) return true;
@@ -3019,14 +3020,7 @@
     const carryPress = !!input.carryPressed; input.carryPressed = false;
     if (p.carrying && (carryPress || p.dead)) {
       const s = p.carrying; p.carrying = null;
-      // In mid-air, a shell jump: the shell's thrown down under you and you spring off it.
-      if (s.alive && !p.dead && !p.onGround) {
-        Object.assign(s, { state: 'shell', shellT: SHELL_WAIT, vx: 0, vy: 240, stompCool: .4, x: p.x + p.w / 2 - s.w / 2, y: p.y + p.h + 2 });
-        p.vy = -SHELL_JUMP * Math.sqrt(playerTune(W.def).gravity); p.jumping = false; p.spun = false; p.sx = .75; p.sy = 1.3;
-        burst(W, p.x + p.w / 2, p.y + p.h, 16, ['#2E7D66', '#7FD8B4', '#FFE2A8'], 160, 200);
-        W.floaters.push({ x: p.x + p.w / 2, y: p.y - 12, t: 'shell jump!', life: 1, c: '#9FF0C8' });
-        W.emit('djump');
-      } else if (s.alive && !p.dead) { s.state = 'spin'; s.vx = p.face * SHELL_SPEED; s.stompCool = .3; s.shot = 0; s.x = p.x + p.w / 2 + p.face * (p.w / 2 + 2) - (p.face > 0 ? 0 : s.w); W.emit('stomp', { type: s.type }); }
+      if (s.alive && !p.dead) { s.state = 'spin'; s.vx = p.face * SHELL_SPEED; s.stompCool = .3; s.shot = 0; s.x = p.x + p.w / 2 + p.face * (p.w / 2 + 2) - (p.face > 0 ? 0 : s.w); W.emit('stomp', { type: s.type }); }
     }
     // Standing at the cannon and pressing ↓ climbs in.
     const cn = W.cannon;
