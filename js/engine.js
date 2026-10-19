@@ -1616,6 +1616,14 @@
   function shellHits(W, e, sgn) {
     for (const o of W.enemies) {
       if (o === e || !o.alive || o.phased || !overlap(e, o)) continue;
+      // (Two shells both shooting along meet: they smash each other, and both are gone.)
+      if (e.state === 'spin' && o.type === 'ĸ' && o.state === 'spin') {
+        for (const q of [e, o]) { q.alive = false; burst(W, q.x + q.w / 2, q.y + q.h / 2, 16, ['#2E7D66', '#7FD8B4', '#E8DDB5'], 200, 400); }
+        ring(W, (e.x + o.x) / 2 + e.w / 2, e.y + e.h / 2, 40, '159,240,200', .4);
+        W.floaters.push({ x: (e.x + o.x) / 2 + e.w / 2, y: e.y - 10, t: 'crash!', life: .9, c: '#9FF0C8' });
+        W.shake = Math.max(W.shake, .25); W.emit('clank');
+        return;
+      }
       if (isBoss(o)) {
         const dir = Math.sign(o.x - e.x || 1);
         if (!(o.fury > 0) && W.clock - (o.shellHitAt ?? -9) > .6) {
