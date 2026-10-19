@@ -1297,6 +1297,8 @@
     const chapterEnds = regular[i + 1] && regular[i + 1].chapter !== chapter;
     // The Shell Hills (levels-15.js) close Old Town, before its castle.
     if (chapterEnds && chapter === 'The Hollow Spire') out.push(...(LF.SHELL_LEVELS || []));
+    // ...and the Shell Slopes (levels-16.js) close the Waterfront, before Sunken Keep.
+    if (chapterEnds && chapter === 'The Lighthouse') out.push(...(LF.SHELL_LEVELS_2 || []));
     // A world's last chapter ends at its castle (in two worlds, a sunken one).
     if (chapterEnds && sunkenAfter[chapter] != null) out.push(sunkenOf(sunkenAfter[chapter]));
     if (chapterEnds && castleAfter[chapter] != null) out.push(castleOf(castleAfter[chapter]));

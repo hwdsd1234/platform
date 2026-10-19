@@ -44,12 +44,12 @@
   // Later additions say which save version brought them in (lv.since): the Storm Heights
   // and the Sky Spire came with version 6, the Melon Vault with 7, the High Winds with 8,
   // the Neo Ledges with 9, the world castles with 10, the Pear Cliffs with 11, the sunken
-  // castles with 12, the Star Road (at the very end) with 14, the Shell Hills with 15. With 13, two castles went (one castle a world): Lighthouse Castle and
+  // castles with 12, the Star Road (at the very end) with 14, the Shell Hills with 15, the Shell Slopes with 16. With 13, two castles went (one castle a world): Lighthouse Castle and
   // Rat Castle, the sunken castles taking their places; Drowned Castle moved to after the
   // Pear Cliffs. So a save's numbering is rebuilt as it was (GONE puts the old castles back
   // where they stood), each level found again by name; a cleared castle that's gone counts
   // as its world's castle cleared.
-  const SAVE_V = 15;
+  const SAVE_V = 16;
   const GONE = [{ name: 'Lighthouse Castle', after: 'Sunken Keep', now: 'Sunken Keep' }, { name: 'Rat Castle', after: 'The Long Glide', now: 'Drowned Castle' }];
   if (levelsV < SAVE_V) {
     let old = LF.LEVELS.map((lv, i) => ({ name: lv.name, since: lv.since || 0, boss: lv.boss, giantFight: lv.giantFight, i }));

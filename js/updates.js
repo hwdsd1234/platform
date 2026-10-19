@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'New chapter: the Shell Slopes, five more Shellback levels at the end of the Waterfront, just before Sunken Keep, all about carrying shells (S) and throwing them on slopes: Carry Hill, Downhill Bowling, Twin Peaks, Shell Valley and Slope Gauntlet (a golem that takes three shells).',
       'Fewer extra enemies: levels are no longer filled up to 5 bats and 5 beetles, and towers and castles are back to the same at least 10 Shellbacks as every other level.',
       'Every tower and castle has at least 30 Shellbacks on the way up to its boss, and every boss arena has at least two apples.',
       'Enemies don’t drown any more: in water they sink slowly, as you do, and carry on along the bottom (lava still gets them).',

@@ -6,7 +6,7 @@
   const LF = window.LF, L = LF.LEVELS;
   const WORLDS = [
     { name: 'Old Town', chapters: ['The Chandlery', 'The Belfry', 'The Kilns', 'The Hollow Spire', 'The Shell Hills'] },
-    { name: 'The Waterfront', chapters: ['The Orchard', 'The Drowned Quarter', 'The Lighthouse'] },
+    { name: 'The Waterfront', chapters: ['The Orchard', 'The Drowned Quarter', 'The Lighthouse', 'The Shell Slopes'] },
     { name: 'The Clockwork Quarter', chapters: ['The Clockworks', 'The Frost Roofs', 'The Clock Tower', 'The Vault', 'The Horde', 'The Powder Works'] },
     { name: 'The Sky Roads', chapters: ['The Cloud Steps', 'The Wind Wheels', 'The Storm Heights', 'The High Winds', 'The Neo Ledges'] },
     { name: 'The Canal District', chapters: ['The Tallow Docks', 'The Soot Canals', 'The Pear Cliffs'] },
