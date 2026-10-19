@@ -1274,6 +1274,10 @@
   // The Shellback's shell: how long it lies still before it climbs back out, and how fast
   // it shoots along once kicked.
   const SHELL_WAIT = 5, SHELL_SPEED = 430;
+  // A Shellback lost into the void comes back to where it started this many seconds later; for
+  // the last SHELL_WARN of them its spot shows a warning (render.js).
+  const SHELL_BACK = 2, SHELL_WARN = 1.5;
+  LF.SHELL_WARN = SHELL_WARN;
   // A stomp on a Shellback or its shell in mid-air (flying off the top of a slope, or off a
   // ledge): how hard you spring up off it. That's the shell jump: throw a shell at a wall, get
   // ahead of it while it's away, and as it comes back and flies off a slope, stomp it in the air.
@@ -1297,7 +1301,7 @@
     }
     // (TNT carts take stomps one at a time, like golems.)
     if (e.type === '@') { e.hurt = Math.max(0, e.hurt - dt); e.stompCool = Math.max(0, e.stompCool - dt); }
-    if (WALKERS.has(e.type) && e.state !== 'carried') {
+    if (WALKERS.has(e.type) && e.state !== 'carried' && e.state !== 'away') {
       if (!supported(W, e) || e.vy < 0) {
         // (A Shellback's shell, kicked, flies on off the ledge as it falls.)
         if (e.type === 'ĸ' && e.state === 'spin') shellSlide(W, e, dt);
@@ -1309,7 +1313,10 @@
         if (hit && hit.dir === 'down') e.vy = 0;
         if (hit && hit.dir === 'up') e.vy = 0;
         onSlope(W, e, false);
-        if (e.y > W.h * TS + 40 || hazardHit(W, e, true)) e.alive = false;
+        // (A Shellback lost into the void comes back where it started, after a warning: see
+        // SHELL_BACK. Anything else that falls out, or into lava, is gone.)
+        if (e.type === 'ĸ' && e.y > W.h * TS + 40 && e !== W.player.carrying) Object.assign(e, { state: 'away', back: SHELL_BACK, phased: true, vx: 0, vy: 0 });
+        else if (e.y > W.h * TS + 40 || hazardHit(W, e, true)) e.alive = false;
         return;
       }
       e.vy = 0;
@@ -1328,6 +1335,15 @@
         // seconds, then it climbs back out and walks on); kicked, the shell shoots along
         // (see shellSlide), flying on off ledges as it falls.
         e.stompCool = Math.max(0, e.stompCool - dt);
+        // Gone into the void: back where it started when its time's up (real seconds), walking.
+        if (e.state === 'away') {
+          if ((e.back -= dt / (ENEMY_SPEED * tune(W.def.tuning, e.type).speed)) <= 0) {
+            Object.assign(e, { state: 'walk', phased: false, x: e.ox, y: e.oy, vx: -44, vy: 0, stompCool: .5 });
+            burst(W, e.x + e.w / 2, e.y + e.h / 2, 14, ['#7FD8B4', '#E8DDB5', '#FFFFFF'], 140, 100);
+            W.emit('hop');
+          }
+          break;
+        }
         // Carried (see stepPlayer): held out in front of you; it can't come out of its shell,
         // and it knocks out whatever it touches. Put down when you let go, or die.
         if (e.state === 'carried') {

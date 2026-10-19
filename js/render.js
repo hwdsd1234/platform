@@ -814,6 +814,19 @@
           break;
         }
         case 'ĸ': {
+          // Gone into the void: nothing, but for the last moments before it comes back, a
+          // warning where it will: a ring closing in and a red !, pulsing.
+          if (e.state === 'away') {
+            if (e.back > LF.SHELL_WARN) break;
+            const sx = e.ox + e.w / 2, sy = e.oy + e.h / 2, u = 1 - e.back / LF.SHELL_WARN, pulse = reduced ? 1 : .8 + .2 * Math.sin(clock * 16);
+            ctx.strokeStyle = `rgba(255,77,61,${.4 + .5 * u})`; ctx.lineWidth = 2.5; ctx.setLineDash([5, 4]);
+            ctx.beginPath(); ctx.arc(sx, sy, 26 - 14 * u, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+            ctx.save(); ctx.translate(sx, sy - 26); ctx.scale(pulse, pulse);
+            ctx.fillStyle = '#FF4D3D'; ctx.beginPath(); ctx.arc(0, 0, 8, 0, TAU); ctx.fill();
+            ctx.fillStyle = '#FFF1CF'; ctx.font = '700 12px ui-monospace, monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('!', 0, 1);
+            ctx.restore();
+            break;
+          }
           // The Shellback: a domed green shell with a pale head and feet poking out; in its
           // shell, just the shell (spinning lines when it's shooting along).
           const inShell = e.state === 'shell' || e.state === 'spin' || e.state === 'carried';
@@ -1416,6 +1429,7 @@
       for (const k of W.keys) if (!k.taken) out.push({ x: k.x, y: k.y, r: 60 });
       // (A Shellback about to come out of its shell glows, so you see its warning in the dark.)
       for (const e of W.enemies) if (e.alive && e.type === 'ĸ' && e.state === 'shell' && e.shellT < 2) out.push({ x: e.x + e.w / 2, y: e.y - 10, r: 70 });
+      for (const e of W.enemies) if (e.alive && e.type === 'ĸ' && e.state === 'away' && e.back <= LF.SHELL_WARN) out.push({ x: e.ox + e.w / 2, y: e.oy, r: 80 });
       for (const b of W.bullets) out.push({ x: b.x, y: b.y, r: 45 * (b.s || 1) });
       for (const b of W.ammoFly) out.push({ x: b.x, y: b.y, r: 28 });
       for (const t of W.traps) if (t.type === 'bar') { const bs = LF.barBalls(t); out.push({ x: bs[2].x, y: bs[2].y, r: 90 }); }
