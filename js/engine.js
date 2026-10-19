@@ -1274,6 +1274,9 @@
   // The Shellback's shell: how long it lies still before it climbs back out, and how fast
   // it shoots along once kicked.
   const SHELL_WAIT = 5, SHELL_SPEED = 430;
+  // A shell jump (throw it down under you in mid-air, see stepPlayer), and a stomp on a shell
+  // in mid-air: how hard you spring up.
+  const SHELL_JUMP = 820, AIR_STOMP = 720;
   function supported(W, e) {
     const s = slopeUnder(W, e);
     if (s && s.y - (e.y + e.h) < 14) return true;
@@ -1305,7 +1308,12 @@
         if (hit && hit.dir === 'down') e.vy = 0;
         if (hit && hit.dir === 'up') e.vy = 0;
         onSlope(W, e, false);
-        if (e.y > W.h * TS + 40 || hazardHit(W, e, true)) e.alive = false;
+        if (e.y > W.h * TS + 40 || hazardHit(W, e, true)) {
+          // (In a level of shell jumps, a Shellback lost over the edge walks back on where it
+          // started, after a moment, so you're never left without one.)
+          if (e.type === 'ĸ' && W.def.shellsReturn && e !== W.player.carrying) Object.assign(e, { x: e.ox, y: e.oy - 2 * TS, vx: -44, vy: 0, state: 'walk', stompCool: 1 });
+          else e.alive = false;
+        }
         return;
       }
       e.vy = 0;
@@ -3011,7 +3019,14 @@
     const carryPress = !!input.carryPressed; input.carryPressed = false;
     if (p.carrying && (carryPress || p.dead)) {
       const s = p.carrying; p.carrying = null;
-      if (s.alive && !p.dead) { s.state = 'spin'; s.vx = p.face * SHELL_SPEED; s.stompCool = .3; s.shot = 0; s.x = p.x + p.w / 2 + p.face * (p.w / 2 + 2) - (p.face > 0 ? 0 : s.w); W.emit('stomp', { type: s.type }); }
+      // In mid-air, a shell jump: the shell's thrown down under you and you spring off it.
+      if (s.alive && !p.dead && !p.onGround) {
+        Object.assign(s, { state: 'shell', shellT: SHELL_WAIT, vx: 0, vy: 240, stompCool: .4, x: p.x + p.w / 2 - s.w / 2, y: p.y + p.h + 2 });
+        p.vy = -SHELL_JUMP * Math.sqrt(playerTune(W.def).gravity); p.jumping = false; p.spun = false; p.sx = .75; p.sy = 1.3;
+        burst(W, p.x + p.w / 2, p.y + p.h, 16, ['#2E7D66', '#7FD8B4', '#FFE2A8'], 160, 200);
+        W.floaters.push({ x: p.x + p.w / 2, y: p.y - 12, t: 'shell jump!', life: 1, c: '#9FF0C8' });
+        W.emit('djump');
+      } else if (s.alive && !p.dead) { s.state = 'spin'; s.vx = p.face * SHELL_SPEED; s.stompCool = .3; s.shot = 0; s.x = p.x + p.w / 2 + p.face * (p.w / 2 + 2) - (p.face > 0 ? 0 : s.w); W.emit('stomp', { type: s.type }); }
     }
     // Standing at the cannon and pressing ↓ climbs in.
     const cn = W.cannon;
@@ -3292,8 +3307,11 @@
           if (top) { p.vy = (input.jump ? -620 : -460) * Math.sqrt(T.gravity); p.jumping = input.jump; p.spun = false; }
           ring(W, e.x + e.w / 2, e.y + e.h / 2, 26, '159,240,200'); W.emit('stomp', { type: e.type });
         } else if (top) {
+          // (Stomped in mid-air, it gives you a far bigger bounce.)
+          const midair = !supported(W, e);
           e.state = 'shell'; e.shellT = SHELL_WAIT; e.vx = 0; e.stompCool = .3;
-          p.vy = (input.jump ? -620 : -460) * Math.sqrt(T.gravity); p.jumping = input.jump; p.spun = false;
+          p.vy = (midair ? -AIR_STOMP : input.jump ? -620 : -460) * Math.sqrt(T.gravity); p.jumping = input.jump && !midair; p.spun = false;
+          if (midair) W.floaters.push({ x: e.x + e.w / 2, y: e.y - 18, t: 'air stomp!', life: .9, c: '#9FF0C8' });
           W.floaters.push({ x: e.x + e.w / 2, y: e.y - 6, t: 'stomp', life: .8, c: '#FF6B3D' });
           W.shake = .1; W.emit('stomp', { type: e.type });
         } else { hurt(W); if (p.dead) return; }

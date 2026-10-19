@@ -6,6 +6,8 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Shell jumps: carrying a shell in mid-air, press S to throw it down under you and spring off it, half again as far as a jump. And stomping a Shellback in mid-air gives you a big bounce.',
+      'New chapter in the Sky Roads: the Shell Skies, four levels of gaps too wide to jump: Shell Jump, Shell Stairs, Bat Gaps and The Long Way. A Shellback waits on every island, and one that falls off walks back on, so there’s always another shell.',
       'Fixed: a switch could stay off for good after its first hit (in a level with no red or blue blocks). Now every hit flips it, from your head or from a shell, every time.',
       'Two Shellback shells both shooting along that run into each other smash each other: both are gone.',
       'Switches: hit a switch block (ON/OFF) from below with your head, or knock a kicked shell into it, and the red blocks vanish and the blue ones appear (hit it again to swap back). Blocks never appear on top of you or an enemy. Try them in Shell Hill (a gate and a bridge) and Carry Hill (a switch too low to bump: shell it), and in the level editor.',

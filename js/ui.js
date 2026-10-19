@@ -44,12 +44,12 @@
   // Later additions say which save version brought them in (lv.since): the Storm Heights
   // and the Sky Spire came with version 6, the Melon Vault with 7, the High Winds with 8,
   // the Neo Ledges with 9, the world castles with 10, the Pear Cliffs with 11, the sunken
-  // castles with 12, the Star Road (at the very end) with 14, the Shell Hills with 15, the Shell Slopes with 16. With 13, two castles went (one castle a world): Lighthouse Castle and
+  // castles with 12, the Star Road (at the very end) with 14, the Shell Hills with 15, the Shell Slopes with 16, the Shell Skies with 17. With 13, two castles went (one castle a world): Lighthouse Castle and
   // Rat Castle, the sunken castles taking their places; Drowned Castle moved to after the
   // Pear Cliffs. So a save's numbering is rebuilt as it was (GONE puts the old castles back
   // where they stood), each level found again by name; a cleared castle that's gone counts
   // as its world's castle cleared.
-  const SAVE_V = 16;
+  const SAVE_V = 17;
   const GONE = [{ name: 'Lighthouse Castle', after: 'Sunken Keep', now: 'Sunken Keep' }, { name: 'Rat Castle', after: 'The Long Glide', now: 'Drowned Castle' }];
   if (levelsV < SAVE_V) {
     let old = LF.LEVELS.map((lv, i) => ({ name: lv.name, since: lv.since || 0, boss: lv.boss, giantFight: lv.giantFight, i }));
@@ -878,7 +878,7 @@
         <li><kbd>←</kbd><kbd>→</kbd> walk · <kbd>Space</kbd> jump (hold for height) · <kbd>↓</kbd> drop through planks</li>
         <li>Every level has a clock: 300 seconds, 400 in a castle (a tower’s boss arena adds 100 seconds when you reach it, a castle’s 200); come back at a lantern and the clock gives you the share of the level still ahead of it, plus 30 seconds (never under 150 seconds): at 50 seconds left a hurry-up tune plays and the music speeds up; when it runs out you die (Fruit Groves have their own 10 seconds)</li>
         <li>Push into a wall to slide down it · jump off walls to climb</li>
-        <li>Shellbacks: stomp one into its shell, touch the shell to kick it (it knocks out enemies, hits bosses, picks up coins for you, and comes back off walls) · hold <kbd>S</kbd> and run into a shell lying still to carry it (it can't come out while you hold it), press <kbd>S</kbd> again to let it go, kicked off ahead of you</li>
+        <li>Shellbacks: stomp one into its shell, touch the shell to kick it (it knocks out enemies, hits bosses, picks up coins for you, and comes back off walls) · hold <kbd>S</kbd> and run into a shell lying still to carry it (it can't come out while you hold it), press <kbd>S</kbd> again to let it go, kicked off ahead of you · in mid-air, <kbd>S</kbd> does a shell jump: the shell's thrown down under you and you spring off it, half again as far as a jump · stomp a Shellback in mid-air for a big bounce</li>
         <li><kbd>E</kbd> fire: tap for one shot, hold for autofire; shots splash 1 block · <kbd>X</kbd> explosive round (2 ammo, 3-block blast) · <kbd>A</kbd> kill shot (3 ammo): kills whatever it hits in one go, golems and carts too (a boss takes it as one hit) · every shot counts as one hit (a grenade one per blast, up to three), so golems take 3 and TNT carts 5 (stomps count too); a TNT blast kills everything near it but you · <kbd>Q</kbd> bouncing grenade (3 ammo) · <kbd>D</kbd> dynamite (4 ammo): thrown, it falls and sits where it lands, and after a 3-second fuse kills everything within 5 blocks, golems and carts too (a boss takes it as one hit; it never hurts you) · <kbd>Shift</kbd>+<kbd>D</kbd> big dynamite (8 ammo, 10 blocks) · hold any of them to keep firing · hold <kbd>Shift</kbd> for a big shot: 2× size and blast, 2× ammo · ammo crates are hidden through each level; big crates hold 10, huge ones 25; enemies drop 1–5 ammo when killed, more for tougher ones (TNT carts drop none)</li>
         <li>Keys open the locked-door blocks you touch, one block at a time; you keep the key</li>
         <li>Water is safe: you sink slowly and can jump as often as you like</li>

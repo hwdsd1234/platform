@@ -1303,7 +1303,7 @@
     if (chapterEnds && sunkenAfter[chapter] != null) out.push(sunkenOf(sunkenAfter[chapter]));
     if (chapterEnds && castleAfter[chapter] != null) out.push(castleOf(castleAfter[chapter]));
     if (chapter === 'The Powder Works' && chapterEnds) {
-      out.push(...(LF.SKY_LEVELS || []));
+      out.push(...(LF.SKY_LEVELS || []), ...(LF.SHELL_SKY_LEVELS || []));
       // ...ending at the Sky Spire, where the Soot Queen nests above the clouds, then the
       // Sky Roads' castle.
       out.push({ ...tower(voidDef(), 777, false, true), chapter: 'The Neo Ledges', boss: true, sky: true, since: 6 });
