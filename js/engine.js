@@ -1593,7 +1593,7 @@
     if (sl && grounded && Math.sign(e.vx || sl.down) === sl.down) e.vx += sl.down * 700 * dt;
     else if (grounded) e.vx = Math.sign(e.vx || 1) * approach(Math.abs(e.vx), SHELL_SPEED, 260 * dt);
     // (Over the top of a slope it was going up, it flies up off it, and comes down again.)
-    if (e.climbing && !uphill && grounded) { e.vy = -Math.abs(e.vx) * 1.3; W.emit('hop'); }
+    if (e.climbing && !uphill && grounded) { e.vy = -Math.abs(e.vx) * 1.6; W.emit('hop'); }
     e.climbing = uphill;
     e.vx = Math.max(-620, Math.min(620, e.vx));
     if (moveX(W, e, e.vx * dt)) {
@@ -3283,7 +3283,9 @@
         // one that comes straight back off a wall does.)
         const coming = e.state === 'spin' && Math.sign(e.vx) === Math.sign(p.x + p.w / 2 - (e.x + e.w / 2));
         if (e.state === 'carried' || (e.stompCool > 0 && !coming)) continue;
-        const top = p.vy > 0 && p.y + p.h - e.y < 14;
+        // (Up in the air, a shell's easier to land on: feet anywhere over its middle will do,
+        // rising or falling. That's what makes the shell jump possible.)
+        const top = p.vy > 0 && p.y + p.h - e.y < 14 || (!supported(W, e) && p.y + p.h < e.y + e.h * .6);
         // (Holding S, run into a shell lying still: you pick it up and carry it.)
         if (e.state === 'shell' && input.carry && !p.carrying && !top) {
           e.state = 'carried'; e.vx = 0; p.carrying = e; W.emit('hop');

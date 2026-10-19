@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'The Shell Skies are rebuilt so the shell jump can be done: throw a shell off the ramp at your island’s edge; it flies over the gap, bounces off the wall on the next island, and flies back off the lip at that island’s edge, up into the air towards you. Jump from the edge and land on it for the big bounce across. A shell in mid-air is easier to land on now, and shells fly higher off the tops of slopes.',
       'A Shellback or shell that falls into the void in the Shell Skies is gone for good now (they used to walk back on).',
       'The shell jump is a real trick now, not a button: pressing S in mid-air no longer throws a shell down to spring off. Instead, from the top of a ramp, throw a shell back at a wall; as it comes back up the ramp and flies off the top, jump and land on it in mid-air for a big bounce. The Shell Skies are rebuilt around it: every island has a wall to throw at and a ramp to its edge, and every gap needs a shell jump.',
       'Shell jumps: carrying a shell in mid-air, press S to throw it down under you and spring off it, half again as far as a jump. And stomping a Shellback in mid-air gives you a big bounce.',
