@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Every tower and castle has at least 30 Shellbacks on the way up to its boss, and every boss arena has at least two apples.',
       'Enemies don’t drown any more: in water they sink slowly, as you do, and carry on along the bottom (lava still gets them).',
       'Fixed: a carried Shellback shell killed anything in one go. Now whatever it touches takes just one hit and the shell breaks; a kicked shell knocks out ordinary enemies but gives tougher ones (golems, TNT carts) only one hit each time it goes by.',
       'No more underground passages anywhere: the secret exits are now in the hardest spot to get to in the level itself, out of the way and high up (still unseen till you come near).',

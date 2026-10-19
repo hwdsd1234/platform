@@ -1,6 +1,7 @@
 // Lanternfall: a crowd in every level. Every level you play (story levels, towers, castles,
 // the Star Road; not a boss's arena, nor a fruit grove) has at least CROWD of each of these:
-// 5 bats (F), 5 beetles (B) and 10 Shellbacks (ĸ), the most fun of all: any it's short of are
+// 5 bats (F), 5 beetles (B) and 10 Shellbacks (ĸ), the most fun of all (30 on the way up a
+// tower or castle, before its boss): any it's short of are
 // added when you play it (the same every time), spread out along the way. Walkers go on
 // ground you can reach, bats in open air a little over it; none near the start (where you
 // come in), a door, a lantern or the secret exit, near lava, or on top of another enemy.
@@ -37,9 +38,11 @@
       // A bat: open air three wide, two to four tiles over ground you can reach.
       else if ([-1, 1].every(d => open(at(x + d, y))) && [2, 3, 4].some(k => ground(at(x, y + k)) && reach(x, y + k - 1) && [...Array(k - 1)].every((_, j) => open(at(x, y + j + 1))))) airSpots.push([x, y]);
     }
-    const count = c => rows.reduce((n, r) => n + r.filter(ch => ch === c).length, 0);
+    // (In a tower or castle, only those on the way to the boss's arena count.)
+    const count = c => rows.reduce((n, r) => n + r.filter((ch, x) => ch === c && !(def.arenaX && x >= def.arenaX)).length, 0);
     let added = 0;
-    for (const [c, want] of Object.entries(CROWD)) {
+    for (const [c, base] of Object.entries(CROWD)) {
+      const want = c === 'ĸ' && def.arenaX ? 30 : base;
       const spots = c === 'F' ? airSpots : walkSpots;
       for (let need = want - count(c), tries = 0; need > 0 && tries < 8; tries++) {
         // (Spread out: every so many spots along the list, left to right, skipping taken ones.)
