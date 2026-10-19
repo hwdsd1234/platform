@@ -1309,12 +1309,7 @@
         if (hit && hit.dir === 'down') e.vy = 0;
         if (hit && hit.dir === 'up') e.vy = 0;
         onSlope(W, e, false);
-        if (e.y > W.h * TS + 40 || hazardHit(W, e, true)) {
-          // (In a level of shell jumps, a Shellback lost over the edge walks back on where it
-          // started, after a moment, so you're never left without one.)
-          if (e.type === 'ĸ' && W.def.shellsReturn && e !== W.player.carrying) Object.assign(e, { x: e.ox, y: e.oy - 2 * TS, vx: -44, vy: 0, state: 'walk', stompCool: 1 });
-          else e.alive = false;
-        }
+        if (e.y > W.h * TS + 40 || hazardHit(W, e, true)) e.alive = false;
         return;
       }
       e.vy = 0;

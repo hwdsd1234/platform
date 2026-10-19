@@ -5,14 +5,13 @@
 // top of the ramp. Face back and throw the shell (S) at the wall: it shoots off, bounces back,
 // comes up the ramp and flies off the top. Jump as it comes, holding on, and land on it in the
 // air: a stomp in mid-air bounces you high, far enough to cross. (Get it wrong and it's you the
-// shell runs into.) A Shellback that falls off the islands walks back on where it started
-// (def.shellsReturn), so there's always another go. The level checker can't do shell jumps,
+// shell runs into; and a shell lost in the void is gone.) The level checker can't do shell jumps,
 // so these levels were checked with the real physics instead. bosses.js slots them in after
 // the rest of the Sky Roads. Load after levels-16.js and before bosses.js.
 (() => {
   const LF = window.LF;
   const B = LF.build;
-  const sky = (name, w, sign, draw) => ({ chapter: 'The Shell Skies', name, sky: true, shellsReturn: true, since: 17, dark: .3, signs: [{ x: 1, y: 8.4, t: sign }], map: B(w, 20, a => { a.r(0, 0, w - 1, 0); draw({ ...a, island: island(a) }); }) });
+  const sky = (name, w, sign, draw) => ({ chapter: 'The Shell Skies', name, sky: true, since: 17, dark: .3, signs: [{ x: 1, y: 8.4, t: sign }], map: B(w, 20, a => { a.r(0, 0, w - 1, 0); draw({ ...a, island: island(a) }); }) });
   // An island at column x, its top on row y, len long: room to land, then a wall two high to
   // throw shells at, a long run with a Shellback on it, and a ramp up to the far edge (unless
   // it's the last). Returns the column just past its far edge.
