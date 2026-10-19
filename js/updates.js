@@ -6,6 +6,8 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Switches: hit a switch block (ON/OFF) from below with your head, or knock a kicked shell into it, and the red blocks vanish and the blue ones appear (hit it again to swap back). Blocks never appear on top of you or an enemy. Try them in Shell Hill (a gate and a bridge) and Carry Hill (a switch too low to bump: shell it), and in the level editor.',
+      'Spikes don’t hurt enemies any more: only you.',
       'Every level has at least 5 apples now, spread along the way.',
       'Carrying a shell: stomping something no longer breaks it, and anything that would hurt you breaks the shell instead (you’re unhurt). Lava and falls still don’t forgive.',
       'One Shellback shell is enough for an iron golem or a TNT cart now (kicked or carried; a cart still blows up, sparing you). Bosses still take a shell as one hit.',

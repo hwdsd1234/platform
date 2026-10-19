@@ -29,7 +29,9 @@
       for (const x of [58, 61, 64]) s(x, F - 1, 'B');
       hill(72, 3, 14); s(79, F - 4, 'ĸ');
       r(92, F, 95, H - 1, '.');
-      s(104, F - 1, 'ĸ'); s(114, F - 1, 'D');
+      // A switch to bump with your head: the red gate goes, and a blue bridge comes over the pit.
+      s(98, F - 4, '§'); r(101, F - 5, 101, F - 1, 'Ʀ'); r(102, F, 108, H - 1, '.'); r(102, F, 108, F, 'ɓ');
+      s(111, F - 1, 'ĸ'); s(116, F - 1, 'D');
     }),
     shell('Rolling Ridge', 130, 'a shell speeds up downhill, and flies off the top of a hill', ({ r, s, hill }) => {
       r(0, F, 129, H - 1); s(2, F - 1, 'P'); s(5, F - 1, 'a');

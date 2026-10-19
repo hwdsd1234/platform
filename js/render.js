@@ -230,6 +230,24 @@
           for (let k = 0; k < 3; k++) { ctx.moveTo(x + 8, y + 5 + k * 3); ctx.lineTo(x + 24, y + 7 + k * 3); }
           ctx.stroke();
           ctx.fillStyle = '#FF6B3D'; ctx.fillRect(x + 3, y, TS - 6, 4);
+        } else if (c === '§') {
+          // A switch block: red with an ON bar while red's on, blue with an OFF bar while blue's on.
+          const on = W.switchOn ?? true;
+          ctx.fillStyle = on ? '#B83A3A' : '#2F5BB0'; ctx.fillRect(x + 1, y + 1, TS - 2, TS - 2);
+          ctx.strokeStyle = on ? '#FFB0B0' : '#B8D2FF'; ctx.lineWidth = 2; ctx.strokeRect(x + 2, y + 2, TS - 4, TS - 4);
+          ctx.fillStyle = '#FFF4E8'; ctx.font = '700 9px ui-monospace, monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(on ? 'ON' : 'OFF', x + 16, y + 17);
+        } else if (c === 'Ʀ' || c === 'ʀ' || c === 'Ɓ' || c === 'ɓ') {
+          // Red and blue switch blocks: solid ones filled, the others a dotted outline.
+          const red = c === 'Ʀ' || c === 'ʀ', solid = c === 'Ʀ' || c === 'Ɓ';
+          if (solid) {
+            ctx.fillStyle = red ? '#A83232' : '#2C55A8'; ctx.fillRect(x, y, TS, TS);
+            ctx.fillStyle = red ? '#D96060' : '#5C88D8'; ctx.fillRect(x + 3, y + 3, TS - 6, 4);
+            ctx.strokeStyle = red ? '#5E1A1A' : '#16305E'; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, TS - 2, TS - 2);
+          } else {
+            ctx.strokeStyle = red ? 'rgba(255,120,120,.55)' : 'rgba(130,170,255,.55)'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]);
+            ctx.strokeRect(x + 3, y + 3, TS - 6, TS - 6); ctx.setLineDash([]);
+          }
         } else if (c === 'T' || c === 'H' || c === 't' || c === 'h') {
           const amber = c === 'T' || c === 't', on = c === 'T' || c === 'H';
           const col = amber ? '#FFB547' : '#7FB0E0', dim = amber ? '#8A5A1E' : '#2E4E82';

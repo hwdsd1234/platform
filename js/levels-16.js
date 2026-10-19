@@ -36,7 +36,8 @@
       s(52, F - 1, 'L');
       s(58, F - 1, 'ĸ');
       hill(64, 4, 16); for (const x of [84, 87, 90, 93]) s(x, F - 1, 'K');
-      s(100, F - 1, 'ĸ'); s(114, F - 1, 'D');
+      // A switch down on the ground, too low to bump: kick a shell into it, and the red gate goes.
+      s(100, F - 1, 'ĸ'); s(106, F - 1, '§'); r(109, F - 6, 109, F - 1, 'Ʀ'); s(114, F - 1, 'D');
     }),
     lvl('Downhill Bowling', 130, 'throw a shell down the slope: it goes faster and faster', ({ r, s, ledge }) => {
       r(0, F, 129, H - 1); s(2, F - 5, 'P');

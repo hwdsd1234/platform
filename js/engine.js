@@ -179,7 +179,9 @@
   // T and H are blink blocks (lowercase while switched off); < and > are conveyor belts.
   // i is ice: solid but slippery. 1, 2, 3 are locked doors opened by keys r, u, y.
   // v, w, z are shot doors (open after 3, 10, 25 hits); g is a boss gate (opens when the bosses fall).
-  const isSolid = LF.isSolid = c => c === '#' || c === 'C' || c === 'O' || c === 'T' || c === 'H' || c === '<' || c === '>' || c === 'i' || c === '1' || c === '2' || c === '3' || c === 'v' || c === 'w' || c === 'z' || c === 'g';
+  // § is a switch block; Ʀ/ʀ red blocks (solid while the switch is on, as it starts), Ɓ/ɓ blue
+  // ones (solid while it's off): see stepSwitch.
+  const isSolid = LF.isSolid = c => c === '§' || c === 'Ʀ' || c === 'Ɓ' || c === '#' || c === 'C' || c === 'O' || c === 'T' || c === 'H' || c === '<' || c === '>' || c === 'i' || c === '1' || c === '2' || c === '3' || c === 'v' || c === 'w' || c === 'z' || c === 'g';
   LF.SHOT_DOORS = { v: 3, w: 10, z: 25 };
   LF.KEYS = {
     r: { name: 'Red key', gate: '1', color: '#FF6B3D', dim: '#7A2E1C' },
@@ -257,6 +259,7 @@
       else if (AMMO[c] && def.noAmmo) tiles[y][x] = ' ';
       else if (AMMO[c]) { W.ammo.push({ big: c !== 'q', huge: c === '$', n: AMMO[c], tx: x, ty: y, x: x * TS + 16, y: y * TS + 20, taken: false }); tiles[y][x] = ' '; }
       else if (c === 'T' || c === 'H') { W.blinks.push({ tx: x, ty: y, c, wait: false }); if (c === 'H') tiles[y][x] = 'h'; }
+      else if (c === 'Ʀ' || c === 'ʀ' || c === 'Ɓ' || c === 'ɓ') { (W.swBlocks ||= []).push({ tx: x, ty: y, red: c === 'Ʀ' || c === 'ʀ', wait: true }); }
       else if (LF.FRUITS[c]) { W.fruits.push({ type: c, tx: x, ty: y, x: x * TS + 16, y: y * TS + 18, taken: false, regrow: 0, pop: 0 }); tiles[y][x] = ' '; }
       else if (c === 'D') { W.door = { tx: x, ty: y, x: x * TS, y: (y - 1) * TS + 4, w: 32, h: 60, open: false, glow: 0 }; tiles[y][x] = ' '; }
       // j is a passage door: walk into it and you come out at the matching n (the k-th j,
@@ -546,7 +549,11 @@
       return hit;
     } else if (dy < 0) {
       const ty = Math.floor(e.y / TS);
-      for (let tx = l; tx <= r; tx++) if (isSolid(tile(W, tx, ty))) { e.y = (ty + 1) * TS; return { dir: 'up' }; }
+      for (let tx = l; tx <= r; tx++) if (isSolid(tile(W, tx, ty))) {
+        e.y = (ty + 1) * TS;
+        const sw = [...Array(r - l + 1)].map((_, k) => l + k).find(x => tile(W, x, ty) === '§');
+        return { dir: 'up', sw: sw != null ? [sw, ty] : null };
+      }
     }
     return null;
   }
@@ -582,7 +589,8 @@
     const y0 = Math.floor((p.y + 4) / TS), y1 = Math.floor((p.y + p.h - 1) / TS);
     for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
       const c = tile(W, tx, ty);
-      if (c === '^' && p.y + p.h > ty * TS + 14 && !p.spiky) return true;   // (the pineapple: spike-proof)
+      // (Spikes hurt you, not enemies; the pineapple makes you spike-proof too.)
+      if (c === '^' && p === W.player && p.y + p.h > ty * TS + 14 && !p.spiky) return true;
       if (c === '~' && !swims && p.y + p.h > ty * TS + 10) return true;
     }
     return p.y > W.h * TS + 60;
@@ -762,6 +770,7 @@
     }
     stepProjectiles(W, dt, playing);
     stepBlinks(W, dt);
+    stepSwitch(W, dt);
     stepBullets(W, dt);
     stepAmmoFly(W, dt);
     stepTraps(W, dt, playing);
@@ -870,6 +879,31 @@
         if (blocksPlat(c0) || blocksPlat(c1) || ny < 0 || ny + pl.h > W.h * TS) pl.dir *= -1;
         else { pl.dy = ny - pl.y; pl.y = ny; }
       }
+    }
+  }
+
+  // Switches: hit a switch block (§) from below with your head, or knock a kicked shell into
+  // it, and the switch flips: the red blocks go and the blue ones come (and back again on
+  // the next hit). A block never comes in on top of you or an enemy; it waits till it's
+  // clear.
+  function hitSwitch(W, tx, ty) {
+    if ((W.switchCool || 0) > 0) return;
+    W.switchOn = !(W.switchOn ?? true); W.switchCool = .35;
+    for (const b of W.swBlocks || []) b.wait = true;
+    burst(W, tx * TS + 16, ty * TS + 16, 14, W.switchOn ? ['#FF6B6B', '#FFE2A8'] : ['#6FA8FF', '#E2EEFF'], 160, 200);
+    W.floaters.push({ x: tx * TS + 16, y: ty * TS - 8, t: W.switchOn ? 'red on' : 'blue on', life: 1, c: W.switchOn ? '#FF8A8A' : '#9FC4FF' });
+    W.shake = Math.max(W.shake, .12); W.emit('blink');
+  }
+  LF.hitSwitch = hitSwitch;
+  function stepSwitch(W, dt) {
+    if (!W.swBlocks) return;
+    W.switchCool = Math.max(0, (W.switchCool || 0) - dt);
+    const on = W.switchOn ?? true, p = W.player;
+    for (const b of W.swBlocks) {
+      if (!b.wait) continue;
+      const solid = b.red ? on : !on, box = { x: b.tx * TS, y: b.ty * TS, w: TS, h: TS };
+      if (solid && ((!p.dead && overlap(p, box)) || W.enemies.some(e => e.alive && !e.phased && overlap(e, box)))) continue;
+      W.tiles[b.ty][b.tx] = b.red ? (solid ? 'Ʀ' : 'ʀ') : (solid ? 'Ɓ' : 'ɓ'); b.wait = false;
     }
   }
 
@@ -1557,7 +1591,12 @@
     if (e.climbing && !uphill && grounded) { e.vy = -Math.abs(e.vx) * 1.3; W.emit('hop'); }
     e.climbing = uphill;
     e.vx = Math.max(-620, Math.min(620, e.vx));
-    if (moveX(W, e, e.vx * dt)) { e.vx *= -1; W.emit('clank'); }
+    if (moveX(W, e, e.vx * dt)) {
+      // (What it hit: a switch block flips the switch.)
+      const fx = e.vx > 0 ? Math.floor((e.x + e.w + 1) / TS) : Math.floor((e.x - 1) / TS);
+      for (const ty of [Math.floor(e.y / TS), Math.floor((e.y + e.h - 1) / TS)]) if (tile(W, fx, ty) === '§') { hitSwitch(W, fx, ty); break; }
+      e.vx *= -1; W.emit('clank');
+    }
     if (grounded && !(e.vy < 0)) onSlope(W, e, true);
     // A gap just one block wide under its middle: it drops into it (it doesn't skim over),
     // still spinning, and goes on bouncing about wherever it lands (off the gap's sides, or
@@ -3149,7 +3188,7 @@
         if (u.c === 'i') p.ice = true;
         if (u.c === 'C' && !W.crumbles.some(c => c.tx === u.tx && c.ty === u.ty)) W.crumbles.push({ tx: u.tx, ty: u.ty, t: 0, state: 'shake' });
       }
-    } else if (hit && hit.dir === 'up') { p.vy = 0; p.jumping = false; }
+    } else if (hit && hit.dir === 'up') { p.vy = 0; p.jumping = false; if (hit.sw) hitSwitch(W, ...hit.sw); }
     // On a slope: stood on its surface (and kept on it walking down).
     if (onSlope(W, p, !wasAir)) { p.onGround = true; p.coyote = .1; }
 
