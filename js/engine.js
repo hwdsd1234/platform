@@ -1286,10 +1286,11 @@
         if (e.state === 'carried') {
           if (p.carrying !== e || p.dead) { e.state = 'shell'; e.shellT = SHELL_WAIT; e.vx = 0; if (p.carrying === e) p.carrying = null; break; }
           e.x = p.x + p.w / 2 + p.face * 15 - e.w / 2; e.y = p.y + p.h - e.h - 4; e.face = p.face;
-          // (Whatever it touches takes a hit, one only, and the shell breaks.)
+          // (Whatever it touches goes down, golems and TNT carts too (a boss takes one hit),
+          // and the shell breaks.)
           const o = W.enemies.find(o => o !== e && o.alive && !o.phased && overlap(e, o));
           if (o) {
-            if (!(isBoss(o) && o.fury > 0)) { W.emit('stomp', { type: o.type }); shootEnemy(W, o, p.face, null, isBoss(o) ? 'shell' : 'KO', 1); }
+            if (!(isBoss(o) && o.fury > 0)) { W.emit('stomp', { type: o.type }); shootEnemy(W, o, p.face, null, isBoss(o) ? 'shell' : 'KO', isBoss(o) ? 1 : 999); }
             e.alive = false; p.carrying = null;
             burst(W, e.x + e.w / 2, e.y + e.h / 2, 14, ['#2E7D66', '#7FD8B4', '#E8DDB5'], 160, 400);
             W.floaters.push({ x: e.x + e.w / 2, y: e.y - 8, t: 'the shell breaks', life: .9, c: '#9FF0C8' });
@@ -1578,9 +1579,9 @@
         if (e.state === 'spin') { e.vx = -dir * SHELL_SPEED; e.x -= dir * 6; }
         continue;
       }
-      // (One hit per kick: enough for most, but a golem or a cart takes more kicks.)
+      // (Anything that isn't a boss goes down to one shell, golems and TNT carts too.)
       if (!e.shot) e.shot = newShot(W);
-      shootEnemy(W, o, sgn, e.shot, 'KO', o.hp > 1 ? 1 : 999);
+      shootEnemy(W, o, sgn, e.shot, 'KO', 999);
     }
     if (e.state === 'spin') e.face = Math.sign(e.vx);
   }

@@ -2,7 +2,7 @@
 // and throwing them on slopes. Hold S and run into a shell lying still to carry it; press S to
 // throw it. Thrown down a slope it goes faster and faster; up one, it flies off the top. And
 // the thornbacks (K) waiting at the bottoms and over the tops can't be stomped: a shell is the
-// way. Like the Shell Hills, these aren't in LF.LEVELS when the boss fights are laid in;
+// way (a golem too). Like the Shell Hills, these aren't in LF.LEVELS when the boss fights are laid in;
 // bosses.js slots them in at the end of the Waterfront, before Sunken Keep. Load after
 // levels-15.js and before bosses.js.
 (() => {
@@ -68,7 +68,7 @@
       for (const x of [94, 97]) s(x, F - 1, 'K');
       s(104, F - 1, 'ĸ'); s(114, F - 1, 'D');
     }),
-    lvl('Slope Gauntlet', 150, 'a golem takes three shells', ({ r, s, hill, dip, ledge }) => {
+    lvl('Slope Gauntlet', 150, 'one shell fells a golem', ({ r, s, hill, dip, ledge }) => {
       r(0, F, 149, H - 1); s(2, F - 1, 'P'); s(5, F - 1, 'a');
       s(10, F - 1, 'ĸ');
       hill(16, 3, 12); for (const x of [32, 35]) s(x, F - 1, 'K');
