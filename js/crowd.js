@@ -1,13 +1,13 @@
-// Lanternfall: Shellbacks in every level. Every level you play (story levels, towers, castles,
-// the Star Road; not a boss's arena, nor a fruit grove) has at least 10 Shellbacks (ĸ), the most
-// fun of all: any it's short of are added when you play it (the same every time), spread out
-// along the way, on ground you can reach; none near the start (where you come in), a door, a
-// lantern or the secret exit, near lava, or on top of another enemy. Load after slopes.js,
-// before coins.js.
+// Lanternfall: Shellbacks and apples in every level. Every level you play (story levels,
+// towers, castles, the Star Road; not a fruit grove) has at least 10 Shellbacks (ĸ), the most
+// fun of all, and at least 5 apples (a): any it's short of are added when you play it (the same
+// every time), spread out along the way, on ground you can reach (Shellbacks not in a boss's
+// arena); none near the start (where you come in), a door, a lantern or the secret exit, near
+// lava, or on top of each other. Load after slopes.js, before coins.js.
 (() => {
   const LF = window.LF;
   const cache = new Map();
-  const CROWD = { 'ĸ': 10 };
+  const CROWD = { 'ĸ': 10, a: 5 };
   const ground = c => '#=i<>C'.includes(c) || !!(LF.SLOPES && LF.SLOPES[c]);
   LF.addCrowd = def => {
     if (!def || !Array.isArray(def.map) || def.timeLimit) return def;
@@ -41,7 +41,7 @@
     let added = 0;
     for (const [c, base] of Object.entries(CROWD)) {
       const want = base;
-      const spots = c === 'F' ? airSpots : walkSpots;
+      const spots = c === 'F' ? airSpots : walkSpots;   // (apples go on the ground too)
       for (let need = want - count(c), tries = 0; need > 0 && tries < 8; tries++) {
         // (Spread out: every so many spots along the list, left to right, skipping taken ones.)
         const gap = Math.max(1, 3 - (tries >> 1));
