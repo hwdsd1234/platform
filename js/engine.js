@@ -1251,14 +1251,17 @@
       if (!supported(W, e) || e.vy < 0) {
         // (A Shellback's shell, kicked, flies on off the ledge as it falls.)
         if (e.type === 'ĸ' && e.state === 'spin') shellSlide(W, e, dt);
-        e.vy = Math.min(MAXFALL, (e.vy || 0) + G * dt);
+        // (In water it sinks slowly, as you do, and walks on along the bottom: water never
+        // drowns an enemy.)
+        const wet = tile(W, Math.floor((e.x + e.w / 2) / TS), Math.floor((e.y + e.h / 2) / TS)) === '~';
+        e.vy = wet ? Math.min(SINK * 2, (e.vy || 0) + G * .25 * dt) : Math.min(MAXFALL, (e.vy || 0) + G * dt);
         const hit = moveY(W, e, e.vy * dt, false);
         if (hit && hit.dir === 'down') e.vy = 0;
         if (hit && hit.dir === 'up') e.vy = 0;
         onSlope(W, e, false);
         // (A shell that dropped into a narrow pit lies still where it lands.)
         if (e.drop && hit && hit.dir === 'down') { e.drop = false; e.state = 'shell'; e.shellT = SHELL_WAIT; e.vx = 0; }
-        if (e.y > W.h * TS + 40 || hazardHit(W, e)) e.alive = false;
+        if (e.y > W.h * TS + 40 || hazardHit(W, e, true)) e.alive = false;
         return;
       }
       e.vy = 0;
@@ -1282,7 +1285,14 @@
         if (e.state === 'carried') {
           if (p.carrying !== e || p.dead) { e.state = 'shell'; e.shellT = SHELL_WAIT; e.vx = 0; if (p.carrying === e) p.carrying = null; break; }
           e.x = p.x + p.w / 2 + p.face * 15 - e.w / 2; e.y = p.y + p.h - e.h - 4; e.face = p.face;
-          shellHits(W, e, p.face);
+          // (Whatever it touches takes a hit, one only, and the shell breaks.)
+          const o = W.enemies.find(o => o !== e && o.alive && !o.phased && overlap(e, o));
+          if (o) {
+            if (!(isBoss(o) && o.fury > 0)) { W.emit('stomp', { type: o.type }); shootEnemy(W, o, p.face, null, isBoss(o) ? 'shell' : 'KO', 1); }
+            e.alive = false; p.carrying = null;
+            burst(W, e.x + e.w / 2, e.y + e.h / 2, 14, ['#2E7D66', '#7FD8B4', '#E8DDB5'], 160, 400);
+            W.floaters.push({ x: e.x + e.w / 2, y: e.y - 8, t: 'the shell breaks', life: .9, c: '#9FF0C8' });
+          }
           break;
         }
         if (e.state === 'shell') {
@@ -1474,7 +1484,7 @@
             W.emit('hop');
           }
         }
-        if (e.y > W.h * TS + 40 || hazardHit(W, e)) e.alive = false;
+        if (e.y > W.h * TS + 40 || hazardHit(W, e, true)) e.alive = false;
         break;
       }
       case 'S': {
@@ -1563,7 +1573,9 @@
         if (e.state === 'spin') { e.vx = -dir * SHELL_SPEED; e.x -= dir * 6; }
         continue;
       }
-      shootEnemy(W, o, sgn, null, 'KO', 999);
+      // (One hit per kick: enough for most, but a golem or a cart takes more kicks.)
+      if (!e.shot) e.shot = newShot(W);
+      shootEnemy(W, o, sgn, e.shot, 'KO', o.hp > 1 ? 1 : 999);
     }
     if (e.state === 'spin') e.face = Math.sign(e.vx);
   }
@@ -2936,7 +2948,7 @@
     const carryPress = !!input.carryPressed; input.carryPressed = false;
     if (p.carrying && (carryPress || p.dead)) {
       const s = p.carrying; p.carrying = null;
-      if (s.alive && !p.dead) { s.state = 'spin'; s.vx = p.face * SHELL_SPEED; s.stompCool = .3; s.x = p.x + p.w / 2 + p.face * (p.w / 2 + 2) - (p.face > 0 ? 0 : s.w); W.emit('stomp', { type: s.type }); }
+      if (s.alive && !p.dead) { s.state = 'spin'; s.vx = p.face * SHELL_SPEED; s.stompCool = .3; s.shot = 0; s.x = p.x + p.w / 2 + p.face * (p.w / 2 + 2) - (p.face > 0 ? 0 : s.w); W.emit('stomp', { type: s.type }); }
     }
     // Standing at the cannon and pressing ↓ climbs in.
     const cn = W.cannon;
@@ -3210,7 +3222,7 @@
         }
         if (e.state === 'shell') {
           const dir = p.x + p.w / 2 < e.x + e.w / 2 ? 1 : -1;
-          e.state = 'spin'; e.vx = dir * SHELL_SPEED; e.stompCool = .3;
+          e.state = 'spin'; e.vx = dir * SHELL_SPEED; e.stompCool = .3; e.shot = 0;
           if (top) { p.vy = (input.jump ? -620 : -460) * Math.sqrt(T.gravity); p.jumping = input.jump; p.spun = false; }
           ring(W, e.x + e.w / 2, e.y + e.h / 2, 26, '159,240,200'); W.emit('stomp', { type: e.type });
         } else if (top) {

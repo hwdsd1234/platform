@@ -6,6 +6,8 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Enemies don’t drown any more: in water they sink slowly, as you do, and carry on along the bottom (lava still gets them).',
+      'Fixed: a carried Shellback shell killed anything in one go. Now whatever it touches takes just one hit and the shell breaks; a kicked shell knocks out ordinary enemies but gives tougher ones (golems, TNT carts) only one hit each time it goes by.',
       'No more underground passages anywhere: the secret exits are now in the hardest spot to get to in the level itself, out of the way and high up (still unseen till you come near).',
       'Leaving by a secret exit gets you only its cannon: the level isn’t lit by it, and its time, coins and awards don’t count. Finish it by its door for those.',
       'A star coin you already have shows as a golden dashed ring where it was.',
