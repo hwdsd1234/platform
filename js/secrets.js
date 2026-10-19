@@ -4,10 +4,8 @@
 // (or the last one). lv.secretTo is the index of that world's first level, lv.secretWorld the
 // world's index. Load after worlds.js, so the worlds and level indexes are final.
 //
-// The door is at the end of a secret section (see coins.js): a hole in the floor somewhere out
-// of the way leads down into a run of hard jumps under the level, and the door's at the end.
-// Failing that, the door goes in the most out-of-the-way spot you can reach, unseen until you
-// come near.
+// The door goes in the hardest spot to get to in the level itself, out of the way and high up,
+// unseen until you come near. (Leaving by it gets you only its cannon on the map: see ui.js.)
 (() => {
   const LF = window.LF, L = LF.LEVELS, WORLDS = LF.WORLDS;
   const floor = c => c === '#' || c === '=';
@@ -21,36 +19,18 @@
   const nearAny = (marks, x, y) => marks.some(m => Math.hypot(m.x - x, m.y - y) < (m.c === 'P' ? FAR_START : NEAR));
 
   // Hide a secret door in level lv (left of column xMax and, for a tower, at least minUp rows
-  // above the start): a hole, as far from the start and the door as can be, down into a
-  // secret section with the door at its end (see coins.js). True if it found room for one.
-  function holeRoom(lv, xMax = Infinity, minUp = -Infinity) {
-    const g = LF.normalize(lv.map), G = g.map(r => r.split('')), w = g[0].length, h = g.length;
-    const a0 = LF.analyze(lv), seen = a0.seen, P = find(G, 'P'), D = find(G, 'D') || lastDoor(G), marks = landmarks(G);
-    if (!a0.ok || !P || !D) return false;
-    const spots = [];
-    for (let y = 2; y < h - 1; y++) for (let x = 2; x < w - 2; x++)
-      if (seen[y * w + x] && G[y][x] === '.' && x + 5 < xMax && P.y - y >= minUp && !nearAny(marks, x, y) && !(lv.flows || lv.map.flows || []).some(f => x >= f.x0 - 2 && x <= f.x1 + 2 && y >= Math.min(f.hi ?? f.lo, f.lo - (f.amp || 0)) - 4) && !G.slice(Math.max(0, y - 2), y + 3).some(r => r.slice(Math.max(0, x - 4), x + 5).includes('!'))) spots.push({ x, y, score: Math.hypot(x - P.x, y - P.y) + Math.hypot(x - D.x, y - D.y) + ((x * 7 + y * 13) % 11) });
-    spots.sort((a, b) => b.score - a.score);
-    for (const o of spots.slice(0, 30)) {
-      const t = g.map(r => r.split('')), y0 = LF.sections.addBand(t), kinds = LF.sections.KINDS;
-      if (!LF.sections.dig(t, [o.x, o.y], '?', o.x * 31 + o.y, y0, kinds[(o.x * 7 + o.y) % kinds.length])) continue;
-      const tryLv = { ...lv, map: t.map(r => r.join('')) }, a = LF.analyze(tryLv);
-      const door = t.findIndex(r => r.includes('?')), dx = t[door].indexOf('?');
-      if (!a.ok || a.litOk !== a0.litOk || !a.seen[door * w + dx]) continue;
-      lv.map = tryLv.map;
-      return true;
-    }
-    return false;
-  }
-  // No rock to hide in: the most out-of-the-way spot you can reach (it stays unseen until
-  // you're within 3 tiles of it).
-  function farSpot(lv) {
+  // above the start): in the hardest spot to get to, as far from the start and the door as it
+  // can be and high up (unseen until you come near). Out of moving lava's reach and away from
+  // lava. True if it found a spot.
+  function hardSpot(lv, xMax = Infinity, minUp = -Infinity) {
     const g = LF.normalize(lv.map).map(row => row.split('')), h = g.length, w = g[0].length;
-    const seen = LF.analyze(lv).seen, P = find(g, 'P'), D = find(g, 'D') || lastDoor(g);
+    const seen = LF.analyze(lv).seen, P = find(g, 'P'), D = find(g, 'D') || lastDoor(g), marks = landmarks(g);
     if (!P || !D) return false;
+    const lava = (x, y) => (lv.flows || lv.map.flows || []).some(f => x >= f.x0 - 2 && x <= f.x1 + 2 && y >= Math.min(f.hi ?? f.lo, f.lo - (f.amp || 0)) - 4) || g.slice(Math.max(0, y - 2), y + 3).some(r => r.slice(Math.max(0, x - 4), x + 5).includes('!'));
     let best = null;
     for (let y = 2; y < h - 1; y++) for (let x = 2; x < w - 2; x++) {
       if (!seen[y * w + x] || g[y][x] !== '.' || g[y - 1][x] !== '.' || !floor(g[y + 1][x])) continue;
+      if (x + 3 >= xMax || P.y - y < minUp || nearAny(marks, x, y) || lava(x, y)) continue;
       if (![-1, 1].every(d => g[y][x + d] === '.' && g[y - 1][x + d] === '.')) continue;
       const fromDoor = Math.hypot(x - D.x, y - D.y), fromStart = Math.hypot(x - P.x, y - P.y);
       if (fromDoor < 10 || fromStart < 10) continue;
@@ -79,9 +59,8 @@
       let placed = false;
       for (let n = at; n < regular.length && !placed; n++) {
         const lv = L[regular[n]];
-        if (lv.secretTo == null && holeRoom(lv)) { lv.secretTo = WORLDS[to].first; lv.secretWorld = to; placed = true; }
+        if (lv.secretTo == null && hardSpot(lv)) { lv.secretTo = WORLDS[to].first; lv.secretWorld = to; placed = true; }
       }
-      if (!placed && L[regular[at]].secretTo == null && farSpot(L[regular[at]])) { L[regular[at]].secretTo = WORLDS[to].first; L[regular[at]].secretWorld = to; }
     }
     // And one tower in every four worlds (the second world of each four, from its middle
     // tower on), if two worlds on is still somewhere new.
@@ -89,7 +68,7 @@
       const towers = L.filter(l => l.world === k && l.boss && !l.finalFight);
       for (const lv of [...towers.slice(towers.length >> 1), ...towers.slice(0, towers.length >> 1)]) {
         // In a tower: up the shaft, off a ledge, never down by the start or along the floor.
-        if (holeRoom(lv, lv.arenaX - 2, 8)) { lv.secretTo = WORLDS[to].first; lv.secretWorld = to; break; }
+        if (hardSpot(lv, lv.arenaX - 2, 8)) { lv.secretTo = WORLDS[to].first; lv.secretWorld = to; break; }
       }
     }
   });

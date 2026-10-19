@@ -935,6 +935,7 @@
     else if ((ctx.kind === 'story' || ctx.kind === 'practice') && LF.lengthen) def = LF.lengthen(def);
     // Three star coins in it (coins.js); the ones you've already got show faded.
     if ((ctx.kind === 'story' || ctx.kind === 'practice') && LF.addSlopes) def = LF.addSlopes(def);
+    if ((ctx.kind === 'story' || ctx.kind === 'practice') && LF.addCrowd) def = LF.addCrowd(def);
     if ((ctx.kind === 'story' || ctx.kind === 'practice') && LF.addCoins) def = { ...LF.addCoins(def), coinsHave: coins[ctx.index] || [] };
     playDef = def; playCtx = ctx;
     // (While you're in a story level, the save says so: see leftMidLevel.)
@@ -1047,14 +1048,18 @@
       const openBefore = openSet(), cannonsBefore = new Set(openCannons());
       // Hardcore runs keep their own best times; a hardcore clear also counts the level as lit.
       const book = hardcore ? progressHC : progress, i = playCtx.index, prev = book[i], wasLit = !!progress[i];
-      const isBest = !prev || t < prev.best;
-      if (isBest) { book[i] = { best: t, falls }; store.set(hardcore ? 'progressHC' : 'progress', book); }
-      if (hardcore && !progress[i]) { progress[i] = { best: t, falls }; store.set('progress', progress); }
-      // The star coins you picked up are yours now.
-      if (W.coinsGot) { coins[i] = [0, 1, 2].map(k => !!((coins[i] || [])[k] || W.coinsGot[k])); store.set('coins', coins); }
       const last = i === LF.LEVELS.length - 1, secret = W.clearedBy === 'secret' && LF.LEVELS[i].secretTo != null;
-      LF.awards.clear({ kind: 'story', index: i, time: t, falls, hardcore, horde: !!W.horde, storyLit: Object.keys(progress).length, hcLit: Object.keys(progressHC).length, progress, secrets: Object.keys(secrets).length + (secret && !secrets[i] ? 1 : 0) });
-      story.time += t; story.falls += falls;
+      // Out by the secret exit, all you get is its cannon: the level isn't lit by it, and its
+      // time, coins and awards don't count (finish it by its door for those).
+      const isBest = !secret && (!prev || t < prev.best);
+      if (!secret) {
+        if (isBest) { book[i] = { best: t, falls }; store.set(hardcore ? 'progressHC' : 'progress', book); }
+        if (hardcore && !progress[i]) { progress[i] = { best: t, falls }; store.set('progress', progress); }
+        // The star coins you picked up are yours now.
+        if (W.coinsGot) { coins[i] = [0, 1, 2].map(k => !!((coins[i] || [])[k] || W.coinsGot[k])); store.set('coins', coins); }
+        LF.awards.clear({ kind: 'story', index: i, time: t, falls, hardcore, horde: !!W.horde, storyLit: Object.keys(progress).length, hcLit: Object.keys(progressHC).length, progress, secrets: Object.keys(secrets).length });
+        story.time += t; story.falls += falls;
+      }
       // On the map the lamplighter moves on: to the next level, or down the secret path.
       if (secret) { secrets[i] = true; store.set('secrets', secrets); }
       mapAt = secret ? i : Math.min(i + 1, LF.LEVELS.length - 1); store.set('mapAt', mapAt);
@@ -1070,7 +1075,7 @@
         const msg = worldDone ? `${world.name} complete! Press Enter to climb into the cannon`
           : secret ? 'Secret exit found! Press Enter to climb into the secret cannon'
           : `${esc(W.name)} lit · ${fmt(t)}${isBest && prev ? ' · new best!' : ''}${opened}`;
-        unlockShow = { lit: i, fresh, cannons, msg };
+        unlockShow = { lit: secret ? null : i, fresh, cannons, msg };
         return showMap();
       }
       eyebrow = secret ? `Level ${i + 1} · secret exit found!` : `Level ${i + 1} of ${LF.LEVELS.length} · ${hardcore ? 'hardcore clear' : 'every lamp lit'}`;

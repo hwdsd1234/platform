@@ -465,12 +465,18 @@
     }
 
     // Star coins: big gold coins with a star, bobbing and turning; one you've already got from
-    // an earlier run isn't drawn, and a just-taken one swells and fades.
+    // an earlier run is a golden dashed ring, and a just-taken one swells and fades.
     function drawCoins(W) {
       for (const c of W.coins || []) {
         if (c.taken && c.pop <= 0) continue;
-        // (One you already have isn't there at all.)
-        if (c.had && !c.taken) continue;
+        // One you already have: just a golden dashed ring where it was, slowly turning.
+        if (c.had && !c.taken) {
+          ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(reduced ? 0 : clock * .8);
+          ctx.strokeStyle = 'rgba(255,210,74,.8)'; ctx.lineWidth = 2.5; ctx.setLineDash([4, 4]);
+          ctx.beginPath(); ctx.arc(0, 0, 12, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+          ctx.restore();
+          continue;
+        }
         if (c.taken) c.pop = Math.max(0, c.pop - .04);
         const bob = reduced ? 0 : Math.sin(clock * 2.5 + c.k) * 3, turn = reduced ? 1 : Math.abs(Math.cos(clock * 1.6 + c.k));
         const r = 12 * (c.taken ? 1 + (1 - c.pop) : 1), a = c.taken ? c.pop : 1;

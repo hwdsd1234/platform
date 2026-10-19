@@ -6,6 +6,10 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'No more underground passages anywhere: the secret exits are now in the hardest spot to get to in the level itself, out of the way and high up (still unseen till you come near).',
+      'Leaving by a secret exit gets you only its cannon: the level isn’t lit by it, and its time, coins and awards don’t count. Finish it by its door for those.',
+      'A star coin you already have shows as a golden dashed ring where it was.',
+      'Every level is crowded now: at least 5 bats, 5 beetles and 10 Shellbacks in each (not in a boss’s arena), spread out along the way.',
       'Carry a Shellback shell: hold S and run into a shell lying still to pick it up (it can’t come out of its shell while you hold it, and it knocks out whatever it touches); press S again to let it go, kicked off ahead of you.',
       'Shellback shells pick up star coins for you, kicked or carried.',
       'A kicked shell that comes to a pit just one block wide drops into it, instead of skimming over.',
