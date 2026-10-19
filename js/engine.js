@@ -888,7 +888,7 @@
   // clear.
   function hitSwitch(W, tx, ty) {
     if ((W.switchCool || 0) > 0) return;
-    W.switchOn = !(W.switchOn ?? true); W.switchCool = .35;
+    W.switchOn = !(W.switchOn ?? true); W.switchCool = .2;
     for (const b of W.swBlocks || []) b.wait = true;
     burst(W, tx * TS + 16, ty * TS + 16, 14, W.switchOn ? ['#FF6B6B', '#FFE2A8'] : ['#6FA8FF', '#E2EEFF'], 160, 200);
     W.floaters.push({ x: tx * TS + 16, y: ty * TS - 8, t: W.switchOn ? 'red on' : 'blue on', life: 1, c: W.switchOn ? '#FF8A8A' : '#9FC4FF' });
@@ -896,8 +896,9 @@
   }
   LF.hitSwitch = hitSwitch;
   function stepSwitch(W, dt) {
-    if (!W.swBlocks) return;
+    // (The pause between hits runs down whether or not there are any blocks to switch.)
     W.switchCool = Math.max(0, (W.switchCool || 0) - dt);
+    if (!W.swBlocks) return;
     const on = W.switchOn ?? true, p = W.player;
     for (const b of W.swBlocks) {
       if (!b.wait) continue;
