@@ -1,12 +1,12 @@
 // Lanternfall: the Shell Skies, a chapter of the Sky Roads built on the shell jump, the most
 // advanced trick there is. The gaps between the islands are too wide to jump (6 tiles; a
-// running jump goes 5). Each island has a ramp up to its far edge, and the next one a lip at
-// its near edge (a little ramp facing back over the gap) and a wall a few tiles in. Stomp the
-// Shellback, pick up its shell (hold S and run into it), and throw it (S) from the foot of the
-// ramp: it flies off the top, over the gap, hits the wall on the other side, comes back, and
-// flies off the lip into the air back towards you. Stand right at the edge, and jump as it
-// leaves the lip: land on it in the air, and a stomp in mid-air bounces you high enough to
-// cross. (Get it wrong and the shell's in the void, or in you.) The level checker can't do
+// running jump goes 5). Each island has a ramp two rows high up to its far edge, and the next
+// one a lip one row high at its near edge (a little ramp facing back over the gap) and a wall a
+// few tiles in. Stomp the Shellback, pick up its shell (hold S and run into it), and throw it
+// (S) from the foot of the ramp: it flies off the top, well over the gap, hits the wall on the
+// other side, comes back, and hops off the lip back towards you, only a little way up. Follow it
+// up the ramp to the edge, and jump as it comes: land on it in the air, and a stomp in mid-air
+// bounces you high enough to cross. (Get it wrong and the shell's in the void, or in you.) The level checker can't do
 // shell jumps, so these levels were checked with the real physics instead (every gap the same
 // shape). bosses.js slots them in after the rest of the Sky Roads. Load after levels-16.js and
 // before bosses.js.
@@ -24,8 +24,11 @@
       at.push(x);
       const x1 = x + len - 1;
       r(x, Y, x1, Y); r(x + 1, Y + 1, x1 - 1, Y + 1);
-      if (k > 0) { r(x, Y - 1, x + 1, Y - 1); s(x + 2, Y - 1, '\\'); r(x + 8, Y - 3, x + 8, Y - 1); }
-      if (k < n - 1) { s(x1 - 2, Y - 1, '/'); r(x1 - 1, Y - 1, x1, Y - 1); s(x + 12, Y - 1, 'ĸ'); }
+      // (A lip one row high at the near edge, the wall eight in; a ramp two rows high up to the
+      // far edge: the taller the slope, the higher a shell flies off it, so it flies well over
+      // the gap going out, and only a little way up coming back, low enough to land on.)
+      if (k > 0) { s(x, Y - 1, '#'); s(x + 1, Y - 1, '\\'); r(x + 8, Y - 3, x + 8, Y - 1); }
+      if (k < n - 1) { s(x1 - 3, Y - 1, '/'); r(x1 - 2, Y - 1, x1, Y - 1); s(x1 - 2, Y - 2, '/'); r(x1 - 1, Y - 2, x1, Y - 2); s(x + 12, Y - 1, 'ĸ'); }
     }
     s(1, Y - 1, 'P');
     s(at[n - 1] + len - 4, Y - 1, 'D');

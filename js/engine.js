@@ -1277,6 +1277,9 @@
   // A Shellback lost into the void comes back to where it started this many seconds later; for
   // the last SHELL_WARN of them its spot shows a warning (render.js).
   const SHELL_BACK = 2, SHELL_WARN = 1.5;
+  // A shell flying off the top of a slope: up at its speed times LAUNCH_BASE + LAUNCH_ROW for
+  // every row it climbed (no more than LAUNCH_MAX).
+  const LAUNCH_BASE = .9, LAUNCH_ROW = .35, LAUNCH_MAX = 1.9;
   LF.SHELL_WARN = SHELL_WARN;
   // A stomp on a Shellback or its shell in mid-air (flying off the top of a slope, or off a
   // ledge): how hard you spring up off it. That's the shell jump: throw a shell at a wall, get
@@ -1609,7 +1612,13 @@
     if (sl && grounded && Math.sign(e.vx || sl.down) === sl.down) e.vx += sl.down * 700 * dt;
     else if (grounded) e.vx = Math.sign(e.vx || 1) * approach(Math.abs(e.vx), SHELL_SPEED, 260 * dt);
     // (Over the top of a slope it was going up, it flies up off it, and comes down again.)
-    if (e.climbing && !uphill && grounded) { e.vy = -Math.abs(e.vx) * 1.6; W.emit('hop'); }
+    // (How high it flies goes with how high the slope was: a lip of one row gives a little hop,
+    // a ramp of two a big leap, and taller ones a little more again.)
+    if (uphill && !e.climbing) e.climbFrom = e.y + e.h;
+    if (e.climbing && !uphill && grounded) {
+      const rows = Math.max(1, Math.round(((e.climbFrom ?? e.y + e.h) - (e.y + e.h)) / TS));
+      e.vy = -Math.abs(e.vx) * Math.min(LAUNCH_MAX, LAUNCH_BASE + LAUNCH_ROW * rows); W.emit('hop');
+    }
     e.climbing = uphill;
     e.vx = Math.max(-620, Math.min(620, e.vx));
     if (moveX(W, e, e.vx * dt)) {

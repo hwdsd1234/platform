@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Shell jumps are easier to land: how high a shell flies off a slope now goes with how tall the slope is (a little lip, a little hop; a tall ramp, a big leap). In the Shell Skies the ramp you throw from is two rows high, so the shell still flies well over the gap, and the lip it comes back off is one row, so it comes back only a little way up, low enough to land on.',
       'Shellbacks come back: one (or its shell) lost into the void reappears where it started, 2 seconds later. For the last moment before, its spot warns you: a red ring closing in and a pulsing red !.',
       'The Shell Skies are rebuilt so the shell jump can be done: throw a shell off the ramp at your island’s edge; it flies over the gap, bounces off the wall on the next island, and flies back off the lip at that island’s edge, up into the air towards you. Jump from the edge and land on it for the big bounce across. A shell in mid-air is easier to land on now, and shells fly higher off the tops of slopes.',
       'A Shellback or shell that falls into the void in the Shell Skies is gone for good now (they used to walk back on).',
