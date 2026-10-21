@@ -24,6 +24,7 @@
     { id: 'boss', name: 'Boss Breaker', desc: 'Defeat a boss.' },
     { id: 'bossAll', name: 'Monster Hunter', desc: 'Defeat 5 different bosses.', stat: 'bossKinds', goal: 5 },
     { id: 'final', name: 'Dawn', desc: 'Defeat the Last Dark.' },
+    { id: 'finalShell', name: 'Shell Shock', desc: 'Defeat the Last Dark after hitting it with a Shellback shell.' },
     { id: 'secret', name: 'Off the Path', desc: 'Leave a level by its secret exit.' },
     { id: 'bubble', name: 'Bubble Popper', desc: 'Shoot a lava bubble out of the air.' },
     { id: 'wall', name: 'Wall Runner', desc: 'Wall jump 100 times.', stat: 'walljump', goal: 100 },
@@ -135,6 +136,7 @@
       else if (ev.type === 'bossdown') {
         earn('boss');
         if (d.type === 'Ω+') earn('final');
+        if (d.type === 'Ω+' && d.shelled) earn('finalShell');
         if (AWARDS.some(a => a.id === 'boss' + d.type)) earn('boss' + d.type);
         const kinds = new Set(stats.bossSeen || []); kinds.add(d.type);
         stats.bossSeen = [...kinds]; bump('bossKinds', kinds.size - (stats.bossKinds || 0));

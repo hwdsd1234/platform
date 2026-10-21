@@ -426,6 +426,9 @@
       const tall = h > w * 1.2, slot = c => (def.coinSlots || []).findIndex(([x, y]) => x === c.tx && y === c.ty);
       W.coins.sort((a, b) => (def.coinSlots ? slot(a) - slot(b) : tall ? b.ty - a.ty : a.tx - b.tx));
       W.coins.forEach((c, k) => { c.k = k; c.had = !!(def.coinsHave && def.coinsHave[k]); });
+      // (Back at a lantern: the coins you'd got before it are picked up already.)
+      if (def.resume && def.resume.coins) W.coins.forEach((c, k) => { if (def.resume.coins[k] && !c.had) { c.taken = true; c.pop = 0; (W.coinsGot ||= [])[k] = true; } });
+      W.coinsAtLamp = W.coins.map(c => !!c.taken);
     }
     return W;
   };
@@ -1357,7 +1360,7 @@
           const stomping = o => p.vy > 0 && p.y + p.h - o.y < 18 && overlap(p, o);
           const o = W.enemies.find(o => o !== e && o.alive && !o.phased && overlap(e, o) && !stomping(o));
           if (o) {
-            if (!(isBoss(o) && o.fury > 0)) { W.emit('stomp', { type: o.type }); shootEnemy(W, o, p.face, null, isBoss(o) ? 'shell' : 'KO', isBoss(o) ? 1 : 999); }
+            if (!(isBoss(o) && o.fury > 0)) { if (isBoss(o)) o.shelled = true; W.emit('stomp', { type: o.type }); shootEnemy(W, o, p.face, null, isBoss(o) ? 'shell' : 'KO', isBoss(o) ? 1 : 999); }
             e.alive = false; p.carrying = null;
             burst(W, e.x + e.w / 2, e.y + e.h / 2, 14, ['#2E7D66', '#7FD8B4', '#E8DDB5'], 160, 400);
             W.floaters.push({ x: e.x + e.w / 2, y: e.y - 8, t: 'the shell breaks', life: .9, c: '#9FF0C8' });
@@ -1657,7 +1660,7 @@
       if (isBoss(o)) {
         const dir = Math.sign(o.x - e.x || 1);
         if (!(o.fury > 0) && W.clock - (o.shellHitAt ?? -9) > .6) {
-          o.shellHitAt = W.clock; W.shake = Math.max(W.shake, .2);
+          o.shellHitAt = W.clock; o.shelled = true; W.shake = Math.max(W.shake, .2);
           W.floaters.push({ x: o.x + o.w / 2, y: o.y - 10, t: 'shell hit!', life: .9, c: '#9FF0C8' });
           W.emit('stomp', { type: o.type });
           shootEnemy(W, o, dir, null, 'shell');
@@ -1903,7 +1906,7 @@
       for (let k = 0; k < 6; k++) burst(W, x + (Math.random() - .5) * TS * 6, y + (Math.random() - .5) * TS * 6, 20, ['#463C6B', '#2A2348', '#FF6B3D'], 260, 100, 4);
       W.horde = null;
     }
-    W.emit('bossdown', { type: e.type });
+    W.emit('bossdown', { type: e.type, shelled: !!e.shelled });
     if (W.def.bossEnds && !W.enemies.some(b => b.alive && isBoss(b))) W.endTimer = 1.6;
     // With the last boss down, the boss gates (g) crumble.
     if (!W.enemies.some(b => b.alive && isBoss(b))) {
@@ -3375,6 +3378,9 @@
     for (const l of W.lanterns) {
       if (l.lit || Math.abs(cx - l.x) > 22 || Math.abs(cy - l.y) > 26) continue;
       l.lit = true; l.pop = 1; W.lanternLit = true;
+      // (The coins you've got so far are kept now: come back after a fall and they're still
+      // yours for this go. See def.resume.)
+      W.coinsAtLamp = W.coins.map(c => !!c.taken);
       const cp = checkpointAt(W, l);
       if (cp) { W.checkpoint = cp; W.cpBoss = !!W.bossClock; }
       burst(W, l.x, l.y, 22, WARM, 150, 120, 2.5);
