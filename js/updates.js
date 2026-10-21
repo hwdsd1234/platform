@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Coal rams bowl over other enemies when they charge: anything ordinary in the way is knocked out, and a golem or TNT cart takes a hit. (Rams leave each other be, and a boss stops one.)',
       'New award, Shell Shock: defeat the Last Dark after hitting it with a Shellback shell.',
       'Lighting a lantern keeps the star coins you’ve got so far: fall, come back to that lantern, and they’re still yours for this go (they count when you finish). Restart the level (Shift+R) and they’re gone.',
       'Shell jumps are easier to land: how high a shell flies off a slope now goes with how tall the slope is (a little lip, a little hop; a tall ramp, a big leap). In the Shell Skies the ramp you throw from is two rows high, so the shell still flies well over the gap, and the lip it comes back off is one row, so it comes back only a little way up, low enough to land on.',

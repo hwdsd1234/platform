@@ -75,7 +75,7 @@
     S: { name: 'Ember pot', w: 24, h: 22, stomp: true, drop: 2, note: 'spits embers' },
     G: { name: 'Wraith', w: 24, h: 28, stomp: false, drop: 3, note: 'drifts toward you, fears lit lanterns' },
     X: { name: 'Wick spider', w: 20, h: 16, stomp: true, drop: 1, note: 'hangs from a ceiling, drops when you pass below' },
-    R: { name: 'Coal ram', w: 26, h: 20, stomp: true, drop: 2, note: 'walks, then charges when it sees you' },
+    R: { name: 'Coal ram', w: 26, h: 20, stomp: true, drop: 2, note: 'walks, then charges when it sees you, bowling over any enemy in its way' },
     Z: { name: 'Spark', w: 14, h: 14, stomp: false, drop: 3, note: 'circles its spot — time your way past' },
     Y: { name: 'Lantern pike', w: 28, h: 12, stomp: false, drop: 2, note: 'place in water: swims back and forth' },
     U: { name: 'Glow jelly', w: 20, h: 20, stomp: false, drop: 2, note: 'place in water: bobs slowly up and down' },
@@ -1417,6 +1417,16 @@
           } else e.vx *= -1;
         } else e.x = nx;
         e.face = Math.sign(e.vx) || e.face;
+        // Charging, it bowls over any enemy in its way: an ordinary one's knocked out, a tough
+        // one (a golem, a cart) takes a hit each charge; another ram's left be, and a boss
+        // stops it.
+        if (e.state === 'charge') for (const o of W.enemies) {
+          if (o === e || !o.alive || o.phased || o.type === 'R' || !overlap(e, o)) continue;
+          if (isBoss(o)) { e.state = 'rest'; e.wait = .9; e.vx = -f * 40; W.shake = Math.max(W.shake, .1); break; }
+          if (!e.charge) e.charge = newShot(W);
+          shootEnemy(W, o, f, e.charge, 'KO', o.hp > 1 ? 1 : 999);
+        }
+        if (e.state !== 'charge') e.charge = 0;
         break;
       }
       case 'W': {
