@@ -1299,6 +1299,8 @@
     if (chapterEnds && chapter === 'The Hollow Spire') out.push(...(LF.SHELL_LEVELS || []));
     // ...and the Shell Slopes (levels-16.js) close the Waterfront, before Sunken Keep.
     if (chapterEnds && chapter === 'The Lighthouse') out.push(...(LF.SHELL_LEVELS_2 || []));
+    // ...and the Bat Bridges (levels-18.js) close the Smokelands, before Smog Castle.
+    if (chapterEnds && chapter === 'The Bell Foundry') out.push(...(LF.BAT_LEVELS || []));
     // A world's last chapter ends at its castle (in two worlds, a sunken one).
     if (chapterEnds && sunkenAfter[chapter] != null) out.push(sunkenOf(sunkenAfter[chapter]));
     if (chapterEnds && castleAfter[chapter] != null) out.push(castleOf(castleAfter[chapter]));

@@ -1548,7 +1548,8 @@
         const far = Math.abs(nx - e.ox) > TS * 4 && Math.sign(nx - e.ox) === Math.sign(e.vx);
         if (isSolid(tile(W, tx, row)) || turnMarker(W, tx, row) || far) e.vx *= -1;
         else e.x = nx;
-        e.y = e.oy + Math.sin(e.t * 3) * 14;
+        // (In a level of stomp chains, def.batChain, they bob only a little, so a chain holds.)
+        e.y = e.oy + Math.sin(e.t * 3) * (W.def.batChain ? 3 : 14);
         e.face = Math.sign(e.vx);
         break;
       }
@@ -1577,7 +1578,7 @@
           // Fireball settings from the editor: shotSpeed, fireRate and shotSize (all 1 by default).
           const t = tune(W.def.tuning, 'S'), r = 5 * (t.shotSize ?? 1);
           e.cool = 2.3 / (t.fireRate ?? 1);
-          W.projectiles.push({ x: ex + e.face * (7 + r) - r, y: e.y + 9 - r, w: r * 2, h: r * 2, vx: e.face * 175 * (t.shotSpeed ?? 1), life: 6 });
+          W.projectiles.push({ x: ex + e.face * (7 + r) - r, y: e.y + 9 - r, w: r * 2, h: r * 2, vx: e.face * 175 * (t.shotSpeed ?? 1), life: 6, ember: e });
           W.emit('spit');
         }
         break;
@@ -2997,6 +2998,12 @@
           if (b.burn) W.projectiles.push({ kind: 'flame', x: bx - 7, y: Math.floor(by / TS) * TS - 18, w: 14, h: 18, vx: 0, vy: 0, life: 2.5 });
         }
       } else if (playing && !p.dead && overlap(p, b)) { b.life = 0; hurt(W); }
+      // (An ember pot's ember hurts any other enemy it hits, too: one hit, and it's spent. Not
+      // a boss, nor the pot that spat it.)
+      else if (b.ember) {
+        const o = W.enemies.find(o => o !== b.ember && o.alive && !o.phased && !isBoss(o) && overlap(o, b));
+        if (o) { b.life = 0; shootEnemy(W, o, Math.sign(b.vx) || 1, null, 'burnt', 1); burst(W, bx, by, 8, WARM, 100, 200, 2); }
+      }
       if (Math.random() < .4) W.particles.push({ x: bx, y: by, vx: -b.vx * .1, vy: -20, life: .3, max: .3, c: '#FF6B3D', size: 2, g: 0 });
     }
     W.projectiles = W.projectiles.filter(b => b.life > 0);
@@ -3376,7 +3383,8 @@
         } else if (e.stompCool <= 0) { hurt(W); if (p.dead) return; }
         continue;
       }
-      if (spec.stomp && p.vy > 0 && p.y + p.h - e.y < 14) {
+      // (In a level of stomp chains, def.batChain, falling onto a bat anywhere counts.)
+      if (spec.stomp && p.vy > 0 && (p.y + p.h - e.y < 14 || (W.def.batChain && e.type === 'F'))) {
         e.alive = false; dropAmmo(W, e); p.vy = (input.jump ? -620 : -460) * Math.sqrt(T.gravity); p.jumping = input.jump; p.spun = false;
         burst(W, e.x + e.w / 2, e.y + e.h / 2, 14, ['#FF6B3D', '#463C6B'], 160, 500);
         W.floaters.push({ x: e.x + e.w / 2, y: e.y - 6, t: 'stomp', life: .8, c: '#FF6B3D' });
