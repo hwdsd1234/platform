@@ -269,7 +269,14 @@
   // The Star Road (after the Last Dark): its stops are open to walk once the Last Dark has
   // fallen; each level plays once you hold every coin in its world (starOpen).
   const finalBeaten = () => !!progress[LF.LEVELS.findIndex(l => l.finalFight)];
-  const starOpen = i => practice || (finalBeaten() && (() => { const c = worldCoins(LF.LEVELS[i].starOf); return c.have >= c.all; })());
+  // (Star of Star Road: every coin on the rest of the Star Road.)
+  const starCoins = i => {
+    if (!LF.LEVELS[i].starOfStars) return worldCoins(LF.LEVELS[i].starOf);
+    let have = 0, all = 0;
+    LF.LEVELS.forEach((lv, k) => { if (lv.starOf != null && !lv.starOfStars) { have += coinCount(k); all += 3; } });
+    return { have, all };
+  };
+  const starOpen = i => practice || (finalBeaten() && (() => { const c = starCoins(i); return c.have >= c.all; })());
   const unlocked = i => {
     if (LF.LEVELS[i].starOf != null) return practice || finalBeaten();
     if (practice || i === 0 || progress[i] || landedBySecret(i)) return true;
@@ -1233,7 +1240,7 @@
   const ACTIONS = {
     story: d => {
       const lv = LF.LEVELS[+d.i];
-      if (lv.starOf != null && !starOpen(+d.i)) { const c = worldCoins(lv.starOf); return flash(`Collect every star coin in ${LF.WORLDS[lv.starOf].name} to open this (${c.have} of ${c.all})`); }
+      if (lv.starOf != null && !starOpen(+d.i)) { const c = starCoins(+d.i); return flash(`Collect every star coin ${lv.starOfStars ? 'on the rest of the Star Road' : `in ${LF.WORLDS[lv.starOf].name}`} to open this (${c.have} of ${c.all})`); }
       if (practice) return play(LF.LEVELS[+d.i], { kind: 'practice', index: +d.i });
       story = +d.i === 0 ? { time: 0, falls: 0 } : story; play(LF.LEVELS[+d.i], { kind: 'story', index: +d.i });
     },

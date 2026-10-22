@@ -16,7 +16,15 @@
   const near = (marks, x, y, d) => marks.some(([mx, my]) => Math.abs(mx - x) <= d && Math.abs(my - y) <= d);
   // The level a Star Road level is made from: the one in the middle of its world.
   LF.starSource = def => {
-    const w = LF.WORLDS[def.starOf], L = LF.LEVELS;
+    const L = LF.LEVELS;
+    // (Star of Star Road is made from the longest level in Night's End.)
+    if (def.starOfStars) {
+      const ne = LF.WORLDS.find(w => w.name === 'Night’s End'), room = lv => LF.normalize(LF.lengthen(lv).map).join('').replace(/#/g, '').length;
+      let best = null;
+      for (let i = ne.first; i <= ne.last; i++) if (!L[i].boss && (!best || room(L[i]) > room(best))) best = L[i];
+      return best;
+    }
+    const w = LF.WORLDS[def.starOf];
     const pool = []; for (let i = w.first; i <= w.last; i++) if (!L[i].boss && L[i].starOf == null) pool.push(L[i]);
     return pool[Math.floor(pool.length / 2)];
   };
@@ -36,23 +44,24 @@
     const foes = [];
     let lastX = -99;
     for (const [x, y] of stands.sort((a, b) => a[0] - b[0])) {
-      if (x - lastX < 4) continue;
+      // (Star of Star Road: twice as thick with them, and fliers twice as often.)
+      if (x - lastX < (def.starOfStars ? 2 : 4)) continue;
       rows[y][x] = FOES[Math.floor(R() * FOES.length)]; foes.push([x, y]); lastX = x;
-      if (R() < .35 && y > 3 && rows[y - 3][x] === '.') rows[y - 3][x] = FLIERS[Math.floor(R() * FLIERS.length)];
+      if (R() < (def.starOfStars ? .7 : .35) && y > 3 && rows[y - 3][x] === '.') rows[y - 3][x] = FLIERS[Math.floor(R() * FLIERS.length)];
     }
     // Spikes on the floor, in batches, keeping only what leaves the way through.
     const spikeSpots = [];
     for (let y = 1; y < h - 1; y++) for (let x = 1; x < wd - 1; x++) if (rows[y][x] === '#' && rows[y - 1][x] === '.' && seen[(y - 1) * wd + x] && !near(marks, x, y - 1, 3) && !near(foes, x, y - 1, 1)) spikeSpots.push([x, y]);
     for (let i = spikeSpots.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [spikeSpots[i], spikeSpots[j]] = [spikeSpots[j], spikeSpots[i]]; }
-    const want = Math.floor(spikeSpots.length * .45);
+    const want = Math.floor(spikeSpots.length * (def.starOfStars ? .6 : .45));
     for (let k = 0, placed = 0; k < spikeSpots.length && placed < want; k += 8) {
       const batch = spikeSpots.slice(k, k + 8).filter(([x, y]) => rows[y][x] === '#' && rows[y][x - 1] !== '^' && rows[y][x + 1] !== '^');
       for (const [x, y] of batch) rows[y][x] = '^';
       if (!strict || ok(rows)) placed += batch.length;
       else for (const [x, y] of batch) rows[y][x] = '#';
     }
-    const tuning = Object.fromEntries([...FOES, ...FLIERS].map(t => [t, { speed: 1.6 }]));
-    const out = { ...def, map: rows.map(r => r.join('')), tuning, dark: .92, lengthened: true, starFrom: src.name };
+    const tuning = Object.fromEntries([...FOES, ...FLIERS].map(t => [t, { speed: def.starOfStars ? 1.8 : 1.6 }]));
+    const out = { ...def, map: rows.map(r => r.join('')), tuning, dark: def.starOfStars ? .96 : .92, lengthened: true, starFrom: src.name };
     cache.set(def.name, out);
     return out;
   };

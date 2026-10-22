@@ -1406,5 +1406,9 @@
   ['Old Town', 'The Waterfront', 'The Clockwork Quarter', 'The Sky Roads', 'The Canal District', 'The Garden Market', 'The Smokelands', 'The Glass Mines', 'Night’s End'].forEach((w, k) => {
     out.push({ chapter: 'The Star Road', name: `Star of ${w.replace(/^The /, '')}`, starOf: k, since: 14, dark: .92, map: ['P........D', '##########'] });
   });
+  // ...and the last of all, Star of Star Road: the hardest level there is, opened by holding
+  // every star coin on the rest of the Star Road (see special.js and ui.js). (Its starOf is the
+  // Star Road itself, the tenth world.)
+  out.push({ chapter: 'The Star Road', name: 'Star of Star Road', starOf: 9, starOfStars: true, since: 19, dark: .96, map: ['P........D', '##########'] });
   L.length = 0; L.push(...out);
 })();
