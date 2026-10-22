@@ -7,7 +7,8 @@
   // The pear: the slowest you fall gliding, how high its spin lifts you (as a share of the
   // banana's double jump at full height), the fastest you fall after it.
   const GLIDE_FALL = 95, SPIN_HEIGHT = .75, SPUN_FALL = 300;
-  const WALL_SLIDE = 110, WALL_KICK = 330, BOOST = 1.22, REGROW = 12, SINK = 55;
+  // (SINK: the fastest you sink in water; WATER_G: how much of gravity you feel in it.)
+  const WALL_SLIDE = 110, WALL_KICK = 330, BOOST = 1.22, REGROW = 12, SINK = 110, WATER_G = .8;
 
   // Per-level player settings, set in the editor's Player dialog (def.player).
   // Most are multipliers on the normal feel; airJumps and ammo are counts.
@@ -1343,7 +1344,7 @@
         // (In water it sinks slowly, as you do, and walks on along the bottom: water never
         // drowns an enemy.)
         const wet = tile(W, Math.floor((e.x + e.w / 2) / TS), Math.floor((e.y + e.h / 2) / TS)) === '~';
-        e.vy = wet ? Math.min(SINK * 2, (e.vy || 0) + G * .25 * dt) : Math.min(MAXFALL, (e.vy || 0) + G * dt);
+        e.vy = wet ? Math.min(SINK * 2, (e.vy || 0) + G * WATER_G * .5 * dt) : Math.min(MAXFALL, (e.vy || 0) + G * dt);
         const hit = moveY(W, e, e.vy * dt, false);
         if (hit && hit.dir === 'down') e.vy = 0;
         if (hit && hit.dir === 'up') e.vy = 0;
@@ -3177,7 +3178,7 @@
     if (p.jumping && !input.jump && p.vy < 0) { p.vy *= .45; p.jumping = false; }
     if (p.vy >= 0) p.jumping = false;
     if (wet) {
-      p.vy = Math.min(SINK * (p.swimmer ? .5 : 1), p.vy + grav * .45 * dt);
+      p.vy = Math.min(SINK * (p.swimmer ? .5 : 1), p.vy + grav * WATER_G * dt);
       if (Math.random() < .05) W.particles.push({ x: p.x + p.w / 2 + p.face * 4, y: p.y + 4, vx: 0, vy: -40, life: .6, max: .6, c: '#9FD8FF', size: 2, g: -60 });
     } else p.vy = Math.min(MAXFALL * Math.sqrt(T.gravity), p.vy + grav * dt * (p.vy > 0 ? 1.15 : 1));
     // The pear's glide: holding jump while falling, you float down slowly. After its spin you
