@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Bombs, grenades and dynamite sink slowly into water and lava now, as you do, slowing as they go (they used to bounce off or sit on top, or drop straight through), and go off down there on their fuse.',
       'Star of Star Road: the last level of all, at the end of the Star Road, and the hardest. Hold every star coin on the rest of the Star Road to open it. It’s made from the longest level in Night’s End, twice as thick with enemies as the other Star Road levels, with more fliers, more spikes, quicker foes and even less light.',
       'The nuke: press W (10 ammo) and a nuke is primed right where you are; after a 3-second fuse it kills everything within 30 blocks, golems and carts too (a boss takes it as one hit). Shift+W for a big one: 20 ammo, 60 blocks. It never hurts you.',
       'Secret exits sit at the top of a climb now: somewhere out of the way, a stair of single blocks floats up into the air (each a full jump from the last), stone or crumbling or ice or blinking, with the door on a little ledge at the top. (Where there’s no room for one, the door is in the hardest spot to reach, as before.)',

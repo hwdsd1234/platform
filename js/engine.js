@@ -951,15 +951,26 @@
     W.emit(big ? 'boom' : 'pop');
   }
 
+  // In water or lava (the tile it's in), a bomb, a grenade or a stick of dynamite sinks
+  // slowly, as you do (SINK), and slows as it goes along: returns true if it's in.
+  function sinkIn(W, b, dt) {
+    const c = tile(W, Math.floor(b.x / TS), Math.floor(b.y / TS));
+    if (c !== '~' && c !== '!') return false;
+    b.vy = Math.min(b.vy, SINK); if (b.vy < -SINK) b.vy = -SINK;
+    b.vx *= Math.pow(.15, dt);
+    return true;
+  }
+
   function stepSpecial(W, b, dt) {
     b.life -= dt;
     const inHorde = () => W.horde && along(W.horde, b.x, b.y) < W.horde.f;
     // Dynamite: thrown in an arc, it falls and settles wherever it lands (sliding to a stop,
-    // and riding along on whatever it's sitting on). When its 3-second fuse burns down it
+    // and riding along on whatever it's sitting on; into water or lava, it sinks slowly). When its 3-second fuse burns down it
     // goes up, killing everything within 5 blocks (10 for a big stick): golems, carts, all
     // of it. A boss takes it as one hit. It doesn't hurt you.
     if (b.kind === 'dyn') {
       b.vy = Math.min(MAXFALL, b.vy + G * .8 * dt);
+      sinkIn(W, b, dt);
       const wall = c => isSolid(c) || c === '^';
       const nx = b.x + b.vx * dt;
       if (wall(tile(W, Math.floor((nx + Math.sign(b.vx) * 4) / TS), Math.floor(b.y / TS)))) b.vx *= -.3;
@@ -967,7 +978,7 @@
       const ny = b.y + b.vy * dt, foot = Math.floor((ny + 4) / TS), c = tile(W, Math.floor(b.x / TS), foot);
       const plat = b.vy >= 0 && W.plats.find(pl => pl.state !== 'gone' && b.x > pl.x && b.x < pl.x + pl.w && b.y + 4 <= pl.y + 2 && ny + 4 >= pl.y);
       if (plat) { b.y = plat.y - 4; b.vy = 0; b.x += (plat.dx || 0); b.vx *= Math.pow(.01, dt); }
-      else if (b.vy > 0 && Math.floor((b.y + 4) / TS) < foot + 1 && (wall(c) || c === '=' || c === '~' || c === '!')) { b.y = foot * TS - 4; b.vy = 0; b.vx *= Math.pow(.01, dt); }
+      else if (b.vy > 0 && Math.floor((b.y + 4) / TS) < foot + 1 && (wall(c) || c === '=')) { b.y = foot * TS - 4; b.vy = 0; b.vx *= Math.pow(.01, dt); }
       else if (b.vy < 0 && wall(tile(W, Math.floor(b.x / TS), Math.floor((ny - 4) / TS)))) b.vy = 0;
       else b.y = ny;
       if (Math.random() < .5) W.particles.push({ x: b.x + 3, y: b.y - 8 * b.s, vx: (Math.random() - .5) * 60, vy: -40 - Math.random() * 60, life: .25, max: .25, c: Math.random() < .5 ? '#FFE066' : '#FF6B3D', size: 1.6, g: 200 });
@@ -997,12 +1008,14 @@
     }
     // Grenade: falls and bounces; every contact counts. The first two blast 2 blocks,
     // the third explodes on impact with the big 3-block blast (the fuse is just a backstop).
-    // It bounces off anything: blocks and spikes from any side; the tops of water, lava,
-    // planks, lifts, shingles and crushers when coming down on them; and enemies.
+    // It bounces off anything: blocks and spikes from any side; the tops of planks, lifts,
+    // shingles and crushers when coming down on them; and enemies. Into water or lava it
+    // sinks slowly.
     b.vy = Math.min(MAXFALL, b.vy + G * .8 * dt);
+    sinkIn(W, b, dt);
     let bounced = false;
     const wall = c => isSolid(c) || c === '^';
-    const surface = c => wall(c) || c === '~' || c === '!' || c === '=';
+    const surface = c => wall(c) || c === '=';
     const nx = b.x + b.vx * dt;
     if (wall(tile(W, Math.floor(nx / TS), Math.floor(b.y / TS)))) { b.vx *= -.6; bounced = true; }
     else b.x = nx;
@@ -2992,6 +3005,8 @@
       // A warning mark is harmless; when it runs out, what it warned of appears.
       if (b.kind === 'warn') { b.life -= dt; if (b.life <= 0) { W.projectiles.push({ ...b.then }); burst(W, b.x + b.w / 2, b.y + b.h, 8, ['#FF6B3D', '#FFE2A8'], 90, -60, 2); } continue; }
       if (b.g) b.vy += b.g * dt;
+      // (A bomb in water or lava sinks slowly, as you do.)
+      if (b.g || b.kind === 'bomb') sinkIn(W, { get x() { return b.x + b.w / 2; }, get y() { return b.y + b.h / 2; }, get vx() { return b.vx; }, set vx(v) { b.vx = v; }, get vy() { return b.vy || 0; }, set vy(v) { b.vy = v; } }, dt);
       b.x += b.vx * dt; b.y += (b.vy || 0) * dt; b.life -= dt;
       const bx = b.x + b.w / 2, by = b.y + b.h / 2;
       // A shockwave runs out where the floor under it ends.
