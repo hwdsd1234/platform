@@ -1738,6 +1738,21 @@
           ctx.fillStyle = '#FFE2A8'; ctx.beginPath(); ctx.moveTo(b.x - d * 2, b.y - 3.5); ctx.lineTo(b.x + d * 5, b.y); ctx.lineTo(b.x - d * 2, b.y + 3.5); ctx.fill();
           return;
         }
+        if (b.kind === 'nuke') {
+          // A nuke: a round black bomb with a yellow hazard sign, a ring counting down round it,
+          // and the seconds left over it.
+          const r = 10 * Math.min(1.6, b.s), pulse = reduced ? 1 : 1 + Math.sin(clock * (b.life < 1 ? 30 : 10)) * .08;
+          ctx.save(); ctx.translate(b.x, b.y); ctx.scale(pulse, pulse);
+          ctx.fillStyle = '#1C1A24'; ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
+          ctx.fillStyle = '#FFE066';
+          for (let k = 0; k < 3; k++) { const a = -Math.PI / 2 + k * TAU / 3; ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, r * .75, a - .5, a + .5); ctx.closePath(); ctx.fill(); }
+          ctx.fillStyle = '#1C1A24'; ctx.beginPath(); ctx.arc(0, 0, r * .2, 0, TAU); ctx.fill();
+          ctx.restore();
+          ctx.strokeStyle = '#E9FFB8'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(b.x, b.y, r + 6, -Math.PI / 2, -Math.PI / 2 + TAU * Math.max(0, b.life) / 3); ctx.stroke();
+          ctx.font = '700 12px ui-monospace, monospace'; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(14,12,34,.85)';
+          const t = String(Math.max(1, Math.ceil(b.life))); ctx.strokeText(t, b.x, b.y - r - 12); ctx.fillStyle = '#E9FFB8'; ctx.fillText(t, b.x, b.y - r - 12);
+          return;
+        }
         if (b.kind === 'dyn') {
           // A stick of dynamite, its fuse spitting sparks (and blinking faster as it burns down).
           ctx.fillStyle = '#C0392B'; ctx.fillRect(b.x - 3, b.y - 7, 6, 11);
@@ -1905,6 +1920,12 @@
       } else {
         drawDarkness(W, cam);
         drawEmissive(W, cam, opts);
+        // (A nuke going off: the whole screen flashes white, fading.)
+        if (W.nukeFlash > 0) {
+          ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = Math.min(1, W.nukeFlash) * (reduced ? .4 : .85);
+          ctx.fillStyle = '#F6FFE8'; ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height); ctx.restore();
+          W.nukeFlash = Math.max(0, W.nukeFlash - .03);
+        }
       }
     };
 

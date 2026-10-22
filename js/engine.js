@@ -30,12 +30,17 @@
   // Every enemy runs this much faster than its base numbers (movement, timers, attacks).
   const ENEMY_SPEED = LF.ENEMY_SPEED = 1.35;
   // Special shots: X fires an explosive round, Q lobs a bouncing grenade, D throws a stick of
-  // dynamite. All use shared ammo.
+  // dynamite, W primes a nuke. All use shared ammo.
   const SPECIAL = LF.SPECIAL = {
     rocket: { cost: 2, name: 'explosive round' },
     grenade: { cost: 3, name: 'grenade' },
     dyn: { cost: 4, name: 'dynamite' },
+    nuke: { cost: 10, name: 'nuke' },
   };
+  // The nuke: primed right where you are when you press W (it stays put, in the air or on the
+  // ground), and when its FUSE burns down it kills everything within NUKE_R blocks (twice that
+  // for a big one): golems, carts, the lot. A boss takes it as one hit. It never hurts you.
+  const NUKE_R = 30;
   const FUSE = 3, DYN_R = 5;   // dynamite: seconds of fuse, and blocks of blast (twice that when big)
   // A: the kill shot. 3 ammo, and whatever it hits dies at once: golems, TNT carts, armor
   // and all (a boss just takes it as one hit). It doesn't splash.
@@ -968,6 +973,17 @@
       if (Math.random() < .5) W.particles.push({ x: b.x + 3, y: b.y - 8 * b.s, vx: (Math.random() - .5) * 60, vy: -40 - Math.random() * 60, life: .25, max: .25, c: Math.random() < .5 ? '#FFE066' : '#FF6B3D', size: 1.6, g: 200 });
       if (b.y > W.h * TS + 40) { b.life = 0; return; }
       if (b.life <= 0) explode(W, b.x, b.y, TS * DYN_R * b.s, true, b.id, true);
+      return;
+    }
+    if (b.kind === 'nuke') {
+      if (Math.random() < .6) W.particles.push({ x: b.x + (Math.random() - .5) * 10, y: b.y - 10, vx: (Math.random() - .5) * 40, vy: -50, life: .4, max: .4, c: Math.random() < .5 ? '#9FF07A' : '#FFE066', size: 2, g: 0 });
+      if (b.life <= 0) {
+        explode(W, b.x, b.y, TS * NUKE_R * b.s, true, b.id, true);
+        ring(W, b.x, b.y, TS * NUKE_R * b.s, '210,255,170', .9); ring(W, b.x, b.y, TS * 6, '255,255,255', .5);
+        for (let n = 0; n < 8; n++) burst(W, b.x + (Math.random() - .5) * 120, b.y + (Math.random() - .5) * 80, 30, ['#FFFFFF', '#E9FFB8', '#FFE066', '#FF6B3D'], 420, 200, 5);
+        W.shake = Math.max(W.shake, 1.4); W.freeze = Math.max(W.freeze, .15); W.nukeFlash = 1;
+        W.floaters.push({ x: b.x, y: b.y - 40, t: 'NUKE!', life: 2, c: '#E9FFB8' });
+      }
       return;
     }
     if (b.kind === 'rocket') {
@@ -3176,8 +3192,8 @@
     p.cool -= dt; p.flash -= dt;
     if (p.hold > 0) {
       p.hold -= dt;
-      if (input.firePressed || input.rocketPressed || input.grenadePressed || input.killPressed || input.dynPressed) {
-        input.firePressed = input.rocketPressed = input.grenadePressed = input.killPressed = input.dynPressed = false;
+      if (input.firePressed || input.rocketPressed || input.grenadePressed || input.killPressed || input.dynPressed || input.nukePressed) {
+        input.firePressed = input.rocketPressed = input.grenadePressed = input.killPressed = input.dynPressed = input.nukePressed = false;
         if (!W.floaters.some(f => f.t === 'steady…')) W.floaters.push({ x: p.x + p.w / 2, y: p.y - 10, t: 'steady…', life: .8, c: '#D9D0F0' });
       }
     }
@@ -3210,9 +3226,10 @@
       }
     }
     // X, Q and D work like E: tap for one, hold to keep firing while there's ammo for it.
-    for (const kind of ['rocket', 'grenade', 'dyn']) {
+    for (const kind of ['rocket', 'grenade', 'dyn', 'nuke']) {
       const tapped = input[kind + 'Pressed'];
-      if (!tapped && !input[kind]) continue;
+      // (A nuke only on a fresh press: holding W doesn't keep priming them.)
+      if (!tapped && (!input[kind] || kind === 'nuke')) continue;
       if (p.cool > 0) continue;
       input[kind + 'Pressed'] = false;
       const spec = SPECIAL[kind], cost = spec.cost * s;
@@ -3227,8 +3244,9 @@
       const g = LF.gunPos(p);
       if (kind === 'rocket') W.bullets.push({ id: newShot(W), kind, x: g.x, y: g.y, vx: p.face * 430, vy: 0, life: 1.6, s });
       else if (kind === 'dyn') W.bullets.push({ id: newShot(W), kind, x: g.x, y: g.y - 4, vx: p.face * 240 + p.vx * .3, vy: -380, life: FUSE, s });
+      else if (kind === 'nuke') W.bullets.push({ id: newShot(W), kind, x: p.x + p.w / 2, y: p.y + p.h - 8, vx: 0, vy: 0, life: FUSE, s });
       else W.bullets.push({ id: newShot(W, 3), kind, x: g.x, y: g.y - 4, vx: p.face * 270 + p.vx * .3, vy: -420, life: 2.2, bounces: 0, s });
-      if (kind !== 'dyn') p.vx -= p.face * 70;
+      if (kind !== 'dyn' && kind !== 'nuke') p.vx -= p.face * 70;
       W.emit(kind === 'rocket' ? 'rocket' : 'lob');
     }
 
