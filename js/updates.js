@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Secret exits sit at the top of a climb now: somewhere out of the way, a stair of single blocks floats up into the air (each a full jump from the last), stone or crumbling or ice or blinking, with the door on a little ledge at the top. (Where there’s no room for one, the door is in the hardest spot to reach, as before.)',
       'New chapter: the Bat Bridges, four levels of stomp chains at the end of the Smokelands, just before Smog Castle: no ground between the islands, only lines of soot bats over the void. Run off the edge onto the first and hold jump to bounce on along them. (Here bats hold almost still, and dropping onto one anywhere counts as a stomp.)',
       'Ember pots’ embers burn other enemies too: any enemy (but a boss) an ember hits takes a hit.',
       'Coal rams bowl over other enemies when they charge: anything ordinary in the way is knocked out, and a golem or TNT cart takes a hit. (Rams leave each other be, and a boss stops one.)',
