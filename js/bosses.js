@@ -702,6 +702,10 @@
   // Each tower's stages: every kind once, in an order of its own, half of them in its first
   // shaft and the rest in its second; floods only up high in the later towers.
   const KINDS = ['ledges', 'springs', 'crumbles', 'lifts', 'blinks', 'chimney', 'ice', 'pillars', 'wheel', 'belts', 'turns', 'shingles'];
+  // A tower's theme: three kinds of stage, a different three for every tower.
+  const THEMES = [];
+  for (let a = 0; a < KINDS.length; a++) for (let b = a + 1; b < KINDS.length; b++) for (let c = b + 1; c < KINDS.length; c++) THEMES.push([KINDS[a], KINDS[b], KINDS[c]]);
+  const towerTheme = t => THEMES[(t * 97 + 13) % THEMES.length];
   function towerStages(R, t, half) {
     const order = KINDS.slice();
     for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
@@ -950,8 +954,9 @@
   // The castles: one at the end of every world but the last (whose castle is the Last
   // Dark's), each with its own keeper (see stepKeeper in engine.js). A castle's arena is a
   // hall with planks to get above its keeper; fliers hover high, walkers stand on the floor.
-  // Every castle is its own: its own challenges (no two castles share one), its own shape (a
-  // long hall of challenges, or a hall and a climb), and its own keeper's hall. `plan` is its
+  // Every castle is its own: its own challenges (no two castles share one), its own shape (no
+  // two the same: two halls; a climb, then a hall; a hall, then a climb; a hall, a climb and a
+  // hall; a climb, a hall and a climb; hall, climb, hall, climb), and its own keeper's hall. `plan` is its
   // parts in order: { hall: [courses] } (see COURSES), or { climb: [stages] } (see STAGES).
   // `arena` dresses its keeper's hall.
   const CASTLES = [
@@ -959,19 +964,19 @@
       plan: [{ hall: ['lavaHops', 'lavaWaves', 'crumbleLava', 'lavaHops', 'lavaWaves', 'crumbleLava'] }, { hall: ['crumbleLava', 'lavaWaves', 'lavaHops', 'lavaWaves', 'lavaHops'] }],
       arena: ({ r }) => { r(14, 13, 17, 14, '!'); r(30, 13, 33, 14, '!'); r(13, 10, 18, 10, '='); r(29, 10, 34, 10, '='); r(21, 7, 26, 7, '='); } },
     { world: 'The Powder Works', name: 'Clockwork Castle', giant: 'Ξ', sign: 'THE CLOCKWORK KNIGHT · jump his gears · stomp him while he winds down',
-      plan: [{ hall: ['conveyCrush', 'blinkLava', 'liftsSpikes', 'conveyCrush', 'blinkLava', 'liftsSpikes'] }, { climb: ['lifts', 'belts', 'wheel', 'blinks', 'lifts', 'belts', 'wheel', 'blinks', 'belts', 'lifts', 'wheel', 'blinks'] }],
+      plan: [{ climb: ['lifts', 'belts', 'wheel', 'blinks', 'lifts', 'belts', 'wheel', 'blinks', 'belts', 'lifts', 'wheel', 'blinks'] }, { hall: ['conveyCrush', 'blinkLava', 'liftsSpikes', 'conveyCrush', 'blinkLava', 'liftsSpikes'] }],
       arena: ({ r }) => { r(10, 13, 20, 13, '<'); r(27, 13, 37, 13, '>'); r(8, 9, 13, 9, '='); r(34, 9, 39, 9, '='); r(20, 6, 27, 6, '='); } },
     { world: 'The Neo Ledges', name: 'Storm Castle', giant: 'Λ', fly: true, sign: 'THE STORM ROC · it swoops low · stomp it when it lands to rest',
-      plan: [{ climb: ['turns', 'shingles', 'springs', 'turns', 'shingles', 'springs', 'turns', 'shingles', 'springs', 'turns', 'shingles', 'springs'] }, { hall: ['skyTurns', 'skyWheels', 'skyTurns', 'skyWheels', 'skyTurns'] }],
+      plan: [{ hall: ['skyTurns', 'skyWheels', 'skyTurns', 'skyWheels', 'skyTurns'] }, { climb: ['turns', 'shingles', 'springs', 'turns', 'shingles', 'springs', 'turns', 'shingles', 'springs', 'turns', 'shingles', 'springs'] }],
       arena: ({ r }) => { r(12, 13, 16, 13, '^'); r(31, 13, 35, 13, '^'); r(5, 10, 9, 10, '='); r(17, 8, 22, 8, '='); r(26, 8, 31, 8, '='); r(38, 10, 42, 10, '='); } },
     { world: 'The Melon Patch', name: 'Pumpkin Castle', giant: 'Φ', sign: 'THE PUMPKIN KNIGHT · his bombs land where they’re marked · stomp him when he’s dizzy',
-      plan: [{ hall: ['springLava', 'pendulums', 'crumbleSpikes', 'springLava', 'pendulums', 'crumbleSpikes'] }, { hall: ['pendulums', 'crumbleSpikes', 'springLava', 'crumbleSpikes', 'pendulums', 'springLava'] }],
+      plan: [{ hall: ['springLava', 'pendulums', 'crumbleSpikes', 'springLava'] }, { climb: ['springs', 'crumbles', 'shingles', 'springs', 'crumbles', 'shingles'] }, { hall: ['crumbleSpikes', 'pendulums', 'springLava', 'pendulums'] }],
       arena: ({ r }) => { r(6, 11, 11, 11, '='); r(13, 8, 18, 8, '='); r(29, 8, 34, 8, '='); r(36, 11, 41, 11, '='); r(21, 5, 26, 5, '='); r(22, 13, 25, 13, '^'); } },
     { world: 'The Bell Foundry', name: 'Smog Castle', giant: 'Ψ', fly: true, sign: 'THE SMOG DRAGON · it breathes fire across the floor · stomp it when it lands',
-      plan: [{ hall: ['bubblePits', 'lavaTide', 'liftsLava', 'bubblePits', 'lavaTide', 'liftsLava'] }, { climb: ['flood', 'ledges', 'chimney', 'flood', 'ledges', 'chimney', 'flood', 'ledges', 'chimney', 'ledges', 'chimney', 'ledges', 'flood', 'ledges'] }],
+      plan: [{ climb: ['chimney', 'ledges', 'chimney', 'ledges', 'chimney', 'ledges'] }, { hall: ['bubblePits', 'lavaTide', 'liftsLava', 'bubblePits', 'lavaTide', 'liftsLava'] }, { climb: ['flood', 'ledges', 'chimney', 'ledges', 'chimney', 'ledges'] }],
       arena: ({ r }) => { r(18, 13, 21, 14, '!'); r(27, 13, 30, 14, '!'); r(17, 10, 22, 10, '='); r(26, 10, 31, 10, '='); r(9, 8, 13, 8, '='); r(35, 8, 39, 8, '='); } },
     { world: 'The Cinder Mines', name: 'Crystal Castle', giant: 'Σ', sign: 'THE CRYSTAL MOLE · it bursts up where the floor glows · stomp it while it’s stunned',
-      plan: [{ hall: ['icePits', 'iceSteps', 'icePits', 'iceSteps', 'icePits', 'iceSteps'] }, { climb: ['ice', 'crumbles', 'pillars', 'ice', 'crumbles', 'pillars', 'ice', 'crumbles', 'pillars', 'ice', 'crumbles', 'pillars'] }],
+      plan: [{ hall: ['icePits', 'iceSteps', 'icePits', 'iceSteps'] }, { climb: ['ice', 'pillars', 'ice', 'pillars'] }, { hall: ['iceSteps', 'icePits', 'iceSteps', 'icePits'] }, { climb: ['crumbles', 'ice', 'crumbles', 'ice'] }],
       arena: ({ r }) => { r(1, 13, 46, 13, 'i'); r(9, 10, 14, 10, '='); r(33, 10, 38, 10, '='); r(20, 7, 27, 7, '='); } },
   ];
   // A castle's parts from its plan: halls joined from their courses, climbs stacked from their
@@ -1221,21 +1226,25 @@
     // (Each tower its own climb and run: see CLIMBS and RUNS.)
     const t = design ?? (castle || sky ? 0 : towerNo++), cv = Math.floor(t / CLIMBS.length);
     const climb = sky ? skyClimb() : castle ? castleClimb(R) : CLIMBS[t % CLIMBS.length](R, cv);
-    const run = sky ? skyRun() : castle ? castleWalls(R) : RUNS[(t + Math.floor(t / RUNS.length)) % RUNS.length](R, Math.floor(t / RUNS.length) % 3);
+    const run = sky ? skyRun() : castle ? castleWalls(R) : RUNS[(t * 5 + Math.floor(t / CLIMBS.length)) % RUNS.length](R, Math.floor(t / RUNS.length) % 3);
     if (!castle && !sky) { harden(climb, R, false); harden(run, R, true); }
-    // Towers are all climbing: two shafts of stages (see stageClimb), a lantern at the top of
-    // the first; the second ends at the boss's door (whose lantern is put in below).
-    // (At least twice as big as the climb, run and arena a tower used to be: more stages, in
-    // turn, till it is.)
+    // Every tower its own: its own climb (CLIMBS), then a shaft of stages on its own theme
+    // (three kinds of stage, a different three for every tower, repeated in an order of its
+    // own; see towerTheme), a lantern at its top, then its own run (RUNS) to the boss's door.
+    // (Stages till it's twice as big as the climb, run and arena a tower used to be.)
     let climbs = null;
-    if (!def.course && !castle) {
+    if (!def.course && !castle && !sky) {
       const room = parts => parts.reduce((n, g) => n + g.reduce((m, row) => m + row.filter(c => c !== '#').length, 0), 0);
-      const want = room([climb, run, arenaRows]) * 2, a = towerStages(R, t, 0), b = towerStages(R, t, 1);
-      for (let k = 0; k < 30; k++) {
-        climbs = [stageClimb(R, a, true, true), stageClimb(R, b, false, false)];
-        if (room([...climbs, arenaRows]) >= want) break;
-        (k % 2 ? b : a).push(KINDS[(t + k) % KINDS.length]);
+      const want = room([climb, run, arenaRows]) * 2, theme = towerTheme(t), names = t >= 12 && t % 3 === 0 ? ['flood'] : [];
+      for (let k = 0; k < 40; k++) {
+        climbs = [climb, stageClimb(R, names.length ? names : [theme[0]], false, true), run];
+        if (names.length >= 3 && room([...climbs, arenaRows]) >= want) break;
+        names.push(theme[(k + Math.floor(k / 3)) % 3]);
       }
+      // ...in an order of its own (of the six), so no two towers have the same shape; you
+      // start in whichever comes first.
+      const ORDERS = [[0, 1, 2], [2, 1, 0], [1, 2, 0], [0, 2, 1], [2, 0, 1], [1, 0, 2]];
+      climbs = ORDERS[(t + Math.floor(t / 6)) % 6].map(i => climbs[i]).map((p, i) => Object.assign(p.map(row => row.map(c => (i === 0 ? (c === 'n' ? 'P' : c) : c === 'P' ? 'n' : c))), { flows: p.flows }));
     }
     const parts = def.course ? [...def.course(R), arenaRows] : climbs ? [...climbs, arenaRows] : [climb, run, arenaRows];
     const h = Math.max(...parts.map(p => p.length));
@@ -1248,7 +1257,7 @@
       p.forEach((row, y) => row.forEach((c, x) => { g[y0 + y][x0 + x] = c; }));
       x0 += p[0].length + GAP;
     }
-    const arena = at[at.length - 1], climbAt = at[0], runAt = at[1];
+    const arena = at[at.length - 1], climbAt = at[0], runAt = at[at.length - 2];
     // (Moving lava carried by the parts, moved to where each part landed.)
     if (def.map.flows) arenaRows.flows = def.map.flows;
     const flows = parts.flatMap((p, i) => (p.flows || []).map(f => ({ ...f, x0: f.x0 + at[i].x, x1: f.x1 + at[i].x, hi: f.hi != null ? f.hi + at[i].y : undefined, lo: f.lo + at[i].y, bottom: f.bottom + at[i].y, trigger: f.trigger != null ? f.trigger + at[i].x : undefined, triggerY: f.triggerY != null ? f.triggerY + at[i].y : undefined })));
@@ -1277,7 +1286,7 @@
       ...def, map: g.map(row => row.join('')), noDoor: true, bossEnds: true, arenaX: arena.x, noAmmo: true, bossFury: true, bossHits: def.bossHits ?? (castle ? 5 : 3), castle: !!castle,
       signs: [
         { x: climbAt.x + 2, y: climbAt.y + parts[0].length - 4.6, t: def.course ? `${def.name.toUpperCase()} · no guns here · onward →` : castle ? 'THE CASTLE · climb, floor after floor · no guns here' : 'CLIMB THE TOWER ↑ · no guns here: stomp' },
-        { x: runAt.x + 2, y: runAt.y + parts[1].length - 6.6, t: def.course ? 'keep going →' : 'along the battlements →' },
+        { x: runAt.x + 2, y: runAt.y + parts[parts.length - 2].length - 6.6, t: def.course ? 'keep going →' : climbs ? 'on to the boss →' : 'along the battlements →' },
         ...(def.signs || []).map(s => ({ ...s, x: s.x + arena.x, y: s.y + arena.y })),
       ],
     };

@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Every tower is its own now: its own climb, its own run along the top, and a shaft of stages on its own theme (three kinds of stage, a different three in each tower), in an order of its own. Every castle has its own shape too: two halls, a climb then a hall, a hall then a climb, hall-climb-hall, climb-hall-climb, or hall-climb-hall-climb.',
       'Water pulls harder now: you sink twice as fast (and so do bombs, grenades, dynamite and enemies), and a swim stroke lifts you about three and a half tiles instead of six. (The peach still halves your sinking.)',
       'Bombs, grenades and dynamite sink slowly into water and lava now, as you do, slowing as they go (they used to bounce off or sit on top, or drop straight through), and go off down there on their fuse.',
       'Star of Star Road: the last level of all, at the end of the Star Road, and the hardest. Hold every star coin on the rest of the Star Road to open it. It’s made from the longest level in Night’s End, twice as thick with enemies as the other Star Road levels, with more fliers, more spikes, quicker foes and even less light.',
