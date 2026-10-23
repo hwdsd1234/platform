@@ -397,8 +397,85 @@
   };
   const harp = (n, t, v = .03) => voice(hz(n), t, 1.4, 'triangle', v, .003);
   const pizz = (n, t, v = .09) => voice(hz(n), t, .28, 'triangle', v, .003);
+  // ---- the grand orchestra ----
+  // Under the map, the groves, the worlds, the towers and the castle, the way a castle theme
+  // fills a hall: a full pipe organ (its pedal booming the bass two octaves down, its
+  // manuals holding the chords), low brass doubling the tune, a choir singing "ah",
+  // timpani on the downbeats rolling into a crash at the end of every phrase, and a cymbal
+  // swelling into each new section.
+  // A held note (an organ pipe): swells in, holds, lets go.
+  function held(f, t, dur, type, v, attack = .04) {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(v, t + attack); g.gain.setValueAtTime(v, t + Math.max(attack, dur - .08)); g.gain.linearRampToValueAtTime(.0001, t + dur + .12);
+    o.connect(g).connect(out); o.start(t); o.stop(t + dur + .15);
+  }
+  // A pipe organ chord: 16', 8', 4' and a quint, and a reed stop (a filtered square).
+  function organ(notes, t, dur, v) {
+    for (const n of notes) {
+      const f = hz(n);
+      for (const [m, k] of [[.5, .7], [1, 1], [2, .55], [3, .25], [4, .2]]) held(f * m, t, dur, 'sine', v * k);
+      fvoice(f, t, dur + .1, 'square', v * .35, .05, 1600);
+    }
+  }
+  // Brass: two detuned saws, the filter opening as the note speaks.
+  function brass(f, t, dur, v) {
+    const fl = ac.createBiquadFilter(), g = ac.createGain();
+    fl.type = 'lowpass'; fl.frequency.setValueAtTime(350, t); fl.frequency.linearRampToValueAtTime(2400, t + .09); fl.frequency.linearRampToValueAtTime(1500, t + dur);
+    g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(v, t + .05); g.gain.setValueAtTime(v * .85, t + Math.max(.05, dur - .06)); g.gain.linearRampToValueAtTime(.0001, t + dur + .1);
+    fl.connect(g).connect(out);
+    for (const d of [-7, 7]) { const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(f, t); o.detune.setValueAtTime(d, t); o.connect(fl); o.start(t); o.stop(t + dur + .15); }
+  }
+  // A choir on "ah": a wider, brighter band than the "oo".
+  function choirAh(notes, t, dur, v) {
+    const f = ac.createBiquadFilter(), f2 = ac.createBiquadFilter(), g = ac.createGain();
+    f.type = 'bandpass'; f.frequency.setValueAtTime(800, t); f.Q.setValueAtTime(.7, t);
+    f2.type = 'peaking'; f2.frequency.setValueAtTime(1200, t); f2.gain.setValueAtTime(6, t);
+    g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(v, t + .35); g.gain.setValueAtTime(v, t + dur - .1); g.gain.linearRampToValueAtTime(.0001, t + dur + .4);
+    f.connect(f2).connect(g).connect(out);
+    for (const n of notes) for (const d of [-14, -5, 5, 14]) {
+      const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(hz(n), t); o.detune.setValueAtTime(d, t);
+      o.connect(f); o.start(t); o.stop(t + dur + .45);
+    }
+  }
+  // Timpani: a deep drum with a pitch, and the thump of the stick.
+  function timp(n, t, v) {
+    const o = ac.createOscillator(), g = ac.createGain(), f = hz(n);
+    o.frequency.setValueAtTime(f * 1.04, t); o.frequency.exponentialRampToValueAtTime(f, t + .08);
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + 1.1);
+    o.connect(g).connect(out); o.start(t); o.stop(t + 1.2);
+    voice(f * 1.5, t, .4, 'sine', v * .3, .002);
+    noise(t, v * .25, .06, 'lowpass', 300);
+  }
+  // b: the bar (chord, root, lead, len); N steps a bar. opts: what this track has already.
+  function grand(tr, b, s, bar, t, spb, N, opts = {}) {
+    const ch = b.chord, root = b.root ?? ch[0], beatLen = 4, nBars = tr.bars.length;
+    const tp = n => { let x = n; while (x > 50) x -= 12; while (x < 38) x += 12; return x; };
+    const phraseEnd = bar % 4 === 3, sectionEnd = bar % 8 === 7 || bar === nBars - 1;
+    if (s === 0) {
+      // The pedal, two octaves down, and the manuals on the chord.
+      let ped = root; while (ped > 40) ped -= 12; while (ped < 28) ped += 12;
+      held(hz(ped), t, spb * N, 'sine', .07, .06); held(hz(ped) * 2, t, spb * N, 'sine', .035, .06); held(hz(ped) * 3, t, spb * N, 'sine', .01, .06);
+      if (!opts.noOrgan) organ(ch.map(n => { let x = n; while (x > 64) x -= 12; while (x < 52) x += 12; return x; }), t, spb * N, .0055);
+      if (bar % 2 === 0) choirAh(ch.slice(0, 3).map(n => { let x = n; while (x > 72) x -= 12; while (x < 60) x += 12; return x; }), t, spb * N * 2, .0045);
+      // Timpani on the downbeat (bigger after a roll), and a crash on a new section.
+      timp(tp(root), t, bar % 4 === 0 ? .22 : .14);
+      if (bar % 8 === 0) noise(t, .05, 1.6, 'highpass', 4200);
+    }
+    // ...and on the middle of the bar, the fifth.
+    if (N === 16 && s === 8 && !phraseEnd) timp(tp(root + 7), t, .1);
+    if (N === 12 && s === 8 && !phraseEnd) timp(tp(root + 7), t, .07);
+    // The last beat of a phrase: a timpani roll swelling into the next.
+    if (phraseEnd && s >= N - beatLen) timp(tp(root + 7), t, .05 + (s - (N - beatLen)) * .03);
+    if (phraseEnd && s === N - beatLen * 2 && !opts.noHits) for (const n of ch.slice(0, 3)) brass(hz(n - 12), t, spb * 3, .012);
+    // A cymbal swelling into each new section.
+    if (sectionEnd && s === N - 8) noise(t, .04, spb * 8, 'highpass', 5000, true);
+    // Low brass doubling the tune an octave down (and the organ's reed with it).
+    if (b.lead[s] && !opts.noBrass) { const d = spb * Math.max(1.5, b.len?.[s] || 2) * .95; brass(hz(b.lead[s] - 12), t, d, .016); }
+  }
   function playNight(tr, b, s, bar, t, spb) {
     const N = tr.steps, ch = b.chord, lowR = b.root - 24 + (b.root - 24 < 33 ? 12 : 0);
+    grand(tr, b, s, bar, t, spb, N);
     // Choir or organ holding the bar's chord.
     if (s === 0 && tr.pad === 'choir') choir(ch.map(n => n - 12), t, spb * N, .006);
     if (s === 0 && tr.pad === 'organ') for (const n of ch) for (const [m, v] of [[1, .009], [2, .004]]) voice(hz(n - 12) * m, t, spb * N, 'sine', v, .15);
@@ -469,6 +546,8 @@
       if (s % 4 === 2) noise(t, .008, .05, 'highpass', 9000);
       return;
     }
+    if (tr.feel === 'spooky') grand(tr, b, s, bar, t, spb, 16);
+    if (tr.feel === 'grand') grand(tr, b, s, bar, t, spb, 16, { noOrgan: true, noBrass: true, noHits: true });
     if (tr.feel === 'spooky') {
       // A tower: a wavering theremin tune with a ghostly echo, a music box tinkling the chord
       // high up, the creeping plucked bass, a clock ticking, and a deep bell now and then.
@@ -524,7 +603,7 @@
 
   // ---- the scheduler ----
   let track = null, want = 'map', step = 0, nextT = 0, timer = null, on = true, muted = false, duck = 1, fast = false, quietTill = 0;
-  const level = () => (on && !muted ? .5 * duck : 0);
+  const level = () => (on && !muted ? .26 * duck : 0);   // (the full orchestra is loud: kept under the sound effects)
   function tick() {
     if (!ac || !track || ac.state !== 'running') return;
     const spb = 60 / track.bpm / 4 / (fast ? 1.3 : 1);

@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Grander music, castle-theme style: under the map, groves, worlds and towers a full pipe organ (its pedal booming two octaves down), low brass doubling the tune, a choir singing “ah”, timpani on the downbeats rolling into a crash at the end of every phrase, and cymbals swelling into each new section. The castle gets the pedal, the choir and the timpani rolls too.',
       'Fruit groves grow back in 15 minutes now (was an hour).',
       'Panel Pairs is fairer: eight panels (four pairs) instead of twelve, and a 4-second look at every panel before they turn over, so it’s about remembering, not luck.',
       'Events: for the first hour of every three hours an event is on, a different one each time: 🧺 Double Harvest (grove fruit counts twice), ✨ Power Stack (keep more than one fruit power at a time), 🌱 Quick Groves (groves grow straight back), 🎯 Ammo Rain (double ammo) and 🕰️ Long Night (60 more seconds on every level clock). The map shows the event that’s on and how long it has left, or which comes next and when.',
