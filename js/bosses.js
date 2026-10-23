@@ -569,8 +569,7 @@
   });
 
   // ---- Tower climbs: stacked stages ----
-  // A tower is all climbing: two tall shafts, then the boss's arena. Each shaft is a stack of
-  // stages, each its own kind of jump (zigzag ledges, crumbling, blinking, ice, belts,
+  // A tower's shafts (see LAYOUTS) are stacks of stages, each its own kind of jump (zigzag ledges, crumbling, blinking, ice, belts,
   // springs, lifts, a chimney, pillars, wheels, turn blocks, shingles, flooding lava), all
   // the same width so any can sit on any other. A stage stands on the floor below it and
   // ends at a floor of its own (row 0 of its rows), a plank in it over the stage's last
@@ -699,22 +698,6 @@
     return rows;
   }
   LF.towerKit = { STAGES, stageClimb, joinRuns: (...a) => joinRuns(...a), COURSES: () => COURSES, drainClimb: (...a) => drainClimb(...a) };   // (for testing the stages one by one)
-  // Each tower's stages: every kind once, in an order of its own, half of them in its first
-  // shaft and the rest in its second; floods only up high in the later towers.
-  const KINDS = ['ledges', 'springs', 'crumbles', 'lifts', 'blinks', 'chimney', 'ice', 'pillars', 'wheel', 'belts', 'turns', 'shingles'];
-  // A tower's theme: three kinds of stage, a different three for every tower.
-  const THEMES = [];
-  for (let a = 0; a < KINDS.length; a++) for (let b = a + 1; b < KINDS.length; b++) for (let c = b + 1; c < KINDS.length; c++) THEMES.push([KINDS[a], KINDS[b], KINDS[c]]);
-  const towerTheme = t => THEMES[(t * 97 + 13) % THEMES.length];
-  function towerStages(R, t, half) {
-    const order = KINDS.slice();
-    for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
-    // (The rising lava comes right after the door into the second shaft.)
-    const mine = half ? order.slice(KINDS.length >> 1) : order.slice(0, KINDS.length >> 1);
-    if (half === 1 && t >= 12) mine.unshift('flood');
-    return mine;
-  }
-
   // Castle challenges: each world castle is two of these, then its keeper's hall. Every one
   // is a 16-row hall (floor at F, you stand on S) with its entry on the left and its door
   // on the right; `first` puts the start there instead of an entry. Each has a lantern.
@@ -1216,6 +1199,120 @@
     return g.map(r => r.join(''));
   }
 
+  // ---- Every tower its own ----
+  // A tower is a shape (LAYOUTS) on a theme (THEMES), and no two towers share both: tower t
+  // gets layout t % 8 and theme (t + 3 * floor(t / 8)) % 10, so towers side by side differ
+  // in both. A theme is the tower's stone (its colours), how dark it is, the stages its
+  // shafts are made of, what its halls are full of, and who lives there.
+  const THEMES = [
+    { id: 'lava', sign: 'THE LAVA TOWER', dark: .55, palette: ['#4A2A2E', '#3A1F23', '#B5523A', '#E07A4F', '#5A3236', '#2A1518'],
+      stages: ['crumbles', 'pillars', 'ledges'], hall: ['lavaPit', 'crumbleBridge', 'firebar', 'turnPit'], foes: 'SBR', flood: true },
+    { id: 'ice', sign: 'THE ICE TOWER', dark: .4, palette: ['#4F6E8C', '#3E5A75', '#9CC8E8', '#CDEBFF', '#5F80A0', '#2F465E'],
+      stages: ['ice', 'pillars', 'ice'], hall: ['icePit', 'spikePit', 'pillarPit'], foes: 'KBA' },
+    { id: 'clock', sign: 'THE CLOCK TOWER', dark: .55, palette: ['#6B5634', '#57452A', '#C29A55', '#E3C07A', '#7A6440', '#3E311D'],
+      stages: ['belts', 'wheel', 'lifts'], hall: ['conveyor', 'crusher', 'lift'], foes: 'IBR' },
+    { id: 'ghost', sign: 'THE HAUNTED TOWER', dark: .75, palette: ['#566060', '#454E4E', '#9FB3AE', '#C9DAD4', '#667070', '#363E3E'],
+      stages: ['blinks', 'turns', 'shingles'], hall: ['blinkBridge', 'shinglePit', 'spikePit'], foes: 'GFB' },
+    { id: 'spring', sign: 'THE SPRING TOWER', dark: .5, palette: ['#3F5A3A', '#33492F', '#7FA968', '#A6CF88', '#4C6B46', '#263A23'],
+      stages: ['springs', 'chimney', 'springs'], hall: ['spring', 'spikePit', 'spring'], foes: 'JWB' },
+    { id: 'swing', sign: 'THE PENDULUM TOWER', dark: .6, palette: ['#6A3F2C', '#563324', '#B7714C', '#D99366', '#7A4B36', '#3D2318'],
+      stages: ['wheel', 'pillars', 'lifts'], hall: ['pendulum', 'lift', 'firebar'], foes: 'AKB' },
+    { id: 'crumble', sign: 'THE CRUMBLING TOWER', dark: .5, palette: ['#7A6A4E', '#66583F', '#C9B48A', '#E6D3A6', '#8A7A5C', '#4A3F2C'],
+      stages: ['crumbles', 'shingles', 'chimney'], hall: ['crumbleSpikes', 'shinglePit', 'spikePit'], foes: 'RBJ' },
+    { id: 'water', sign: 'THE FLOODED TOWER', dark: .5, palette: ['#2F5C5E', '#254A4C', '#5FA8A6', '#8FD3CF', '#3A6D6F', '#1A3738'],
+      stages: ['ledges', 'chimney', 'lifts'], hall: ['pool', 'lift', 'pool'], foes: 'JBA' },
+    { id: 'shell', sign: 'THE SHELL TOWER', dark: .5, palette: ['#6E6658', '#5A5347', '#B9AE98', '#D9CFBA', '#7E7666', '#403A30'],
+      stages: ['ledges', 'pillars', 'crumbles'], hall: ['hill', 'spikePit', 'hill'], foes: 'ĸĸB' },
+    { id: 'dark', sign: 'THE DARK TOWER', dark: .9, palette: ['#2A2838', '#201E2C', '#4E4A6A', '#6A6590', '#34324A', '#16141F'],
+      stages: ['chimney', 'blinks', 'ledges'], hall: ['spikePit', 'spiders', 'blinkBridge'], foes: 'XFG' },
+  ];
+  // What a tower's halls are full of: each draws its bit of hall at x (on the floor, row F)
+  // and says how wide it was. (Every one can be got over with a jump, a spring, a lift or a
+  // swim, and there's plain floor between them to land on.)
+  const HALL = {
+    lavaPit: (g, x, F, R) => { put(g, x, F, x + 2, F + 1, '!'); if (R() < .5) g[F][x + 1] = '*'; return 3; },
+    spikePit: (g, x, F) => { put(g, x, F, x + 2, F, '^'); return 3; },
+    crumbleBridge: (g, x, F) => { put(g, x, F, x + 5, F + 1, '!'); put(g, x, F - 1, x + 5, F - 1, 'C'); return 6; },
+    crumbleSpikes: (g, x, F) => { put(g, x, F, x + 5, F, '^'); put(g, x, F - 2, x + 5, F - 2, 'C'); return 6; },
+    blinkBridge: (g, x, F) => { put(g, x, F, x + 6, F + 1, '!'); put(g, x + 1, F - 1, x + 2, F - 1, 'T'); put(g, x + 4, F - 1, x + 5, F - 1, 'H'); return 7; },
+    shinglePit: (g, x, F) => { put(g, x, F, x + 6, F + 1, '!'); g[F - 1][x + 1] = 'd'; g[F - 1][x + 3] = 'ð'; g[F - 1][x + 5] = 'd'; return 7; },
+    turnPit: (g, x, F) => { put(g, x, F, x + 6, F + 1, '!'); g[F - 1][x + 3] = ':'; return 7; },
+    icePit: (g, x, F) => { put(g, x, F, x + 7, F, 'i'); put(g, x + 8, F, x + 9, F, '^'); return 10; },
+    pillarPit: (g, x, F) => { put(g, x, F, x + 9, F, '^'); put(g, x + 2, F - 2, x + 3, F, '#'); put(g, x + 6, F - 2, x + 7, F, '#'); return 10; },
+    conveyor: (g, x, F, R) => { put(g, x, F, x + 7, F, R() < .5 ? '<' : '>'); return 8; },
+    crusher: (g, x) => { g[3][x + 2] = 'k'; return 5; },
+    firebar: (g, x, F) => { g[F - 5][x + 2] = 'f'; return 5; },
+    // (A pendulum swings from a low roof.)
+    pendulum: (g, x, F, R) => { put(g, x - 1, 1, x + 5, F - 8, '#'); g[F - 7][x + 2] = R() < .5 ? 'e' : 'E'; return 5; },
+    // (A lift slides between its markers over spikes.)
+    lift: (g, x, F) => { put(g, x + 1, F, x + 8, F, '^'); const y = F - 2; g[y][x - 1] = '|'; g[y][x + 1] = 'M'; g[y][x + 10] = '|'; return 10; },
+    // (A spring in the floor, and a wall too high to jump without it.)
+    spring: (g, x, F) => { g[F][x + 1] = 'O'; put(g, x + 4, F - 4, x + 5, F - 1, '#'); return 6; },
+    pool: (g, x, F, R) => { put(g, x, F, x + 5, F + 1, '~'); g[F][x + 2 + Math.floor(R() * 2)] = 'Y'; return 6; },
+    // (A hump of steps: the slopes go in later, for the Shellbacks to fly off.)
+    hill: (g, x, F) => { put(g, x, F - 1, x + 6, F - 1, '#'); put(g, x + 2, F - 2, x + 4, F - 2, '#'); g[F - 2][x + 7] = 'ĸ'; return 8; },
+    spiders: (g, x) => { g[1][x + 2] = 'X'; return 4; },
+  };
+  // A hall on a theme: w wide, its bits of hall one after another with floor between, foes
+  // of the theme about, an apple, and a lantern if `lamp`.
+  function themedHall(R, th, w, lamp) {
+    const c = course(w, false), { g, F } = c;
+    let x = c.x0 + 2, k = 0;
+    const flat = [];
+    while (x + 10 < c.x1) {
+      const used = HALL[th.hall[k++ % th.hall.length]](g, x, F, R);
+      const gap = 3 + Math.floor(R() * 3);
+      for (let fx = x + used; fx < x + used + gap; fx++) flat.push(fx);
+      x += used + gap;
+    }
+    const free = flat.filter(fx => g[F - 1][fx] === '.' && g[F][fx] === '#' && g[F - 1][fx - 1] !== 'ĸ');
+    if (lamp && free.length) g[F - 1][free.splice(free.length >> 1, 1)[0]] = 'L';
+    if (free.length) g[F - 1][free.splice(Math.floor(R() * free.length), 1)[0]] = 'a';
+    for (let n = 0; n < 3 && free.length; n++) g[F - 1][free.splice(Math.floor(R() * free.length), 1)[0]] = th.foes[n % th.foes.length];
+    return g;
+  }
+  // A drop: down a shaft from the top (n) to the door at the bottom (j), ledge by ledge, each
+  // reaching past the end of the one above so you drop onto it; the theme's stone (ice,
+  // crumbling, blinking), spikes to hop over, fliers.
+  function descent(R, th, H) {
+    const g = grid(SW, H);
+    for (const row of g) { row[0] = '#'; row[SW - 1] = '#'; }
+    put(g, 0, 0, SW - 1, 0, '#'); put(g, 0, H - 2, SW - 1, H - 1, '#');
+    const tile = { ice: 'i', crumble: 'C', ghost: 'T', dark: 'H' }[th.id] || '#';
+    put(g, 1, 4, 13, 4, '#'); g[3][2] = 'n';
+    let y = 8, right = true, k = 0;
+    while (y < H - 6) {
+      const [x0, x1] = right ? [10, SW - 2] : [1, 13];
+      put(g, x0, y, x1, y, k % 2 && tile !== '#' ? tile : '#');
+      if (k % 3 === 1) g[y][right ? x0 + 6 : x1 - 6] = '^';
+      if (k % 3 === 2) g[y - 2][right ? x0 + 4 : x1 - 4] = th.foes.includes('F') ? 'F' : 'W';
+      if (k === 1) g[y - 1][right ? x1 - 2 : x0 + 2] = 'a';
+      right = !right; y += 4; k++;
+    }
+    g[H - 3][right ? SW - 3 : 2] = 'j';
+    return g;
+  }
+  // The shapes: which parts, left to right (passage doors join them; you start in the first).
+  const LAYOUTS = [
+    { id: 'spire', hint: 'climb the spire ↑', parts: (R, th, t) => [shaft(R, th, t, 7, true)] },
+    { id: 'keep', hint: 'through the keep →', parts: (R, th) => [themedHall(R, th, 78, false), themedHall(R, th, 78, true)] },
+    { id: 'twin', hint: 'up, across, and up again', parts: (R, th, t) => [shaft(R, th, t, 3, false), themedHall(R, th, 60, true), shaft(R, th, t + 1, 3, false)] },
+    { id: 'stairs', hint: 'up and on, up and on', parts: (R, th, t) => [shaft(R, th, t, 2, false), themedHall(R, th, 44, false), shaft(R, th, t + 1, 2, true), themedHall(R, th, 44, false)] },
+    { id: 'pit', hint: 'down into the pit ↓, then up ↑', parts: (R, th, t) => [descent(R, th, 44), shaft(R, th, t, 4, true)] },
+    { id: 'dungeon', hint: 'into the dungeon ↓', parts: (R, th) => [themedHall(R, th, 56, false), descent(R, th, 40), themedHall(R, th, 56, true)] },
+    // (These two use the old climbs and runs, each tower its own: k counts towers of the shape.)
+    { id: 'gauntlet', hint: 'the gauntlet: climb, run, climb', parts: (R, th, t) => { const k = Math.floor(t / 8); return [CLIMBS[(k * 2) % CLIMBS.length](R, 1), RUNS[k % RUNS.length](R, 1), CLIMBS[(k * 2 + 1) % CLIMBS.length](R, 0)]; } },
+    { id: 'heights', hint: 'climb, then climb higher ↑', parts: (R, th, t) => { const k = Math.floor(t / 8); return [CLIMBS[(k * 2 + 5) % CLIMBS.length](R, 2), CLIMBS[(k * 2 + 8) % CLIMBS.length](R, 2)]; } },
+  ];
+  // A shaft of n stages on the theme (rising lava first in a lava tower after the first few).
+  function shaft(R, th, t, n, lamp) {
+    const names = th.flood && t >= 12 ? ['flood'] : [];
+    for (let k = names.length; k < n; k++) names.push(th.stages[(k + t) % th.stages.length]);
+    return stageClimb(R, names, false, lamp);
+  }
+  const towerLook = t => ({ layout: LAYOUTS[t % LAYOUTS.length], theme: THEMES[(t + 3 * Math.floor(t / LAYOUTS.length)) % THEMES.length] });
+  LF.towerLook = towerLook; Object.assign(LF.towerKit, { HALL, themedHall, descent, course: (...a) => course(...a), TOWER_THEMES: THEMES });   // (for testing)
+
   // Put the parts side by side and wire up the arena: its start becomes the last entry,
   // its door and boss gate go, and anything it measured in columns or rows moves with it.
   // (design: which climb and run, for towers added later, so the rest keep theirs.)
@@ -1223,28 +1320,15 @@
     const R = LF.rng(seed);
     // (No hordes in boss fights: any horde marker in the arena goes.)
     const arenaRows = reachAll(def.map.map(row => row.replace(/[&%]/g, '.'))).map(row => row.replace(/P/g, 'n').replace(/[Dg]/g, '.').split(''));
-    // (Each tower its own climb and run: see CLIMBS and RUNS.)
-    const t = design ?? (castle || sky ? 0 : towerNo++), cv = Math.floor(t / CLIMBS.length);
-    const climb = sky ? skyClimb() : castle ? castleClimb(R) : CLIMBS[t % CLIMBS.length](R, cv);
-    const run = sky ? skyRun() : castle ? castleWalls(R) : RUNS[(t * 5 + Math.floor(t / CLIMBS.length)) % RUNS.length](R, Math.floor(t / RUNS.length) % 3);
-    if (!castle && !sky) { harden(climb, R, false); harden(run, R, true); }
-    // Every tower its own: its own climb (CLIMBS), then a shaft of stages on its own theme
-    // (three kinds of stage, a different three for every tower, repeated in an order of its
-    // own; see towerTheme), a lantern at its top, then its own run (RUNS) to the boss's door.
-    // (Stages till it's twice as big as the climb, run and arena a tower used to be.)
-    let climbs = null;
+    // (The Sky Spire and the final castle have a climb and a run of their own.)
+    const t = design ?? (castle || sky ? 0 : towerNo++);
+    const climb = sky ? skyClimb() : castle && !def.course ? castleClimb(R) : null;
+    const run = sky ? skyRun() : castle && !def.course ? castleWalls(R) : null;
+    // Every tower its own shape and theme (see LAYOUTS and THEMES).
+    let climbs = null, look = null;
     if (!def.course && !castle && !sky) {
-      const room = parts => parts.reduce((n, g) => n + g.reduce((m, row) => m + row.filter(c => c !== '#').length, 0), 0);
-      const want = room([climb, run, arenaRows]) * 2, theme = towerTheme(t), names = t >= 12 && t % 3 === 0 ? ['flood'] : [];
-      for (let k = 0; k < 40; k++) {
-        climbs = [climb, stageClimb(R, names.length ? names : [theme[0]], false, true), run];
-        if (names.length >= 3 && room([...climbs, arenaRows]) >= want) break;
-        names.push(theme[(k + Math.floor(k / 3)) % 3]);
-      }
-      // ...in an order of its own (of the six), so no two towers have the same shape; you
-      // start in whichever comes first.
-      const ORDERS = [[0, 1, 2], [2, 1, 0], [1, 2, 0], [0, 2, 1], [2, 0, 1], [1, 0, 2]];
-      climbs = ORDERS[(t + Math.floor(t / 6)) % 6].map(i => climbs[i]).map((p, i) => Object.assign(p.map(row => row.map(c => (i === 0 ? (c === 'n' ? 'P' : c) : c === 'P' ? 'n' : c))), { flows: p.flows }));
+      look = towerLook(t);
+      climbs = look.layout.parts(R, look.theme, t).map((p, i) => Object.assign(p.map(row => row.map(c => (i === 0 ? (c === 'n' ? 'P' : c) : c === 'P' ? 'n' : c))), { flows: p.flows }));
     }
     const parts = def.course ? [...def.course(R), arenaRows] : climbs ? [...climbs, arenaRows] : [climb, run, arenaRows];
     const h = Math.max(...parts.map(p => p.length));
@@ -1281,15 +1365,20 @@
       for (let y = h - 2; y > arena.y && !put; y--) for (let x = arena.x + 4; x < arena.x + 12 && !put; x++)
         if (g[y][x] === '.' && g[y - 1][x] === '.' && LF.isSolid(g[y + 1][x]) && ![-2, -1, 0, 1, 2].some(d => 'nPLjD0'.includes(g[y][x + d]))) { g[y][x] = 'ĸ'; put = true; }
     }
+    // (Where you start: the tower's sign goes over it.)
+    let startAt = { x: climbAt.x + 2, y: climbAt.y + parts[0].length - 1 };
+    g.forEach((row, y) => { const x = row.indexOf('P'); if (x >= 0 && x < arena.x) startAt = { x, y }; });
     const out = {
       // No guns in a tower: the boss falls to 3 stomps, and flies into a fury after each.
       ...def, map: g.map(row => row.join('')), noDoor: true, bossEnds: true, arenaX: arena.x, noAmmo: true, bossFury: true, bossHits: def.bossHits ?? (castle ? 5 : 3), castle: !!castle,
       signs: [
-        { x: climbAt.x + 2, y: climbAt.y + parts[0].length - 4.6, t: def.course ? `${def.name.toUpperCase()} · no guns here · onward →` : castle ? 'THE CASTLE · climb, floor after floor · no guns here' : 'CLIMB THE TOWER ↑ · no guns here: stomp' },
-        { x: runAt.x + 2, y: runAt.y + parts[parts.length - 2].length - 6.6, t: def.course ? 'keep going →' : climbs ? 'on to the boss →' : 'along the battlements →' },
+        look ? { x: startAt.x - 1, y: startAt.y - 3.6, t: `${look.theme.sign} · ${look.layout.hint} · no guns here: stomp` }
+          : { x: climbAt.x + 2, y: climbAt.y + parts[0].length - 4.6, t: def.course ? `${def.name.toUpperCase()} · no guns here · onward →` : castle ? 'THE CASTLE · climb, floor after floor · no guns here' : 'CLIMB THE TOWER ↑ · no guns here: stomp' },
+        ...(look ? [] : [{ x: runAt.x + 2, y: runAt.y + parts[parts.length - 2].length - 6.6, t: def.course ? 'keep going →' : 'along the battlements →' }]),
         ...(def.signs || []).map(s => ({ ...s, x: s.x + arena.x, y: s.y + arena.y })),
       ],
     };
+    if (look) { out.dark = look.theme.dark; out.palette = look.theme.palette; out.towerTheme = look.theme.id; out.towerLayout = look.layout.id; }
     delete out.hordeStop; delete out.course;
     if (flows.length) out.flows = flows;
     return out;

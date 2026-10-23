@@ -400,9 +400,9 @@
   // ---- the grand orchestra ----
   // Under the map, the groves, the worlds, the towers and the castle, the way a castle theme
   // fills a hall: a full pipe organ (its pedal booming the bass two octaves down, its
-  // manuals holding the chords), low brass doubling the tune, a choir singing "ah",
-  // timpani on the downbeats rolling into a crash at the end of every phrase, and a cymbal
-  // swelling into each new section.
+  // manuals holding the chords), low brass doubling the tune, timpani on the downbeats
+  // rolling into a crash at the end of every phrase, and a cymbal swelling into each new
+  // section.
   // A held note (an organ pipe): swells in, holds, lets go.
   function held(f, t, dur, type, v, attack = .04) {
     const o = ac.createOscillator(), g = ac.createGain();
@@ -426,18 +426,6 @@
     fl.connect(g).connect(out);
     for (const d of [-7, 7]) { const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(f, t); o.detune.setValueAtTime(d, t); o.connect(fl); o.start(t); o.stop(t + dur + .15); }
   }
-  // A choir on "ah": a wider, brighter band than the "oo".
-  function choirAh(notes, t, dur, v) {
-    const f = ac.createBiquadFilter(), f2 = ac.createBiquadFilter(), g = ac.createGain();
-    f.type = 'bandpass'; f.frequency.setValueAtTime(800, t); f.Q.setValueAtTime(.7, t);
-    f2.type = 'peaking'; f2.frequency.setValueAtTime(1200, t); f2.gain.setValueAtTime(6, t);
-    g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(v, t + .35); g.gain.setValueAtTime(v, t + dur - .1); g.gain.linearRampToValueAtTime(.0001, t + dur + .4);
-    f.connect(f2).connect(g).connect(out);
-    for (const n of notes) for (const d of [-14, -5, 5, 14]) {
-      const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(hz(n), t); o.detune.setValueAtTime(d, t);
-      o.connect(f); o.start(t); o.stop(t + dur + .45);
-    }
-  }
   // Timpani: a deep drum with a pitch, and the thump of the stick.
   function timp(n, t, v) {
     const o = ac.createOscillator(), g = ac.createGain(), f = hz(n);
@@ -457,7 +445,6 @@
       let ped = root; while (ped > 40) ped -= 12; while (ped < 28) ped += 12;
       held(hz(ped), t, spb * N, 'sine', .07, .06); held(hz(ped) * 2, t, spb * N, 'sine', .035, .06); held(hz(ped) * 3, t, spb * N, 'sine', .01, .06);
       if (!opts.noOrgan) organ(ch.map(n => { let x = n; while (x > 64) x -= 12; while (x < 52) x += 12; return x; }), t, spb * N, .0055);
-      if (bar % 2 === 0) choirAh(ch.slice(0, 3).map(n => { let x = n; while (x > 72) x -= 12; while (x < 60) x += 12; return x; }), t, spb * N * 2, .0045);
       // Timpani on the downbeat (bigger after a roll), and a crash on a new section.
       timp(tp(root), t, bar % 4 === 0 ? .22 : .14);
       if (bar % 8 === 0) noise(t, .05, 1.6, 'highpass', 4200);

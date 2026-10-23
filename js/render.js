@@ -172,6 +172,8 @@
       ctx.fillRect(x + ((off + 16) % 32), y + 17, 2, 15);
     }
 
+    // Stone: its two shades, its top edge (two), its left and right edges.
+    const STONE = ['#5E5173', '#4C4062', '#8F81AB', '#A99CC4', '#6E6186', '#433858'];
     function drawTiles(W, cam, opts) {
       const { x0, x1, y0, y1 } = visibleRange(W, cam);
       const t = (x, y) => LF.tile(W, x, y);
@@ -184,10 +186,12 @@
           ctx.strokeStyle = 'rgba(159,216,255,.35)'; ctx.lineWidth = 1; ctx.setLineDash([3, 4]);
           ctx.strokeRect(x + 2, y + 2, TS - 4, TS - 4); ctx.setLineDash([]);
         } else if (c === '#' || c === 'l') {
-          drawStone(W, tx, ty, x, y, '#5E5173', '#4C4062');
-          if (!looksSolid(t(tx, ty - 1))) { ctx.fillStyle = '#8F81AB'; ctx.fillRect(x, y, TS, 4); ctx.fillStyle = '#A99CC4'; ctx.fillRect(x, y, TS, 1.5); }
-          if (!looksSolid(t(tx - 1, ty)) && tx > 0) { ctx.fillStyle = '#6E6186'; ctx.fillRect(x, y, 2, TS); }
-          if (!looksSolid(t(tx + 1, ty)) && tx < W.w - 1) { ctx.fillStyle = '#433858'; ctx.fillRect(x + TS - 2, y, 2, TS); }
+          // (A level can have stone of its own colours, def.palette: every tower has.)
+          const P = W.def.palette || STONE;
+          drawStone(W, tx, ty, x, y, P[0], P[1]);
+          if (!looksSolid(t(tx, ty - 1))) { ctx.fillStyle = P[2]; ctx.fillRect(x, y, TS, 4); ctx.fillStyle = P[3]; ctx.fillRect(x, y, TS, 1.5); }
+          if (!looksSolid(t(tx - 1, ty)) && tx > 0) { ctx.fillStyle = P[4]; ctx.fillRect(x, y, 2, TS); }
+          if (!looksSolid(t(tx + 1, ty)) && tx < W.w - 1) { ctx.fillStyle = P[5]; ctx.fillRect(x + TS - 2, y, 2, TS); }
           if (c === 'l' && opts.edit) { ctx.strokeStyle = '#9FD8FF'; ctx.lineWidth = 2; ctx.setLineDash([4, 3]); ctx.strokeRect(x + 3, y + 3, TS - 6, TS - 6); ctx.setLineDash([]); }
         } else if (c === 'C') {
           const cr = W.crumbles.find(k => k.tx === tx && k.ty === ty);
