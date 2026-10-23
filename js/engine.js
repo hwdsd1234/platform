@@ -408,7 +408,7 @@
     }
     W.got = {};   // fruit picked up, by type
     // A panel grove (def.panelGame = { mode, syms }): what's under each panel, left to right.
-    if (W.panels && def.panelGame) { W.panels.sort((a, b) => a.tx - b.tx || a.ty - b.ty); W.panels.forEach((q, k) => { q.sym = def.panelGame.syms[k]; }); W.panelBad = 0; }
+    if (W.panels && def.panelGame) { W.panels.sort((a, b) => a.tx - b.tx || a.ty - b.ty); W.panels.forEach((q, k) => { q.sym = def.panelGame.syms[k]; }); W.panelBad = 0; W.panelPeek = def.panelGame.peek || 0; }
     // Back into a level whose lanterns you'd lit last time (def.resume = { lit: [lantern
     // indexes], cp: { tx, ty } }): they're still lit, and you start at the last one.
     if (def.resume) {
@@ -912,12 +912,13 @@
   LF.hitSwitch = hitSwitch;
 
   // Panel groves. Lucky Panels: every panel hides a fruit (yours) or a skull; turn them over
-  // till you've found two skulls (or every fruit). Panel Pairs: turn them over two at a time;
+  // till you've found two skulls (or every fruit). Panel Pairs: a few seconds' peek at them
+  // all to remember where the fruit is, then turn them over two at a time;
   // a pair that matches is two of that fruit for you, one that doesn't flips back, and two
   // bad matches and it's over. (It ends a moment later, so you see what you turned up.)
   function hitPanel(W, tx, ty) {
     const g = W.def.panelGame, pn = (W.panels || []).find(q => q.tx === tx && q.ty === ty);
-    if (!g || !pn || pn.open || W.cleared || W.panelOver || W.panelWait > 0) return;
+    if (!g || !pn || pn.open || W.cleared || W.panelOver || W.panelWait > 0 || W.panelPeek > 0) return;
     const say = (t, c) => W.floaters.push({ x: tx * TS + 16, y: ty * TS - 10, t, life: 1.2, c });
     pn.open = true; pn.pop = 1; W.emit('blink');
     if (g.mode === 'lucky') {
@@ -947,6 +948,8 @@
   function stepPanels(W, dt) {
     if (!W.panels) return;
     for (const q of W.panels) q.pop = Math.max(0, q.pop - dt * 3);
+    // (Panel Pairs starts with a peek: every panel face up for a few seconds, then over.)
+    if (W.panelPeek > 0 && (W.panelPeek -= dt) <= 0) { for (const q of W.panels) q.pop = 1; W.emit('blink'); }
     if (W.panelWait > 0 && (W.panelWait -= dt) <= 0 && W.panelBack) { for (const q of W.panelBack) q.open = false; W.panelBack = null; }
     if (W.panelOver && !W.cleared && (W.panelOver -= dt) <= 0) { W.cleared = true; W.clearedBy = 'panels'; W.emit('clear'); }
   }

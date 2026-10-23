@@ -710,7 +710,7 @@
   const GROVES = {
     grab: { name: 'Fruit Grove', hud: '10 seconds', what: '10 seconds to grab all the fruit you can: it all goes in your inventory' },
     lucky: { name: 'Lucky Panels', hud: 'find two skulls and it’s over', what: 'Bump the panels from below: each hides a fruit (yours to keep) or a skull. Turn up two skulls and it’s over' },
-    pairs: { name: 'Panel Pairs', hud: 'two bad matches and it’s over', what: 'Bump the panels two at a time: a matching pair is two of that fruit for you; two bad matches and it’s over' },
+    pairs: { name: 'Panel Pairs', hud: 'two bad matches and it’s over', what: 'Eight panels, four pairs of fruit: you get a 4-second look at them all first, then bump them two at a time. A matching pair is two of that fruit for you; two bad matches and it’s over' },
   };
   const groveKind = i => ['grab', 'lucky', 'pairs'][Math.max(0, HOUSE_LEVELS.indexOf(+i)) % 3];
   function fruitGrove(i) {
@@ -720,14 +720,15 @@
       const R = LF.rng((Date.now() % 1e9) + i * 31), pick = () => kinds[Math.floor(R() * kinds.length)];
       let syms;
       if (kind === 'lucky') syms = [...Array(9)].map(pick).concat(['☠', '☠', '☠']);
-      else { const six = kinds.slice().sort(() => R() - .5).slice(0, 6); syms = [...six, ...six]; }
+      else { const four = kinds.slice().sort(() => R() - .5).slice(0, 4); syms = [...four, ...four]; }
       for (let k = syms.length - 1; k > 0; k--) { const j = Math.floor(R() * (k + 1)); [syms[k], syms[j]] = [syms[j], syms[k]]; }
       return {
-        name: GROVES[kind].name, dark: .3, timeLimit: 60, noRegrow: true, panelGame: { mode: kind, syms },
-        signs: [{ x: 2, y: 5.4, t: kind === 'lucky' ? 'bump the panels · fruit is yours · two skulls and it’s over' : 'bump two panels · match the fruit · two bad matches and it’s over' }],
+        name: GROVES[kind].name, dark: .3, timeLimit: 60, noRegrow: true, panelGame: { mode: kind, syms, peek: kind === 'pairs' ? 4 : 0 },
+        signs: [{ x: 2, y: 5.4, t: kind === 'lucky' ? 'bump the panels · fruit is yours · two skulls and it’s over' : 'remember where the fruit is! · bump two panels · match the fruit · two bad matches and it’s over' }],
         map: LF.build(44, 14, ({ r, s }) => {
           r(0, 12, 43, 13); s(2, 11, 'P');
-          for (let k = 0; k < 12; k++) s(6 + k * 3, 8, 'ǩ');
+          // (Twelve panels for Lucky Panels; eight, four pairs, for Panel Pairs.)
+          for (let k = 0; k < syms.length; k++) s((kind === 'pairs' ? 8 + k * 4 : 6 + k * 3), 8, 'ǩ');
         }),
       };
     }
