@@ -247,13 +247,13 @@
     const lv = LF.LEVELS[i];
     return !lv.boss && lv.secretTo == null && i % 7 === 4 && LF.WORLDS[lv.world].last !== i;
   });
-  // A fruit house's grove grows back an hour after you were in, by the clock: whether
+  // A fruit house's grove grows back 15 minutes after you were in, by the clock: whether
   // you're playing or not, or the game's even open. (Fruit in a level is different: it only
   // grows back while you're playing that level.) houses[i] = { at: when you were in }.
   // (Visits saved in older ways count as grown back.)
-  const GROVE_REGROW = 60 * 60 * 1000;
+  const GROVE_REGROW = 15 * 60 * 1000;
   const houseUsed = i => !LF.eventIs('regrow') && !!houses[i] && typeof houses[i] === 'object' && houses[i].at != null && Date.now() - houses[i].at < GROVE_REGROW;
-  const regrowIn = i => { const m = Math.ceil((GROVE_REGROW - (Date.now() - houses[i].at)) / 60000); return m >= 60 ? '1 hour' : `${m} min`; };
+  const regrowIn = i => { const m = Math.ceil((GROVE_REGROW - (Date.now() - houses[i].at)) / 60000); return `${m} min`; };
   // (In practice every grove is open and never used up: see also cleared.)
   const groveUsed = i => !practice && houseUsed(i);
   const houseOpen = i => practice || (!!progress[i] && !houseUsed(i));
@@ -887,7 +887,7 @@
         <span class="inv-icon">${FRUIT_ICON[t]}</span><div><b>${f.name} ×${practice ? '∞' : inventory[t] || 0}</b><small>${esc(f.note)}</small></div>
         <button class="mini go-mini" data-use="${t}" ${(practice || (inventory[t] || 0) > 0) && !hardcore ? '' : 'disabled'}>Use</button></li>`).join('')}</ul>
       <p class="lede">${practice ? `Practice is on: every item without end, for practice runs only (your own items stay put). Ready for your next practice run: ${powersText(practiceCarry || {})}` : hardcore ? 'Hardcore is on: no fruit.' : `Ready for your next level: ${powersText(now)}`}</p>
-      <p class="inv-note">Gather fruit in the fruit houses on the map (each one’s grove grows back an hour after you’ve been in, even while you’re away; fruit in a level only grows back while you play it). Powers last until you die and carry on from level to level. Ammo left over when you clear a level carries on too, until you die${hardcore ? '' : ` (you have ${store.get('ammo', 0)})`}.</p>
+      <p class="inv-note">Gather fruit in the fruit houses on the map (each one’s grove grows back 15 minutes after you’ve been in, even while you’re away; fruit in a level only grows back while you play it). Powers last until you die and carry on from level to level. Ammo left over when you clear a level carries on too, until you die${hardcore ? '' : ` (you have ${store.get('ammo', 0)})`}.</p>
     </div>`;
     $('inv-close').addEventListener('click', closeInventory);
     for (const b of $('inv').querySelectorAll('[data-use]')) b.addEventListener('click', () => useItem(b.dataset.use));
@@ -1293,7 +1293,7 @@
     // Follow a secret path you've found: the lamplighter goes to the level it leads to.
     // Stand at a secret cannon you've found (from the level's button on the map).
     warp: d => { const i = +(d.i ?? mapAt); if (LF.LEVELS[i].secretTo != null && secrets[i]) { mapAt = i; mapCannon = { secret: i }; store.set('mapAt', i); renderMap(); } },
-    // Into a fruit house's Fruit Grove (once an hour per house).
+    // Into a fruit house's Fruit Grove (once every 15 minutes per house).
     house: d => { const i = +d.i; if (houseOpen(i)) play(fruitGrove(i), { kind: 'house', i, practice }); },
     items: () => showInventory(),
     // From the clear screen: off to the cannon you've just reached.
