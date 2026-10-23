@@ -102,13 +102,13 @@
   };
   // A fruit's power on the player: apple adds a shield layer (up to 2), orange the jump
   // boost, banana the double jump, watermelon speed, and so on (POWERS). Only one of those
-  // works at a time: a new one takes the place of the last. False if it would add nothing.
+  // works at a time: a new one takes the place of the last (but in a Power Stack event,
+  // see events.js, they pile up). False if it would add nothing.
   LF.applyFruit = (p, type) => {
     if (type === 'a') { if (p.shield >= 2) return false; p.shield++; return true; }
     const k = POWERS[type];
     if (!k || p[k]) return false;
-    if (p.dbl) p.airJumps = Math.max(0, p.airJumps - 1);
-    for (const f of FLAGS) p[f] = 0;
+    if (!(LF.eventIs && LF.eventIs('stack'))) { if (p.dbl) p.airJumps = Math.max(0, p.airJumps - 1); for (const f of FLAGS) p[f] = 0; }
     p[k] = 1; if (k === 'dbl') p.airJumps = Math.max(p.airJumps, 1);
     return true;
   };
@@ -263,7 +263,7 @@
       else if (c === 'k') { W.traps.push({ type: 'crush', x: x * TS + 1, y: y * TS + 1, ox: x * TS + 1, oy: y * TS + 1, w: 30, h: 30, state: 'idle', vy: 0, wait: 0 }); tiles[y][x] = ' '; }
       // q ammo, Q big ammo, $ huge ammo.
       else if (AMMO[c] && def.noAmmo) tiles[y][x] = ' ';
-      else if (AMMO[c]) { W.ammo.push({ big: c !== 'q', huge: c === '$', n: AMMO[c], tx: x, ty: y, x: x * TS + 16, y: y * TS + 20, taken: false }); tiles[y][x] = ' '; }
+      else if (AMMO[c]) { W.ammo.push({ big: c !== 'q', huge: c === '$', n: AMMO[c] * (LF.eventIs && LF.eventIs('ammo') ? 2 : 1), tx: x, ty: y, x: x * TS + 16, y: y * TS + 20, taken: false }); tiles[y][x] = ' '; }
       else if (c === 'T' || c === 'H') { W.blinks.push({ tx: x, ty: y, c, wait: false }); if (c === 'H') tiles[y][x] = 'h'; }
       // ǩ is a grove panel: bump it from below to turn it over (see hitPanel).
       else if (c === 'ǩ') (W.panels ||= []).push({ tx: x, ty: y, sym: null, open: false, done: false, pop: 0 });
@@ -402,7 +402,9 @@
       const pw = def.powers;
       W.player.shield = Math.min(2, pw.shield || 0);
       // (One power at a time: an old save carrying more keeps just the first.)
-      const one = FLAGS.find(k => pw[k]); if (one) W.player[one] = 1;
+      // (...unless a Power Stack event is on: then all of them.)
+      if (LF.eventIs && LF.eventIs('stack')) { for (const k of FLAGS) if (pw[k]) W.player[k] = 1; }
+      else { const one = FLAGS.find(k => pw[k]); if (one) W.player[one] = 1; }
     }
     W.got = {};   // fruit picked up, by type
     // A panel grove (def.panelGame = { mode, syms }): what's under each panel, left to right.
@@ -1087,7 +1089,7 @@
   // value. They fly to the player side by side as one group (n bullets, spaced so you can
   // count them) and arrive together for +n ammo. Hardcore has no ammo, so nothing drops there.
   function dropAmmo(W, e) {
-    const n = LF.ENEMIES[e.type].drop * (W.player.lucky ? 2 : 1);   // (grapes: twice the ammo)
+    const n = LF.ENEMIES[e.type].drop * (W.player.lucky ? 2 : 1) * (LF.eventIs && LF.eventIs('ammo') ? 2 : 1);   // (grapes, or an Ammo Rain event: twice the ammo)
     if (!n || W.def.noSpawnInv || W.def.noAmmo) return;
     W.ammoFly.push({ n, x: e.x + e.w / 2, y: e.y + e.h / 2, vx: (Math.random() - .5) * 80, vy: -300, t: 0 });
   }

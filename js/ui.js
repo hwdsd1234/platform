@@ -252,7 +252,7 @@
   // grows back while you're playing that level.) houses[i] = { at: when you were in }.
   // (Visits saved in older ways count as grown back.)
   const GROVE_REGROW = 60 * 60 * 1000;
-  const houseUsed = i => !!houses[i] && typeof houses[i] === 'object' && houses[i].at != null && Date.now() - houses[i].at < GROVE_REGROW;
+  const houseUsed = i => !LF.eventIs('regrow') && !!houses[i] && typeof houses[i] === 'object' && houses[i].at != null && Date.now() - houses[i].at < GROVE_REGROW;
   const regrowIn = i => { const m = Math.ceil((GROVE_REGROW - (Date.now() - houses[i].at)) / 60000); return m >= 60 ? '1 hour' : `${m} min`; };
   // (In practice every grove is open and never used up: see also cleared.)
   const groveUsed = i => !practice && houseUsed(i);
@@ -579,6 +579,7 @@
     const lit = Object.keys(progress).length, found = Object.keys(secrets).length, total = L.filter(lv => lv.secretTo != null).length;
     const wc = worldCoins(L[mapAt].world);
     $('map-stats').textContent = `World ${L[mapAt].world + 1} of ${LF.WORLDS.length} · ${lit} of ${n} lit · coins here ${wc.have} of ${wc.all} · secret exits ${found} of ${total}${hardcore ? ` · hardcore ${Object.keys(progressHC).length} lit` : ''}`;
+    renderEvent();
     $('map-awards').textContent = `Awards · ${LF.awards.count().earned}/${LF.awards.count().total}`;
     markUpdates();
     $('map-hc').textContent = `Hardcore: ${hardcore ? 'on' : 'off'}`; $('map-hc').classList.toggle('hc-on', hardcore);
@@ -649,6 +650,17 @@
     requestAnimationFrame(step);
   }
 
+  // The event on now (an hour in every three: see events.js), or the next one and when, in
+  // a banner on the map (it counts down while you look).
+  function renderEvent() {
+    let el = $('map-event');
+    if (!el) { el = document.createElement('div'); el.id = 'map-event'; el.className = 'map-event'; $('map-stats').after(el); }
+    const ev = LF.eventNow(), nx = LF.eventNext();
+    el.classList.toggle('on', !!ev);
+    el.innerHTML = ev ? `<b>${ev.icon} ${ev.name}</b> · ${esc(ev.note)} · <em>${LF.eventLeft(ev.ends - Date.now())} left</em>`
+      : `<span>Next event: ${nx.ev.icon} ${nx.ev.name} in ${LF.eventLeft(nx.starts - Date.now())}</span>`;
+  }
+  setInterval(() => { if (screen === 'map') renderEvent(); }, 30000);
   function mapInfo() {
     const L = LF.LEVELS, lv = L[mapAt], p = progress[mapAt], hc = progressHC[mapAt];
     if (mapHouse != null) {
@@ -913,7 +925,8 @@
         <li><kbd>E</kbd> fire: tap for one shot, hold for autofire; shots splash 1 block · <kbd>X</kbd> explosive round (2 ammo, 3-block blast) · <kbd>A</kbd> kill shot (3 ammo): kills whatever it hits in one go, golems and carts too (a boss takes it as one hit) · every shot counts as one hit (a grenade one per blast, up to three), so golems take 3 and TNT carts 5 (stomps count too); a TNT blast kills everything near it but you · <kbd>Q</kbd> bouncing grenade (3 ammo) · <kbd>D</kbd> dynamite (4 ammo): thrown, it falls and sits where it lands, and after a 3-second fuse kills everything within 5 blocks, golems and carts too (a boss takes it as one hit; it never hurts you) · <kbd>Shift</kbd>+<kbd>D</kbd> big dynamite (8 ammo, 10 blocks) · <kbd>W</kbd> nuke (10 ammo): primed right where you are, and after a 3-second fuse it kills everything within 30 blocks (a boss takes it as one hit; it never hurts you) · <kbd>Shift</kbd>+<kbd>W</kbd> big nuke (20 ammo, 60 blocks) · hold any of them to keep firing · hold <kbd>Shift</kbd> for a big shot: 2× size and blast, 2× ammo · ammo crates are hidden through each level; big crates hold 10, huge ones 25; enemies drop 1–5 ammo when killed, more for tougher ones (TNT carts drop none)</li>
         <li>Keys open the locked-door blocks you touch, one block at a time; you keep the key</li>
         <li>Water is safe: you sink slowly and can jump as often as you like</li>
-        <li>Fruit: 🍎 shield (a second apple doubles it) · 🍊 jump boost · 🍌 double jump · 🍉 speed · 🍐 glide (hold <kbd>↑</kbd> or jump while falling; press <kbd>Space</kbd> in mid-air for a small lift, after which you can't glide and fall steadily till you land (wall jumps don't give it back); letting go of <kbd>↑</kbd> and pressing it again just keeps you gliding) · 🍍 spikes don't hurt · 🍇 double ammo from enemies · 🍑 stronger swimming · 🥭 a slower clock · 🍓 wall grip · 🍒 ammo magnet · 🫐 night eyes (twice the light) · 🍅 second chance (a hit with no shield is taken by the tomato, then 5 seconds of speed, a high jump, and touching kills) · only one fruit power besides the apple's shield works at a time: a new fruit takes the place of the last · powers last until you die; powers and leftover ammo carry on to the next level</li>
+        <li>Events: for the first hour of every three hours an event is on (the map shows which, and when the next one starts): 🧺 Double Harvest (grove fruit counts twice) · ✨ Power Stack (fruit powers stack) · 🌱 Quick Groves (groves grow straight back) · 🎯 Ammo Rain (double ammo) · 🕰️ Long Night (60 more seconds on every level clock)</li>
+        <li>Fruit: 🍎 shield (a second apple doubles it) · 🍊 jump boost · 🍌 double jump · 🍉 speed · 🍐 glide (hold <kbd>↑</kbd> or jump while falling; press <kbd>Space</kbd> in mid-air for a small lift, after which you can't glide and fall steadily till you land (wall jumps don't give it back); letting go of <kbd>↑</kbd> and pressing it again just keeps you gliding) · 🍍 spikes don't hurt · 🍇 double ammo from enemies · 🍑 stronger swimming · 🥭 a slower clock · 🍓 wall grip · 🍒 ammo magnet · 🫐 night eyes (twice the light) · 🍅 second chance (a hit with no shield is taken by the tomato, then 5 seconds of speed, a high jump, and touching kills) · only one fruit power besides the apple's shield works at a time: a new fruit takes the place of the last (except in a ✨ Power Stack event) · powers last until you die; powers and leftover ammo carry on to the next level</li>
         <li>Towers have no guns: the boss falls to 3 stomps, but each stomp throws it into a 10-second fury: it glows red and rampages round the arena, leaping (with a slam where it lands) or darting about dropping bombs, and throwing rings of embers, rocks from the ceiling and fire round your feet; then it's worn out and stands dazed for a moment: stomp it then · its last fury (one stomp left) adds its own signature move · the Last Dark takes 5 stomps and you can't stomp it again until it calms down · your ammo waits for you outside</li>
         <li>Neo: when a slab sits right over your ledge, flush with its edge, run off the edge, jump at once and steer straight back in to land on top (miss, and you just drop back)</li>
         <li>Wheels turn their platforms round and round: ride one to the top · in the Sky Roads there's no floor at all, just the long drop</li>
@@ -958,7 +971,8 @@
 
   // A level's clock: 300 seconds; a castle's 400. (A tower's boss arena adds 100 more when
   // you reach it, a castle's 200: see play.)
-  const clockFor = def => def.clock || (def.castle ? 400 : 300);
+  // (A Long Night event adds 60 seconds: see events.js.)
+  const clockFor = def => (def.clock || (def.castle ? 400 : 300)) + (LF.eventIs('clock') ? 60 : 0);
   function play(def, ctx) {
     // Story levels are four times as long (see lengthen.js).
     // (A Star Road level is built from its world's level, already as long: special.js.)
@@ -1046,13 +1060,15 @@
       setVisible({ hud: true, overlay: true });
       houses[playCtx.i] = { at: Date.now() }; store.set('houses', houses);
       LF.awards.grove();
-      const got = Object.entries(W.got).filter(([, n]) => n > 0);
+      // (A Double Harvest event: every fruit counts twice.)
+      const twice = LF.eventIs('harvest') ? 2 : 1;
+      const got = Object.entries(W.got).filter(([, n]) => n > 0).map(([t, n]) => [t, n * twice]);
       for (const [t, n] of got) inventory[t] = Math.min(INV_MAX, (inventory[t] || 0) + n);
       store.set('inventory', inventory);
       mapHouse = null;
       const why = W.clearedBy === 'time' ? 'time’s up' : W.panelBad >= 2 ? (W.def.panelGame.mode === 'lucky' ? 'two skulls' : 'two bad matches') : 'every one found!';
       card(`<p class="eyebrow">${esc(W.def.name)} · ${why}</p><h2>${got.length ? 'A good haul' : 'Nothing this time'}</h2>
-        <p class="lede">${got.length ? 'Into your inventory: ' + got.map(([t, n]) => `${FRUIT_ICON[t]} ×${n}`).join(' · ') : 'The fruit got away.'} Press <kbd>Tab</kbd> on the map to use it (not in a level).</p>
+        <p class="lede">${got.length ? 'Into your inventory: ' + got.map(([t, n]) => `${FRUIT_ICON[t]} ×${n}`).join(' · ') + (twice > 1 ? ' (doubled: 🧺 Double Harvest)' : '') : 'The fruit got away.'} Press <kbd>Tab</kbd> on the map to use it (not in a level).</p>
         <div class="menu"><button class="go" data-act="menu">Back to the map</button></div>`);
       return;
     }
