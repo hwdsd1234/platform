@@ -291,9 +291,7 @@
         const hidden = [rows[y][x - 1], rows[y][x + 1], rows[y - 1]?.[x]].includes('l');
         W.secret = { tx: x, ty: y, x: x * TS, y: (y - 1) * TS + 4, w: 32, h: 60, open: true, glow: 1, secret: true, hidden };
         tiles[y][x] = hidden ? 'l' : ' ';
-        // (Out in the open, it's there to see from the start: it's getting to it that's hard.
-        // Only one behind a false wall, in a level from the editor, waits to be found.)
-        if (!hidden) W.secretSeen = true;
+        // (It's a secret: nothing shows it till you find it (see below).)
       }
       else if (c === 'M' || c === 'V') {
         W.plats.push({ axis: c === 'M' ? 'x' : 'y', x: x * TS, y: y * TS, ox: x * TS, oy: y * TS, w: TS * 2, h: 12, v: 70, dir: 1, dx: 0, dy: 0, prevY: y * TS });

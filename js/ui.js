@@ -485,12 +485,14 @@
         <rect x="-13" y="-16" width="26" height="18" rx="2" class="walls"/><path d="M-17 -16 L0 -30 L17 -16 Z" class="roof"/>
         <path d="M-4 2 v-9 a4 4 0 0 1 8 0 v9 Z" class="door"/><circle cx="0" cy="-22" r="3.5" class="fruit"/></g>`;
     }
-    // Secret cannons: always there to see, dim until you find their level's secret exit.
-    // Then a gold path runs from the level to its cannon, and its arc to the faraway world.
+    // Secret cannons: nowhere to be seen until you find their level's secret exit (no
+    // giving away which levels have one). Then it's there, a gold path from the level to it,
+    // and its arc to the faraway world.
     for (const [i, c] of Object.entries(secretCannons)) {
-      const found = !!secrets[i], a = pos[i], to = pos[L[i].secretTo];
-      if (found) out += `<path class="warp" d="M${a.x} ${a.y} L${c.x} ${c.y}"/><path class="arc open secret" d="${arcPath(c, to)}"/>`;
-      out += cannonSvg(c, to.x < c.x ? -1 : 1, `data-secret="${i}"`, found ? ' secret found' : ' secret');
+      if (!secrets[i]) continue;
+      const a = pos[i], to = pos[L[i].secretTo];
+      out += `<path class="warp" d="M${a.x} ${a.y} L${c.x} ${c.y}"/><path class="arc open secret" d="${arcPath(c, to)}"/>`;
+      out += cannonSvg(c, to.x < c.x ? -1 : 1, `data-secret="${i}"`, ' secret found');
     }
     // Chapter names where each chapter starts, run the way the path goes (unless that's
     // off the edge) and clear of the lamplighter. (Ones that collide are moved below.)
@@ -512,14 +514,12 @@
     const { adj } = mapLayout();
     L.forEach((lv, i) => { if (adj[i].length >= 3) out += `<g class="xroad${unlocked(i) ? ' open' : ''}" transform="translate(${pos[i].x} ${pos[i].y})"><circle r="24"/><circle class="cobble" r="17"/></g>`; });
     // The stops: lamp posts (unlit until cleared), towers for boss fights, a castle at the
-    // end. A star marks a secret exit you've found; a blue ? one still hiding in a level
-    // you've cleared.
+    // end. A star marks a secret exit you've found (nothing marks one you haven't).
     L.forEach((lv, i) => {
       const p = pos[i], r = stopR(lv), state = !unlocked(i) ? 'locked' : progress[i] ? 'lit' : 'open';
       const cls = ['stop', state, lv.boss ? 'boss' : '', i === mapAt && !mapCannon && mapHouse == null ? 'at' : ''].join(' ');
       let badge = '';
       if (secrets[i]) badge = `<text class="badge found" x="${r + 2}" y="${-r - 14}">★</text>`;
-      else if (lv.secretTo != null && progress[i]) badge = `<text class="badge hint" x="${r + 2}" y="${-r - 14}">?</text>`;
       // (Each kind of fruit that grows there, as its picture on a badge of its colour, in a
       // row over the stop.)
       const fr = fruitsIn(i), x0 = -(fr.length - 1) * 10;
@@ -673,7 +673,7 @@
       $('map-info').querySelector('[data-act]').addEventListener('click', () => { initAudio(); if (!mapBusy) ACTIONS.cannon(mapCannon); });
       return;
     }
-    const secret = lv.secretTo == null ? '' : secrets[mapAt] ? ` · secret exit found ★ (its cannon reaches World ${lv.secretWorld + 1})` : p ? ' · a secret exit hides here' : '';
+    const secret = lv.secretTo == null ? '' : secrets[mapAt] ? ` · secret exit found ★ (its cannon reaches World ${lv.secretWorld + 1})` : '';
     const fork = near(mapAt).length > 2 ? ` · a crossroads: ${near(mapAt).length} paths` : '';
     $('map-info').innerHTML = `<div>
         <small>World ${lv.world + 1} · chapter ${roman(chapterIndex(mapAt))} · ${esc(lv.chapter)} · level ${mapAt + 1} · key ${levelKey(lv.name)}</small>
