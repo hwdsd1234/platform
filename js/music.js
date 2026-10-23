@@ -1,7 +1,8 @@
-// Lanternfall: music. Every track is composed on the fly from a seed: a chord progression,
-// a melody that walks over it (landing on the chord's notes on the strong beats), a bass
-// line, a soft pad and a few drums, eight bars that loop. Each world has its own key, mode
-// and tempo; boss towers, the castle, the map and the fruit groves have their own too.
+// Lanternfall: music. Every track is composed on the fly from a seed. It's all night out
+// there, so the map, the groves and the worlds play night music (nightBars, playNight):
+// minor-key waltzes, lullabies and dirges on a music box, theremin, glass harmonica, reed,
+// harpsichord or organ, over harps, plucked basses, choirs and drones, each world its own.
+// Towers, the castle and the boss fights have their own themes.
 // Played with Web Audio through a little look-ahead scheduler. No DOM. ui.js hands over its
 // AudioContext (LF.music.attach) once you've pressed something, and says what to play.
 (() => {
@@ -10,36 +11,44 @@
   const SCALES = {
     major: [0, 2, 4, 5, 7, 9, 11], minor: [0, 2, 3, 5, 7, 8, 10], dorian: [0, 2, 3, 5, 7, 9, 10],
     lydian: [0, 2, 4, 6, 7, 9, 11], mixo: [0, 2, 4, 5, 7, 9, 10], harmonic: [0, 2, 3, 5, 7, 8, 11],
-    phrygian: [0, 1, 3, 5, 7, 8, 10],
   };
   // Chord progressions (scale degrees of each bar's chord), per mode.
   const PROGS = {
     major: [[0, 5, 3, 4], [0, 3, 4, 3], [0, 4, 5, 3]], minor: [[0, 5, 2, 6], [0, 3, 6, 4], [0, 6, 5, 4]],
     dorian: [[0, 3, 0, 6], [0, 6, 3, 4]], lydian: [[0, 1, 0, 4], [0, 1, 5, 4]], mixo: [[0, 6, 3, 0], [0, 3, 6, 4]],
-    harmonic: [[0, 0, 5, 4], [0, 3, 4, 4]], phrygian: [[0, 1, 0, 6], [0, 1, 5, 4], [0, 5, 1, 0]],
+    harmonic: [[0, 0, 5, 4], [0, 3, 4, 4]],
   };
-  // What each track is: mode, root note (MIDI), tempo, feel (calm: pad and soft hats;
-  // drive: full drums; sky; spooky; grand; fight), and a seed. `night`: it's all night out
-  // there, so the map, the groves and every world are in dark keys, with a ghostly echo on
-  // the tune, wind, a far-off bell and a music box (see playStep). (Towers and the castle
-  // have their own sound.)
+  // What each track is: mode, root note (MIDI), tempo, feel (spooky: a tower; grand: the
+  // castle; fight; night: see NIGHT), and a seed.
   const TRACKS = {
-    map: { mode: 'minor', root: 57, bpm: 84, feel: 'calm', seed: 11, night: true },
-    grove: { mode: 'dorian', root: 62, bpm: 138, feel: 'drive', seed: 77, night: true },
+    // The map, the groves and the worlds: night music (see NIGHT): the meter (3: a waltz or a
+    // lullaby, 4), the chords of its A and B sections (see PROGS_NIGHT), what plays the tune,
+    // what goes under it (comp), a choir or organ holding the chords (pad) and any drum.
+    map: { feel: 'night', root: 57, bpm: 76, meter: 3, a: 'lament', b: 'shadow', lead: 'box', comp: 'lullaby', pad: 'choir', seed: 11 },
+    grove: { feel: 'night', root: 62, bpm: 132, meter: 4, a: 'creep', b: 'phryg', lead: 'celesta', comp: 'march', seed: 77 },
     // Towers: the climb and battlements (spooky); the castle's climb (grand, an organ and
     // brass march). (Every boss fight plays the boss theme, BOSS; the final boss has its own.)
     tower: { mode: 'harmonic', root: 57, bpm: 108, feel: 'spooky', seed: 31 },
     castle: { mode: 'harmonic', root: 50, bpm: 100, feel: 'grand', seed: 41 },
     final: { mode: 'harmonic', root: 50, bpm: 160, feel: 'fight', seed: 99 },
-    world0: { mode: 'minor', root: 60, bpm: 98, feel: 'drive', seed: 1, night: true },      // Old Town
-    world1: { mode: 'dorian', root: 58, bpm: 94, feel: 'drive', seed: 2, night: true },     // the Waterfront
-    world2: { mode: 'harmonic', root: 57, bpm: 106, feel: 'drive', seed: 3, night: true },  // the Clockwork Quarter
-    world3: { mode: 'minor', root: 64, bpm: 104, feel: 'sky', seed: 4, night: true },       // the Sky Roads
-    world4: { mode: 'phrygian', root: 59, bpm: 96, feel: 'drive', seed: 5, night: true },   // the Canal District
-    world5: { mode: 'dorian', root: 61, bpm: 102, feel: 'drive', seed: 6, night: true },    // the Garden Market
-    world6: { mode: 'harmonic', root: 55, bpm: 104, feel: 'drive', seed: 7, night: true },  // the Smokelands
-    world7: { mode: 'phrygian', root: 57, bpm: 110, feel: 'drive', seed: 8, night: true },  // the Glass Mines
-    world8: { mode: 'harmonic', root: 53, bpm: 88, feel: 'drive', seed: 9, night: true },   // Night's End
+    // Old Town: a haunted harpsichord waltz.
+    world0: { feel: 'night', root: 60, bpm: 138, meter: 3, a: 'waltz', b: 'shadow', lead: 'harpsi', comp: 'waltz', pad: 'organ', seed: 1 },
+    // The Waterfront: a theremin over a harp rippling like the tide.
+    world1: { feel: 'night', root: 58, bpm: 84, meter: 4, a: 'drift', b: 'lament', lead: 'theremin', comp: 'arp', pad: 'choir', drum: 'tide', seed: 2 },
+    // The Clockwork Quarter: a wound-up music box, the clocks ticking.
+    world2: { feel: 'night', root: 57, bpm: 104, meter: 4, a: 'creep', b: 'waltz', lead: 'box', comp: 'tick', seed: 3 },
+    // The Sky Roads: a glass harmonica over a choir, high in the dark.
+    world3: { feel: 'night', root: 64, bpm: 84, meter: 3, a: 'drift', b: 'shadow', lead: 'glass', comp: 'arp', pad: 'choir', seed: 4 },
+    // The Canal District: a low reed creeping along over a walking bass.
+    world4: { feel: 'night', root: 59, bpm: 92, meter: 4, a: 'phryg', b: 'lament', lead: 'reed', comp: 'walk', drum: 'brush', seed: 5 },
+    // The Garden Market: a celesta waltz in the moonlight.
+    world5: { feel: 'night', root: 61, bpm: 126, meter: 3, a: 'waltz', b: 'drift', lead: 'celesta', comp: 'waltz', pad: 'choir', seed: 6 },
+    // The Smokelands: a theremin over an organ drone and a heartbeat.
+    world6: { feel: 'night', root: 55, bpm: 88, meter: 4, a: 'shadow', b: 'creep', lead: 'theremin', comp: 'drone', pad: 'organ', drum: 'heart', seed: 7 },
+    // The Glass Mines: a glass harmonica over a harp.
+    world7: { feel: 'night', root: 57, bpm: 96, meter: 4, a: 'phryg', b: 'shadow', lead: 'glass', comp: 'arp', drum: 'drip', seed: 8 },
+    // Night's End: a slow dirge, organ and choir, a bell tolling.
+    world8: { feel: 'night', root: 53, bpm: 66, meter: 3, a: 'lament', b: 'shadow', lead: 'organ', comp: 'drone', pad: 'choir', drum: 'toll', seed: 9 },
   };
   const RHYTHMS = [[0, 3, 6, 8, 10, 12, 14], [0, 2, 4, 6, 8, 11, 12, 14], [0, 4, 6, 8, 12, 14], [0, 2, 3, 6, 8, 10, 12], [0, 3, 4, 8, 11, 12]];
 
@@ -161,6 +170,77 @@
     });
   }
 
+  // ---- night music ----
+  // Chord progressions for the night tunes, eight bars each: [semitones above the key's root,
+  // kind] (m minor, M major, d diminished, mM7/m7/m6 the minor chord with its seventh sliding
+  // down, the old spy-film creep). lament: down the minor scale to the dominant; shadow: the
+  // minor chord sliding to the one a major third below and back, then the Neapolitan; phryg:
+  // rocking on the flat second; waltz: round the minor key; drift: minor, its relative major,
+  // the sixth and the dominant; creep: the minor chord with a line falling inside it.
+  const QUAL = { m: [0, 3, 7], M: [0, 4, 7], d: [0, 3, 6], mM7: [0, 3, 7, 11], m7: [0, 3, 7, 10], m6: [0, 3, 7, 9] };
+  const PROGS_NIGHT = {
+    lament: [[0, 'm'], [10, 'M'], [8, 'M'], [7, 'M'], [0, 'm'], [10, 'M'], [8, 'M'], [7, 'M']],
+    shadow: [[0, 'm'], [8, 'm'], [0, 'm'], [8, 'm'], [5, 'm'], [1, 'M'], [7, 'M'], [7, 'M']],
+    phryg: [[0, 'm'], [1, 'M'], [0, 'm'], [1, 'M'], [10, 'm'], [8, 'M'], [1, 'M'], [0, 'm']],
+    waltz: [[0, 'm'], [5, 'm'], [7, 'M'], [0, 'm'], [8, 'M'], [2, 'd'], [7, 'M'], [0, 'm']],
+    drift: [[0, 'm'], [3, 'M'], [8, 'M'], [7, 'M'], [0, 'm'], [3, 'M'], [5, 'm'], [7, 'M']],
+    creep: [[0, 'm'], [0, 'mM7'], [0, 'm7'], [0, 'm6'], [5, 'm'], [5, 'm6'], [7, 'M'], [7, 'M']],
+  };
+  // Tune rhythms, [step, length] in a bar (4 steps a beat), for 3 and for 4 beats a bar; and
+  // a phrase's ending, a long note.
+  const NIGHT_RH = {
+    3: [[[0, 6], [6, 2], [8, 4]], [[0, 4], [4, 4], [8, 4]], [[0, 8], [8, 2], [10, 2]], [[0, 2], [2, 2], [4, 8]], [[0, 6], [6, 6]]],
+    4: [[[0, 6], [6, 2], [8, 8]], [[0, 4], [4, 2], [6, 2], [8, 8]], [[0, 3], [3, 3], [6, 2], [8, 4], [12, 4]], [[0, 8], [8, 4], [12, 4]], [[0, 2], [2, 2], [4, 4], [8, 6], [14, 2]]],
+  };
+  const NIGHT_END = { 3: [[0, 4], [4, 8]], 4: [[0, 4], [4, 12]] };
+  // 24 bars: A (a two-bar motif, played over each pair of chords, the tune following the
+  // chords, ending its phrases on long notes), B (a motif of its own over its chords, a
+  // little higher), then A again with a new ending. The motif is a rhythm and a shape: how
+  // many chord notes up or down each note goes (and now and then a note leaning in from a
+  // semitone below the next, the creep that makes it sound haunted).
+  function nightBars(t, R) {
+    const N = t.meter * 4, rhs = NIGHT_RH[t.meter];
+    const chordOf = ([off, q]) => { const r = t.root + off - (off > 6 ? 12 : 0); return { r, tones: QUAL[q].map(d => r + d) }; };
+    const motif = () => [0, 1].map(() => { const rh = rhs[Math.floor(R() * rhs.length)]; return rh.map(([st, len], k) => ({ st, len, step: k ? [-2, -1, -1, 1, 1, 2][Math.floor(R() * 6)] : 0, lean: k && R() < .3 })); });
+    // (The tune moves by step through the key (harmonic minor), landing on the chord's notes
+    // at the top of the bar and on long notes, and is drawn back towards the middle when it
+    // strays too high or low.)
+    const KEY = [0, 2, 3, 5, 7, 8, 11], mid = t.root + 16;
+    let prev = mid;
+    const realize = (notes, ch, lift) => {
+      const pcs = ch.tones.map(n => ((n % 12) + 12) % 12), lo = t.root + 7 + lift, hi = t.root + 26 + lift;
+      const scale = [], tones = [];
+      for (let n = lo; n <= hi; n++) { const pc = (((n - t.root) % 12) + 12) % 12; if (KEY.includes(pc) || pcs.includes(n % 12)) scale.push(n); if (pcs.includes(n % 12)) tones.push(n); }
+      const near = (list, n) => list.reduce((a, b) => (Math.abs(b - n) < Math.abs(a - n) ? b : a));
+      const lead = Array(N).fill(null), len = Array(N).fill(0);
+      notes.forEach(({ st, len: l, step }, k) => {
+        let d = step;
+        if ((prev > mid + 5 && d > 0) || (prev < mid - 6 && d < 0)) d = -d;
+        let n;
+        if (k === 0 || l >= 4) n = near(tones.length > 1 ? tones.filter(x => x !== prev) : tones, prev + d * 2);
+        else { const at = scale.indexOf(near(scale, prev)); n = scale[Math.max(0, Math.min(scale.length - 1, at + d))]; }
+        lead[st] = n; len[st] = l; prev = n;
+      });
+      // (Leaning notes: a semitone under the note after.)
+      notes.forEach(({ st, lean }, k) => { const nx = notes[k + 1]; if (lean && nx && lead[nx.st] - 1 !== lead[notes[k - 1]?.st]) lead[st] = lead[nx.st] - 1; });
+      prev = lead[notes[notes.length - 1].st];
+      return { lead, len };
+    };
+    const ending = ch => NIGHT_END[t.meter].map(([st, len], k) => ({ st, len, step: k ? (R() < .5 ? -1 : 1) : 0 }));
+    const section = (prog, mot, lift, newEnd) => prog.map((c, k) => {
+      const ch = chordOf(c), end = k === 3 || k === 7;
+      let { lead, len } = realize(end ? ending(ch) : mot[k % 2], ch, lift);
+      // (A phrase ends on the chord's root.)
+      if (end) { const st = NIGHT_END[t.meter][1][0], pcs = ch.r % 12; let n = lead[st]; while (n % 12 !== pcs) n--; lead[st] = n; prev = n; }
+      if (newEnd && k >= 6 && !end) ({ lead, len } = realize(rhs.map(r => r)[Math.floor(R() * rhs.length)].map(([st, l], j) => ({ st, len: l, step: j ? -1 : 0 })), ch, lift));
+      return { lead, len, chord: ch.tones, root: ch.r };
+    });
+    const A = motif(), B = motif(), pa = PROGS_NIGHT[t.a], pb = PROGS_NIGHT[t.b];
+    const bars = [...section(pa, A, 0), ...section(pb, B, 2), ...section(pa, A, 0, true)];
+    bars.forEach((b, k) => { b.next = bars[(k + 1) % bars.length].root; });
+    return bars;
+  }
+
   const cache = {};
   function compose(name) {
     if (cache[name]) return cache[name];
@@ -168,6 +248,7 @@
     if (name.startsWith('fight:')) return cache[name] = cache.boss || (cache.boss = { mode: 'minor', root: 52, bpm: 176, feel: 'fight', bars: bossBars() });
     const t = TRACKS[name] || TRACKS.map, R = LF.rng(t.seed * 7919 + 13), scale = SCALES[t.mode];
     // (Fights, the towers and the castle are all built on a hook, so they stick.)
+    if (t.feel === 'night') return cache[name] = { ...t, steps: t.meter * 4, bars: nightBars(t, R) };
     if (t.feel === 'grand') return cache[name] = { ...t, bars: castleBars() };
     if (t.feel === 'fight') return cache[name] = { ...t, bars: composeFight(t, R) };
     if (t.feel === 'spooky') {
@@ -220,8 +301,7 @@
       const bass = Array(16).fill(null);
       if (t.feel === 'boss') for (let s = 0; s < 16; s += 2) bass[s] = pitch(c) - 24 + (s % 8 === 6 ? 7 : 0);
       else if (t.feel === 'sky') bass[0] = pitch(c) - 24;
-      // (At night the bass leans on the tritone, the devil's interval, every other bar.)
-      else for (const s of [0, 4, 8, 12]) bass[s] = pitch(c) - 24 + (s === 8 && t.feel !== 'calm' ? (t.night && k % 2 ? 6 : 7) : 0);
+      else for (const s of [0, 4, 8, 12]) bass[s] = pitch(c) - 24 + (s === 8 && t.feel !== 'calm' ? 7 : 0);
       return { lead, bass, chord: chordTones(c).map(d => pitch(d) - 12) };
     });
     return cache[name] = { ...t, bars };
@@ -278,23 +358,103 @@
     g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(v, t + .05); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
     o.connect(g).connect(out); o.start(t); o.stop(t + dur + .05); lfo.start(t); lfo.stop(t + dur + .05);
   }
-  // Night: what makes the map, groves and worlds spooky. The tune echoed late and quiet on a
-  // wavering ghost of a voice, a slow wind rising and falling, a deep far-off bell tolling
-  // every eight bars, and a music box picking at the chord (with a tritone that doesn't
-  // belong) high up at the end of every other bar.
-  function night(tr, b, s, bar, t, spb) {
-    if (b.lead[s]) theremin(hz(b.lead[s] + 12), t + spb * 3, spb * 3, .012);
-    if (s === 0 && bar % 4 === 0) noise(t, .018, spb * 30, 'bandpass', 380 + (bar % 8) * 40, true);
-    if (s === 0 && bar % 8 === 0) { voice(hz(tr.root - 24), t, spb * 24, 'sine', .045, .005); voice(hz(tr.root - 24) * 2.76, t, spb * 10, 'sine', .014, .005); voice(hz(tr.root - 24) * 5.4, t, spb * 5, 'sine', .006, .005); }
-    if (bar % 2 === 1 && s >= 12 && s % 2 === 0) voice(hz(b.chord[0] + 24 + [0, 6][(s / 2) % 2]), t, spb * 2, 'triangle', .01, .003);
+  // ---- night instruments ----
+  // A voice through a low-pass filter (reeds, the harpsichord).
+  function fvoice(f, t, dur, type, v, attack, cut) {
+    const o = ac.createOscillator(), fl = ac.createBiquadFilter(), g = ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t); fl.type = 'lowpass'; fl.frequency.setValueAtTime(cut, t);
+    g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(v, t + attack); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(fl).connect(g).connect(out); o.start(t); o.stop(t + dur + .05);
+  }
+  // A choir singing "oo": detuned saws through a narrow band, swelling in slowly.
+  function choir(notes, t, dur, v) {
+    const f = ac.createBiquadFilter(), g = ac.createGain();
+    f.type = 'bandpass'; f.frequency.setValueAtTime(700, t); f.Q.setValueAtTime(1.2, t);
+    g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(v, t + dur * .4); g.gain.linearRampToValueAtTime(.0001, t + dur + .4);
+    f.connect(g).connect(out);
+    for (const n of notes) for (const d of [-12, 0, 12]) {
+      const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(hz(n), t); o.detune.setValueAtTime(d, t);
+      o.connect(f); o.start(t); o.stop(t + dur + .45);
+    }
+  }
+  // A glass harmonica: a pure tone that blooms in slowly and shivers.
+  function glass(f, t, dur, v) {
+    const o = ac.createOscillator(), g = ac.createGain(), lfo = ac.createOscillator(), lg = ac.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(f, t); lfo.frequency.setValueAtTime(4.2, t); lg.gain.setValueAtTime(f * .006, t); lfo.connect(lg).connect(o.frequency);
+    g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(v, t + Math.min(.15, dur * .3)); g.gain.exponentialRampToValueAtTime(.0001, t + dur + .3);
+    o.connect(g).connect(out); o.start(t); o.stop(t + dur + .35); lfo.start(t); lfo.stop(t + dur + .35);
+    voice(f * 2, t, dur * .6, 'sine', v * .2, .1);
+  }
+  const LEADS = {
+    // A music box: a bright little ping with a tinny overtone.
+    box: (f, t, d) => { voice(f * 2, t, Math.max(.9, d), 'sine', .05, .002); voice(f * 8, t, .25, 'sine', .008, .002); },
+    celesta: (f, t, d) => { voice(f * 2, t, Math.max(1.2, d), 'sine', .045, .003); voice(f * 4, t, .5, 'sine', .014, .003); },
+    theremin: (f, t, d) => theremin(f, t, d * .95 + .1, .05),
+    glass: (f, t, d) => glass(f * 2, t, d * .95, .045),
+    reed: (f, t, d) => fvoice(f, t, d * .95 + .08, 'square', .03, .04, 1100),
+    harpsi: (f, t, d) => { fvoice(f, t, Math.min(.7, d + .2), 'sawtooth', .042, .002, 3200); fvoice(f * 2, t, .35, 'sawtooth', .01, .002, 3200); },
+    organ: (f, t, d) => { for (const [m, v] of [[1, .03], [2, .016], [3, .008]]) voice(f * m, t, d * .98 + .2, 'sine', v, .06); },
+  };
+  const harp = (n, t, v = .03) => voice(hz(n), t, 1.4, 'triangle', v, .003);
+  const pizz = (n, t, v = .09) => voice(hz(n), t, .28, 'triangle', v, .003);
+  function playNight(tr, b, s, bar, t, spb) {
+    const N = tr.steps, ch = b.chord, lowR = b.root - 24 + (b.root - 24 < 33 ? 12 : 0);
+    // Choir or organ holding the bar's chord.
+    if (s === 0 && tr.pad === 'choir') choir(ch.map(n => n - 12), t, spb * N, .006);
+    if (s === 0 && tr.pad === 'organ') for (const n of ch) for (const [m, v] of [[1, .009], [2, .004]]) voice(hz(n - 12) * m, t, spb * N, 'sine', v, .15);
+    // The tune.
+    if (b.lead[s]) LEADS[tr.lead](hz(b.lead[s] - 12), t, spb * b.len[s]);
+    // Under it.
+    const beat = s % 4 === 0, k = s / 4;
+    switch (tr.comp) {
+      case 'lullaby':   // a deep note, then the chord rocked on a harp
+        if (s === 0) voice(hz(lowR), t, spb * N, 'sine', .08, .02);
+        if (s === 4 || s === 8) { harp(ch[1], t, .025); harp(ch[2], t, .02); }
+        break;
+      case 'waltz':     // oom-pah-pah: a plucked bass, two soft chords
+        if (s === 0) pizz(lowR + (bar % 2 ? 7 : 0), t, .1);
+        if (s === 4 || s === 8) for (const n of ch) fvoice(hz(n), t, .3, 'triangle', .014, .004, 2400);
+        break;
+      case 'arp': {     // a harp rippling up and down the chord
+        if (s === 0) voice(hz(lowR), t, spb * N, 'sine', .07, .03);
+        const up = ch.length > 3 ? ch : [...ch, ch[0] + 12], seq = [0, 1, 2, 3, 2, 1, 0, 1];
+        if (s % 2 === 0) harp(up[seq[(s / 2) % 8]], t, .022);
+        break;
+      }
+      case 'march':     // tiptoeing: a plucked bass, staccato chords and a soft drum
+        if (s === 0 || s === 8) pizz(lowR + (s ? 7 : 0), t);
+        if (s === 4 || s === 12) for (const n of ch) fvoice(hz(n), t, .18, 'triangle', .016, .003, 2600);
+        if (s === 0 || s === 8) kick(t, .1);
+        if (s % 4 === 2) noise(t, .006, .03, 'highpass', 7000);
+        break;
+      case 'tick':      // the plucked bass on the beat, a clock ticking and tocking
+        if (beat) pizz(lowR + (k % 2 ? 7 : 0), t);
+        if (s % 2 === 0) noise(t, .02, .02, 'bandpass', s % 4 ? 1700 : 3200);
+        break;
+      case 'walk': {    // a plucked bass walking: root, third, fifth, and a semitone into the next
+        const nx = b.next - 24 + (b.next - 24 < 33 ? 12 : 0);
+        if (beat) pizz([lowR, lowR + (ch[1] - ch[0]), lowR + 7, nx - 1][k], t, .1);
+        break;
+      }
+      case 'drone':     // a low pedal on the key's root under everything
+        if (s === 0) { voice(hz(tr.root - 24), t, spb * N + .2, 'sine', .07, .1); voice(hz(tr.root - 17), t, spb * N + .2, 'sine', .025, .1); }
+        break;
+    }
+    switch (tr.drum) {
+      case 'heart': if (s === 0) kick(t, .14); if (s === 3) kick(t, .09); break;
+      case 'brush': if (s % 4 === 2) noise(t, .008, .12, 'bandpass', 3000); if (s === 0) kick(t, .06); break;
+      case 'tide': if (s === 0 && bar % 2 === 0) noise(t, .016, spb * N * 2, 'lowpass', 600, true); break;
+      case 'drip': if ((bar * 7 + s * 3) % 23 === 0) voice(hz(tr.root + 36 + (s % 5)), t, .12, 'sine', .02, .001); break;
+      case 'toll': if (s === 0 && bar % 2 === 0) { voice(hz(tr.root - 12), t, spb * N * 1.5, 'sine', .05, .003); voice(hz(tr.root - 12) * 2.76, t, spb * 6, 'sine', .014, .003); voice(hz(tr.root - 12) * 5.4, t, spb * 3, 'sine', .006, .003); } break;
+    }
   }
   function playStep(tr, i, t) {
+    if (tr.feel === 'night') { const N = tr.steps; return playNight(tr, tr.bars[Math.floor(i / N)], i % N, Math.floor(i / N), t, 60 / tr.bpm / 4 / (fast ? 1.3 : 1)); }
     const b = tr.bars[Math.floor(i / 16)], s = i % 16, spb = 60 / tr.bpm / 4 / (fast ? 1.3 : 1), bar = Math.floor(i / 16);
     // Under every track: strings on each bar's chord (an octave of it, with the root below);
     // and, but for the gentle ones, timpani at the top of each phrase and a cymbal swelling
     // into the loop's return.
     if (s === 0) pad([b.chord[0] - 12, ...b.chord, b.chord[0] + 12], t, spb * 16, STRINGS[tr.feel] || .01);
-    if (tr.night) night(tr, b, s, bar, t, spb);
     if (tr.feel !== 'calm' && tr.feel !== 'sky') {
       if (s === 0 && bar % 4 === 0) { tom(t, hz(b.chord[0] - 24) * 2, .24); tom(t + spb, hz(b.chord[0] - 24) * 2, .16); }
       if (bar === tr.bars.length - 1 && s === 8) noise(t, .035, spb * 8, 'highpass', 4000, true);
@@ -351,8 +511,7 @@
       if (s === 0 && bar % 8 === 0) noise(t, .05, .6, 'highpass', 5000);
       return;
     }
-    if (b.lead[s] && tr.night && tr.feel === 'calm') theremin(hz(b.lead[s]), t, spb * 3.5, .045);
-    else if (b.lead[s]) voice(hz(b.lead[s]), t, spb * (tr.feel === 'calm' ? 3.5 : 2.2), tr.feel === 'calm' ? 'triangle' : 'square', tr.feel === 'calm' ? .05 : tr.night ? .018 : .022);
+    if (b.lead[s]) voice(hz(b.lead[s]), t, spb * (tr.feel === 'calm' ? 3.5 : 2.2), tr.feel === 'calm' ? 'triangle' : 'square', tr.feel === 'calm' ? .05 : .022);
     // (A horn doubling the tune an octave down.)
     if (b.lead[s] && tr.feel === 'drive') voice(hz(b.lead[s] - 12), t, spb * 2.4, 'sawtooth', .012, .02);
     if (b.bass[s]) voice(hz(b.bass[s]), t, spb * (tr.feel === 'boss' ? 1.8 : 3.6), 'triangle', .07);
@@ -372,7 +531,7 @@
     if (nextT < ac.currentTime) nextT = ac.currentTime + .05;
     while (nextT < ac.currentTime + .15) {
       if (level() > 0 && nextT >= quietTill) playStep(track, step, nextT);
-      nextT += spb; step = (step + 1) % (track.bars.length * 16);
+      nextT += spb; step = (step + 1) % (track.bars.length * (track.steps || 16));
     }
   }
   function start(name) {
@@ -421,5 +580,6 @@
     quietTill = t0 + 3 * .42 + .25;
   };
   // (For checking it's playing: the track, the step it's on, the volume.)
+  M.bars = name => compose(name);
   M.status = () => ({ track: want, step, level: level(), running: !!(ac && ac.state === 'running') });
 })();
