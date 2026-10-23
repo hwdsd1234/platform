@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Two new kinds of fruit grove, taking turns with the Fruit Grove from house to house. Lucky Panels: bump the panels from below; each hides a fruit (yours to keep) or a skull, and two skulls ends it. Panel Pairs: bump panels two at a time to match fruit; a match is two of that fruit, and two bad matches ends it. The panels are shuffled every visit.',
       'Spookier night music: the map, the fruit groves and every world are now in dark minor keys and a little slower, with a ghostly echo on the tune, wind rising and falling, a far-off bell, a music box and a creeping tritone in the bass. (Towers and castles keep their own music.)',
       'Secret exits are secret again: a secret exit stays hidden until you get within a few tiles of it, and the map shows no cannon, ? or hint for a level until you’ve found its secret exit.',
       'Every tower is its own now: its own climb, its own run along the top, and a shaft of stages on its own theme (three kinds of stage, a different three in each tower), in an order of its own. Every castle has its own shape too: two halls, a climb then a hall, a hall then a climb, hall-climb-hall, climb-hall-climb, or hall-climb-hall-climb.',

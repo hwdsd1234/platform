@@ -21,7 +21,7 @@
   // Star coins you've got, by level: coins[i] = [true/false ×3] (kept once you finish the level).
   let coins = store.get('coins', {});
   const coinCount = i => (coins[i] || []).filter(Boolean).length;
-  const FRUIT_ICON = { a: '🍎', o: '🍊', b: '🍌', m: '🍉', p: '🍐', 'ƥ': '🍍', 'ǥ': '🍇', 'ƫ': '🍑', 'ɯ': '🥭', s: '🍓', 'ç': '🍒', 'ƀ': '🫐', 'ŧ': '🍅' };
+  const FRUIT_ICON = LF.FRUIT_ICON = { a: '🍎', o: '🍊', b: '🍌', m: '🍉', p: '🍐', 'ƥ': '🍍', 'ǥ': '🍇', 'ƫ': '🍑', 'ɯ': '🥭', s: '🍓', 'ç': '🍒', 'ƀ': '🫐', 'ŧ': '🍅' };
   // The kinds of fruit growing in level i (as their map letters), power fruits first.
   const fruitCache = {};
   const fruitsIn = i => fruitCache[i] || (fruitCache[i] = (() => {
@@ -654,8 +654,8 @@
     if (mapHouse != null) {
       $('map-info').innerHTML = `<div>
           <small>Fruit house · beside level ${mapHouse + 1}</small>
-          <strong>Fruit Grove</strong>
-          <em>${groveUsed(mapHouse) ? `You’ve been in here: the fruit grows back in ${regrowIn(mapHouse)}` : '10 seconds to grab all the fruit you can: it all goes in your inventory'}</em>
+          <strong>${GROVES[groveKind(mapHouse)].name}</strong>
+          <em>${groveUsed(mapHouse) ? `You’ve been in here: the fruit grows back in ${regrowIn(mapHouse)}` : GROVES[groveKind(mapHouse)].what}</em>
         </div>
         <div class="map-actions">${groveUsed(mapHouse) ? '' : '<button class="go" data-act="house">Go in</button>'}</div>`;
       const b = $('map-info').querySelector('[data-act]');
@@ -692,10 +692,34 @@
   // web fonts (which are wider than the fallback) have loaded.
   if (document.fonts) document.fonts.ready.then(() => { if (screen === 'map' && !mapBusy) renderMap(false); });
 
-  // The Fruit Grove: 10 seconds on a little hillside of ledges strewn with fruit (different
-  // for every house). Whatever you pick goes in your inventory.
+  // The fruit houses take turns at three kinds of grove: the Fruit Grove (grab what you can in
+  // 10 seconds), Lucky Panels (bump panels over for fruit till you find two skulls) and Panel
+  // Pairs (turn panels over two at a time to match fruit; two bad matches and it's over).
+  const GROVES = {
+    grab: { name: 'Fruit Grove', hud: '10 seconds', what: '10 seconds to grab all the fruit you can: it all goes in your inventory' },
+    lucky: { name: 'Lucky Panels', hud: 'find two skulls and it’s over', what: 'Bump the panels from below: each hides a fruit (yours to keep) or a skull. Turn up two skulls and it’s over' },
+    pairs: { name: 'Panel Pairs', hud: 'two bad matches and it’s over', what: 'Bump the panels two at a time: a matching pair is two of that fruit for you; two bad matches and it’s over' },
+  };
+  const groveKind = i => ['grab', 'lucky', 'pairs'][Math.max(0, HOUSE_LEVELS.indexOf(+i)) % 3];
   function fruitGrove(i) {
-    const R = LF.rng(4242 + i * 31), kinds = [...Object.keys(LF.FRUITS)];
+    const kind = groveKind(i), kinds = [...Object.keys(LF.FRUITS)];
+    if (kind !== 'grab') {
+      // (Shuffled afresh every visit, so there's no learning where they are.)
+      const R = LF.rng((Date.now() % 1e9) + i * 31), pick = () => kinds[Math.floor(R() * kinds.length)];
+      let syms;
+      if (kind === 'lucky') syms = [...Array(9)].map(pick).concat(['☠', '☠', '☠']);
+      else { const six = kinds.slice().sort(() => R() - .5).slice(0, 6); syms = [...six, ...six]; }
+      for (let k = syms.length - 1; k > 0; k--) { const j = Math.floor(R() * (k + 1)); [syms[k], syms[j]] = [syms[j], syms[k]]; }
+      return {
+        name: GROVES[kind].name, dark: .3, timeLimit: 60, noRegrow: true, panelGame: { mode: kind, syms },
+        signs: [{ x: 2, y: 5.4, t: kind === 'lucky' ? 'bump the panels · fruit is yours · two skulls and it’s over' : 'bump two panels · match the fruit · two bad matches and it’s over' }],
+        map: LF.build(44, 14, ({ r, s }) => {
+          r(0, 12, 43, 13); s(2, 11, 'P');
+          for (let k = 0; k < 12; k++) s(6 + k * 3, 8, 'ǩ');
+        }),
+      };
+    }
+    const R = LF.rng(4242 + i * 31);
     return {
       name: 'Fruit Grove', dark: .3, timeLimit: 10, noRegrow: true,
       signs: [{ x: 2, y: 9.4, t: '10 seconds: grab all the fruit you can!' }],
@@ -924,7 +948,7 @@
     if (playCtx.kind === 'random') return `Random · ${playCtx.opts.shape === 'mixed' ? 'up & across' : playCtx.opts.shape === 'up' ? 'upward' : 'across'} · seed ${playCtx.opts.seed}`;
     if (playCtx.kind === 'test') return 'Test play · Esc to edit';
     if (playCtx.kind === 'cannon') return `Cannon Yard · to World ${cannonDest(playCtx.how) + 1}`;
-    if (playCtx.kind === 'house') return 'Fruit house · 10 seconds';
+    if (playCtx.kind === 'house') return `${GROVES[groveKind(playCtx.i)].name} · ${GROVES[groveKind(playCtx.i)].hud}`;
     if (playCtx.kind === 'practice') return `Practice · level ${playCtx.index + 1} · Z checkpoint · X remove it · C explosive`;
     if (playCtx.kind === 'shared') return 'Shared level';
     const key = keyFor(playCtx);
@@ -1012,7 +1036,7 @@
     if (playCtx.kind === 'house' && playCtx.practice) {
       screen = 'clear';
       setVisible({ hud: true, overlay: true });
-      card(`<p class="eyebrow">Fruit Grove · practice</p><h2>${W.fruits.filter(f => f.taken).length} picked</h2>
+      card(`<p class="eyebrow">${esc(W.def.name)} · practice</p><h2>${Object.values(W.got).reduce((a, b) => a + b, 0)} picked</h2>
         <p class="lede">Practice is on, so the fruit isn't kept and the grove isn't used up.</p>
         <div class="menu"><button class="go" data-act="menu">Back to the map</button></div>`);
       return;
@@ -1026,7 +1050,8 @@
       for (const [t, n] of got) inventory[t] = Math.min(INV_MAX, (inventory[t] || 0) + n);
       store.set('inventory', inventory);
       mapHouse = null;
-      card(`<p class="eyebrow">Fruit Grove · time’s up</p><h2>${got.length ? 'A good haul' : 'Nothing this time'}</h2>
+      const why = W.clearedBy === 'time' ? 'time’s up' : W.panelBad >= 2 ? (W.def.panelGame.mode === 'lucky' ? 'two skulls' : 'two bad matches') : 'every one found!';
+      card(`<p class="eyebrow">${esc(W.def.name)} · ${why}</p><h2>${got.length ? 'A good haul' : 'Nothing this time'}</h2>
         <p class="lede">${got.length ? 'Into your inventory: ' + got.map(([t, n]) => `${FRUIT_ICON[t]} ×${n}`).join(' · ') : 'The fruit got away.'} Press <kbd>Tab</kbd> on the map to use it (not in a level).</p>
         <div class="menu"><button class="go" data-act="menu">Back to the map</button></div>`);
       return;

@@ -187,7 +187,7 @@
   // v, w, z are shot doors (open after 3, 10, 25 hits); g is a boss gate (opens when the bosses fall).
   // § is a switch block; Ʀ/ʀ red blocks (solid while the switch is on, as it starts), Ɓ/ɓ blue
   // ones (solid while it's off): see stepSwitch.
-  const isSolid = LF.isSolid = c => c === '§' || c === 'Ʀ' || c === 'Ɓ' || c === '#' || c === 'C' || c === 'O' || c === 'T' || c === 'H' || c === '<' || c === '>' || c === 'i' || c === '1' || c === '2' || c === '3' || c === 'v' || c === 'w' || c === 'z' || c === 'g';
+  const isSolid = LF.isSolid = c => c === '§' || c === 'ǩ' || c === 'Ʀ' || c === 'Ɓ' || c === '#' || c === 'C' || c === 'O' || c === 'T' || c === 'H' || c === '<' || c === '>' || c === 'i' || c === '1' || c === '2' || c === '3' || c === 'v' || c === 'w' || c === 'z' || c === 'g';
   LF.SHOT_DOORS = { v: 3, w: 10, z: 25 };
   LF.KEYS = {
     r: { name: 'Red key', gate: '1', color: '#FF6B3D', dim: '#7A2E1C' },
@@ -265,6 +265,8 @@
       else if (AMMO[c] && def.noAmmo) tiles[y][x] = ' ';
       else if (AMMO[c]) { W.ammo.push({ big: c !== 'q', huge: c === '$', n: AMMO[c], tx: x, ty: y, x: x * TS + 16, y: y * TS + 20, taken: false }); tiles[y][x] = ' '; }
       else if (c === 'T' || c === 'H') { W.blinks.push({ tx: x, ty: y, c, wait: false }); if (c === 'H') tiles[y][x] = 'h'; }
+      // ǩ is a grove panel: bump it from below to turn it over (see hitPanel).
+      else if (c === 'ǩ') (W.panels ||= []).push({ tx: x, ty: y, sym: null, open: false, done: false, pop: 0 });
       else if (c === 'Ʀ' || c === 'ʀ' || c === 'Ɓ' || c === 'ɓ') { (W.swBlocks ||= []).push({ tx: x, ty: y, red: c === 'Ʀ' || c === 'ʀ', wait: true }); }
       else if (LF.FRUITS[c]) { W.fruits.push({ type: c, tx: x, ty: y, x: x * TS + 16, y: y * TS + 18, taken: false, regrow: 0, pop: 0 }); tiles[y][x] = ' '; }
       else if (c === 'D') { W.door = { tx: x, ty: y, x: x * TS, y: (y - 1) * TS + 4, w: 32, h: 60, open: false, glow: 0 }; tiles[y][x] = ' '; }
@@ -403,6 +405,8 @@
       const one = FLAGS.find(k => pw[k]); if (one) W.player[one] = 1;
     }
     W.got = {};   // fruit picked up, by type
+    // A panel grove (def.panelGame = { mode, syms }): what's under each panel, left to right.
+    if (W.panels && def.panelGame) { W.panels.sort((a, b) => a.tx - b.tx || a.ty - b.ty); W.panels.forEach((q, k) => { q.sym = def.panelGame.syms[k]; }); W.panelBad = 0; }
     // Back into a level whose lanterns you'd lit last time (def.resume = { lit: [lantern
     // indexes], cp: { tx, ty } }): they're still lit, and you start at the last one.
     if (def.resume) {
@@ -559,7 +563,8 @@
       for (let tx = l; tx <= r; tx++) if (isSolid(tile(W, tx, ty))) {
         e.y = (ty + 1) * TS;
         const sw = [...Array(r - l + 1)].map((_, k) => l + k).find(x => tile(W, x, ty) === '§');
-        return { dir: 'up', sw: sw != null ? [sw, ty] : null };
+        const pn = [...Array(r - l + 1)].map((_, k) => l + k).find(x => tile(W, x, ty) === 'ǩ');
+        return { dir: 'up', sw: sw != null ? [sw, ty] : null, panel: pn != null ? [pn, ty] : null };
       }
     }
     return null;
@@ -778,6 +783,7 @@
     stepProjectiles(W, dt, playing);
     stepBlinks(W, dt);
     stepSwitch(W, dt);
+    stepPanels(W, dt);
     stepBullets(W, dt);
     stepAmmoFly(W, dt);
     stepTraps(W, dt, playing);
@@ -902,6 +908,46 @@
     W.shake = Math.max(W.shake, .12); W.emit('blink');
   }
   LF.hitSwitch = hitSwitch;
+
+  // Panel groves. Lucky Panels: every panel hides a fruit (yours) or a skull; turn them over
+  // till you've found two skulls (or every fruit). Panel Pairs: turn them over two at a time;
+  // a pair that matches is two of that fruit for you, one that doesn't flips back, and two
+  // bad matches and it's over. (It ends a moment later, so you see what you turned up.)
+  function hitPanel(W, tx, ty) {
+    const g = W.def.panelGame, pn = (W.panels || []).find(q => q.tx === tx && q.ty === ty);
+    if (!g || !pn || pn.open || W.cleared || W.panelOver || W.panelWait > 0) return;
+    const say = (t, c) => W.floaters.push({ x: tx * TS + 16, y: ty * TS - 10, t, life: 1.2, c });
+    pn.open = true; pn.pop = 1; W.emit('blink');
+    if (g.mode === 'lucky') {
+      if (pn.sym === '☠') {
+        W.panelBad++; W.shake = Math.max(W.shake, .2); W.emit('buzz');
+        say(W.panelBad >= 2 ? 'two skulls!' : 'a skull! (one more and it’s over)', '#FF8A8A');
+        if (W.panelBad >= 2) W.panelOver = 1.4;
+      } else {
+        pn.done = true; W.got[pn.sym] = (W.got[pn.sym] || 0) + 1; W.emit('fruit'); say('+1', '#FFE2A8');
+        burst(W, tx * TS + 16, ty * TS + 32, 12, [(LF.FRUITS[pn.sym] || LF.FRUITS.a).color, '#FFFFFF'], 160, 200);
+        if (W.panels.every(q => q.sym === '☠' || q.open)) W.panelOver = 1.4;
+      }
+      return;
+    }
+    const first = W.panels.find(q => q.open && !q.done && q !== pn);
+    if (!first) return;
+    if (first.sym === pn.sym) {
+      first.done = pn.done = true; W.got[pn.sym] = (W.got[pn.sym] || 0) + 2; W.emit('fruit'); say('a match! +2', '#FFE2A8');
+      burst(W, tx * TS + 16, ty * TS + 32, 16, [(LF.FRUITS[pn.sym] || LF.FRUITS.a).color, '#FFFFFF'], 180, 200);
+      if (W.panels.every(q => q.done)) W.panelOver = 1.4;
+    } else {
+      W.panelBad++; W.shake = Math.max(W.shake, .2); W.emit('buzz');
+      say(W.panelBad >= 2 ? 'two bad matches!' : 'no match (one more and it’s over)', '#FF8A8A');
+      if (W.panelBad >= 2) W.panelOver = 1.6; else { W.panelWait = 1; W.panelBack = [first, pn]; }
+    }
+  }
+  function stepPanels(W, dt) {
+    if (!W.panels) return;
+    for (const q of W.panels) q.pop = Math.max(0, q.pop - dt * 3);
+    if (W.panelWait > 0 && (W.panelWait -= dt) <= 0 && W.panelBack) { for (const q of W.panelBack) q.open = false; W.panelBack = null; }
+    if (W.panelOver && !W.cleared && (W.panelOver -= dt) <= 0) { W.cleared = true; W.clearedBy = 'panels'; W.emit('clear'); }
+  }
   function stepSwitch(W, dt) {
     // (The pause between hits runs down whether or not there are any blocks to switch.)
     W.switchCool = Math.max(0, (W.switchCool || 0) - dt);
@@ -3278,7 +3324,7 @@
         if (u.c === 'i') p.ice = true;
         if (u.c === 'C' && !W.crumbles.some(c => c.tx === u.tx && c.ty === u.ty)) W.crumbles.push({ tx: u.tx, ty: u.ty, t: 0, state: 'shake' });
       }
-    } else if (hit && hit.dir === 'up') { p.vy = 0; p.jumping = false; if (hit.sw) hitSwitch(W, ...hit.sw); }
+    } else if (hit && hit.dir === 'up') { p.vy = 0; p.jumping = false; if (hit.sw) hitSwitch(W, ...hit.sw); if (hit.panel) hitPanel(W, ...hit.panel); }
     // On a slope: stood on its surface (and kept on it walking down).
     if (onSlope(W, p, !wasAir)) { p.onGround = true; p.coyote = .1; }
 

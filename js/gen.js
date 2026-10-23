@@ -5,7 +5,7 @@
   // (A slope counts as a block here: you can stand on it, and walk up it. Switch blocks are
   // checked as after the switch is hit, as it will be on the way: the red ones gone, the
   // blue ones there.)
-  const solid = c => c === '§' || c === 'Ɓ' || c === 'ɓ' || c === '/' || c === '\\' || c === '#' || c === 'C' || c === 'O' || c === 'T' || c === 'H' || c === '<' || c === '>' || c === 'i' || c === 'f' || c === '1' || c === '2' || c === '3';
+  const solid = c => c === '§' || c === 'ǩ' || c === 'Ɓ' || c === 'ɓ' || c === '/' || c === '\\' || c === '#' || c === 'C' || c === 'O' || c === 'T' || c === 'H' || c === '<' || c === '>' || c === 'i' || c === 'f' || c === '1' || c === '2' || c === '3';
   const KEY_GATE = { r: '1', u: '2', y: '3' };
   const hazard = c => c === '^' || c === '~' || c === '!' || c === '*';
   const blocksPlat = c => solid(c) || c === '|' || c === '^' || c === '=';
