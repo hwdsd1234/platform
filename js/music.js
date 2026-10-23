@@ -10,32 +10,36 @@
   const SCALES = {
     major: [0, 2, 4, 5, 7, 9, 11], minor: [0, 2, 3, 5, 7, 8, 10], dorian: [0, 2, 3, 5, 7, 9, 10],
     lydian: [0, 2, 4, 6, 7, 9, 11], mixo: [0, 2, 4, 5, 7, 9, 10], harmonic: [0, 2, 3, 5, 7, 8, 11],
+    phrygian: [0, 1, 3, 5, 7, 8, 10],
   };
   // Chord progressions (scale degrees of each bar's chord), per mode.
   const PROGS = {
     major: [[0, 5, 3, 4], [0, 3, 4, 3], [0, 4, 5, 3]], minor: [[0, 5, 2, 6], [0, 3, 6, 4], [0, 6, 5, 4]],
     dorian: [[0, 3, 0, 6], [0, 6, 3, 4]], lydian: [[0, 1, 0, 4], [0, 1, 5, 4]], mixo: [[0, 6, 3, 0], [0, 3, 6, 4]],
-    harmonic: [[0, 0, 5, 4], [0, 3, 4, 4]],
+    harmonic: [[0, 0, 5, 4], [0, 3, 4, 4]], phrygian: [[0, 1, 0, 6], [0, 1, 5, 4], [0, 5, 1, 0]],
   };
   // What each track is: mode, root note (MIDI), tempo, feel (calm: pad and soft hats;
-  // drive: full drums; sky; spooky; grand; fight), and a seed.
+  // drive: full drums; sky; spooky; grand; fight), and a seed. `night`: it's all night out
+  // there, so the map, the groves and every world are in dark keys, with a ghostly echo on
+  // the tune, wind, a far-off bell and a music box (see playStep). (Towers and the castle
+  // have their own sound.)
   const TRACKS = {
-    map: { mode: 'major', root: 60, bpm: 92, feel: 'calm', seed: 11 },
-    grove: { mode: 'major', root: 65, bpm: 150, feel: 'drive', seed: 77 },
+    map: { mode: 'minor', root: 57, bpm: 84, feel: 'calm', seed: 11, night: true },
+    grove: { mode: 'dorian', root: 62, bpm: 138, feel: 'drive', seed: 77, night: true },
     // Towers: the climb and battlements (spooky); the castle's climb (grand, an organ and
     // brass march). (Every boss fight plays the boss theme, BOSS; the final boss has its own.)
     tower: { mode: 'harmonic', root: 57, bpm: 108, feel: 'spooky', seed: 31 },
     castle: { mode: 'harmonic', root: 50, bpm: 100, feel: 'grand', seed: 41 },
     final: { mode: 'harmonic', root: 50, bpm: 160, feel: 'fight', seed: 99 },
-    world0: { mode: 'major', root: 62, bpm: 104, feel: 'drive', seed: 1 },      // Old Town
-    world1: { mode: 'mixo', root: 60, bpm: 98, feel: 'drive', seed: 2 },        // the Waterfront
-    world2: { mode: 'dorian', root: 57, bpm: 112, feel: 'drive', seed: 3 },     // the Clockwork Quarter
-    world3: { mode: 'lydian', root: 67, bpm: 116, feel: 'sky', seed: 4 },       // the Sky Roads
-    world4: { mode: 'mixo', root: 62, bpm: 100, feel: 'drive', seed: 5 },       // the Canal District
-    world5: { mode: 'major', root: 64, bpm: 108, feel: 'drive', seed: 6 },      // the Garden Market
-    world6: { mode: 'minor', root: 57, bpm: 110, feel: 'drive', seed: 7 },      // the Smokelands
-    world7: { mode: 'dorian', root: 59, bpm: 118, feel: 'drive', seed: 8 },     // the Glass Mines
-    world8: { mode: 'minor', root: 55, bpm: 96, feel: 'drive', seed: 9 },       // Night's End
+    world0: { mode: 'minor', root: 60, bpm: 98, feel: 'drive', seed: 1, night: true },      // Old Town
+    world1: { mode: 'dorian', root: 58, bpm: 94, feel: 'drive', seed: 2, night: true },     // the Waterfront
+    world2: { mode: 'harmonic', root: 57, bpm: 106, feel: 'drive', seed: 3, night: true },  // the Clockwork Quarter
+    world3: { mode: 'minor', root: 64, bpm: 104, feel: 'sky', seed: 4, night: true },       // the Sky Roads
+    world4: { mode: 'phrygian', root: 59, bpm: 96, feel: 'drive', seed: 5, night: true },   // the Canal District
+    world5: { mode: 'dorian', root: 61, bpm: 102, feel: 'drive', seed: 6, night: true },    // the Garden Market
+    world6: { mode: 'harmonic', root: 55, bpm: 104, feel: 'drive', seed: 7, night: true },  // the Smokelands
+    world7: { mode: 'phrygian', root: 57, bpm: 110, feel: 'drive', seed: 8, night: true },  // the Glass Mines
+    world8: { mode: 'harmonic', root: 53, bpm: 88, feel: 'drive', seed: 9, night: true },   // Night's End
   };
   const RHYTHMS = [[0, 3, 6, 8, 10, 12, 14], [0, 2, 4, 6, 8, 11, 12, 14], [0, 4, 6, 8, 12, 14], [0, 2, 3, 6, 8, 10, 12], [0, 3, 4, 8, 11, 12]];
 
@@ -216,7 +220,8 @@
       const bass = Array(16).fill(null);
       if (t.feel === 'boss') for (let s = 0; s < 16; s += 2) bass[s] = pitch(c) - 24 + (s % 8 === 6 ? 7 : 0);
       else if (t.feel === 'sky') bass[0] = pitch(c) - 24;
-      else for (const s of [0, 4, 8, 12]) bass[s] = pitch(c) - 24 + (s === 8 && t.feel !== 'calm' ? 7 : 0);
+      // (At night the bass leans on the tritone, the devil's interval, every other bar.)
+      else for (const s of [0, 4, 8, 12]) bass[s] = pitch(c) - 24 + (s === 8 && t.feel !== 'calm' ? (t.night && k % 2 ? 6 : 7) : 0);
       return { lead, bass, chord: chordTones(c).map(d => pitch(d) - 12) };
     });
     return cache[name] = { ...t, bars };
@@ -273,12 +278,23 @@
     g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(v, t + .05); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
     o.connect(g).connect(out); o.start(t); o.stop(t + dur + .05); lfo.start(t); lfo.stop(t + dur + .05);
   }
+  // Night: what makes the map, groves and worlds spooky. The tune echoed late and quiet on a
+  // wavering ghost of a voice, a slow wind rising and falling, a deep far-off bell tolling
+  // every eight bars, and a music box picking at the chord (with a tritone that doesn't
+  // belong) high up at the end of every other bar.
+  function night(tr, b, s, bar, t, spb) {
+    if (b.lead[s]) theremin(hz(b.lead[s] + 12), t + spb * 3, spb * 3, .012);
+    if (s === 0 && bar % 4 === 0) noise(t, .018, spb * 30, 'bandpass', 380 + (bar % 8) * 40, true);
+    if (s === 0 && bar % 8 === 0) { voice(hz(tr.root - 24), t, spb * 24, 'sine', .045, .005); voice(hz(tr.root - 24) * 2.76, t, spb * 10, 'sine', .014, .005); voice(hz(tr.root - 24) * 5.4, t, spb * 5, 'sine', .006, .005); }
+    if (bar % 2 === 1 && s >= 12 && s % 2 === 0) voice(hz(b.chord[0] + 24 + [0, 6][(s / 2) % 2]), t, spb * 2, 'triangle', .01, .003);
+  }
   function playStep(tr, i, t) {
     const b = tr.bars[Math.floor(i / 16)], s = i % 16, spb = 60 / tr.bpm / 4 / (fast ? 1.3 : 1), bar = Math.floor(i / 16);
     // Under every track: strings on each bar's chord (an octave of it, with the root below);
     // and, but for the gentle ones, timpani at the top of each phrase and a cymbal swelling
     // into the loop's return.
     if (s === 0) pad([b.chord[0] - 12, ...b.chord, b.chord[0] + 12], t, spb * 16, STRINGS[tr.feel] || .01);
+    if (tr.night) night(tr, b, s, bar, t, spb);
     if (tr.feel !== 'calm' && tr.feel !== 'sky') {
       if (s === 0 && bar % 4 === 0) { tom(t, hz(b.chord[0] - 24) * 2, .24); tom(t + spb, hz(b.chord[0] - 24) * 2, .16); }
       if (bar === tr.bars.length - 1 && s === 8) noise(t, .035, spb * 8, 'highpass', 4000, true);
@@ -335,7 +351,8 @@
       if (s === 0 && bar % 8 === 0) noise(t, .05, .6, 'highpass', 5000);
       return;
     }
-    if (b.lead[s]) voice(hz(b.lead[s]), t, spb * (tr.feel === 'calm' ? 3.5 : 2.2), tr.feel === 'calm' ? 'triangle' : 'square', tr.feel === 'calm' ? .05 : .022);
+    if (b.lead[s] && tr.night && tr.feel === 'calm') theremin(hz(b.lead[s]), t, spb * 3.5, .045);
+    else if (b.lead[s]) voice(hz(b.lead[s]), t, spb * (tr.feel === 'calm' ? 3.5 : 2.2), tr.feel === 'calm' ? 'triangle' : 'square', tr.feel === 'calm' ? .05 : tr.night ? .018 : .022);
     // (A horn doubling the tune an octave down.)
     if (b.lead[s] && tr.feel === 'drive') voice(hz(b.lead[s] - 12), t, spb * 2.4, 'sawtooth', .012, .02);
     if (b.bass[s]) voice(hz(b.bass[s]), t, spb * (tr.feel === 'boss' ? 1.8 : 3.6), 'triangle', .07);

@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Spookier night music: the map, the fruit groves and every world are now in dark minor keys and a little slower, with a ghostly echo on the tune, wind rising and falling, a far-off bell, a music box and a creeping tritone in the bass. (Towers and castles keep their own music.)',
       'Secret exits are secret again: a secret exit stays hidden until you get within a few tiles of it, and the map shows no cannon, ? or hint for a level until you’ve found its secret exit.',
       'Every tower is its own now: its own climb, its own run along the top, and a shaft of stages on its own theme (three kinds of stage, a different three in each tower), in an order of its own. Every castle has its own shape too: two halls, a climb then a hall, a hall then a climb, hall-climb-hall, climb-hall-climb, or hall-climb-hall-climb.',
       'Water pulls harder now: you sink twice as fast (and so do bombs, grenades, dynamite and enemies), and a swim stroke lifts you about three and a half tiles instead of six. (The peach still halves your sinking.)',
