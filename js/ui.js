@@ -243,9 +243,11 @@
   // cleared you can walk in for a Fruit Grove minigame (once per house) whose fruit goes in
   // your inventory. mapHouse is the house the lamplighter's standing at, if any.
   let houses = store.get('houses', {}), mapHouse = null;
+  // (Beside about one level in seven, too, an ammo house: its grove's full of ammo crates.)
+  const isAmmoHouse = i => +i % 7 === 1;
   const HOUSE_LEVELS = LF.LEVELS.map((lv, i) => i).filter(i => {
     const lv = LF.LEVELS[i];
-    return !lv.boss && lv.secretTo == null && i % 7 === 4 && LF.WORLDS[lv.world].last !== i;
+    return !lv.boss && lv.secretTo == null && (i % 7 === 4 || isAmmoHouse(i)) && LF.WORLDS[lv.world].last !== i;
   });
   // A fruit house's grove grows back 15 minutes after you were in, by the clock: whether
   // you're playing or not, or the game's even open. (Fruit in a level is different: it only
@@ -351,7 +353,8 @@
     LF.LEVELS.forEach((lv, i) => { if (lv.secretTo != null) secretCannons[i] = { x: Math.min(right + 30, pos[i].x + 34), y: pos[i].y + 46, dir: 1 }; });
     // Fruit houses sit just below and to the left of their level's stop.
     const houseSpots = {};
-    for (const i of HOUSE_LEVELS) houseSpots[i] = { x: Math.max(PAD - 40, pos[i].x - 36), y: pos[i].y + 48 };
+    // (Ammo houses sit below and to the right.)
+    for (const i of HOUSE_LEVELS) houseSpots[i] = isAmmoHouse(i) ? { x: pos[i].x + 36, y: pos[i].y + 48 } : { x: Math.max(PAD - 40, pos[i].x - 36), y: pos[i].y + 48 };
     return layout = { pos, worlds, secretCannons, houseSpots, links, adj, w: PAD * 2 + (COLS - 1) * CW, h: y - RH - 150 + PAD + 20 };
   }
   const arcPoint = (a, b, u) => {
@@ -481,9 +484,11 @@
     for (const [i, c] of Object.entries(houseSpots)) {
       const cls = groveUsed(i) ? ' used' : progress[i] || practice ? ' open' : '';
       if (progress[i]) out += `<path class="warp house-path" d="M${pos[i].x} ${pos[i].y} L${c.x} ${c.y}"/>`;
-      out += `<g class="house${cls}" data-house="${i}" transform="translate(${c.x} ${c.y})"><circle class="hit" r="18"/>
+      // (An ammo house: a blue roof and a crate on its sign.)
+      const sign = isAmmoHouse(i) ? '<rect x="-4" y="-25" width="8" height="6" class="crate"/>' : '<circle cx="0" cy="-22" r="3.5" class="fruit"/>';
+      out += `<g class="house${cls}${isAmmoHouse(i) ? ' ammo' : ''}" data-house="${i}" transform="translate(${c.x} ${c.y})"><circle class="hit" r="18"/>
         <rect x="-13" y="-16" width="26" height="18" rx="2" class="walls"/><path d="M-17 -16 L0 -30 L17 -16 Z" class="roof"/>
-        <path d="M-4 2 v-9 a4 4 0 0 1 8 0 v9 Z" class="door"/><circle cx="0" cy="-22" r="3.5" class="fruit"/></g>`;
+        <path d="M-4 2 v-9 a4 4 0 0 1 8 0 v9 Z" class="door"/>${sign}</g>`;
     }
     // Secret cannons: nowhere to be seen until you find their level's secret exit (no
     // giving away which levels have one). Then it's there, a gold path from the level to it,
@@ -665,9 +670,9 @@
     const L = LF.LEVELS, lv = L[mapAt], p = progress[mapAt], hc = progressHC[mapAt];
     if (mapHouse != null) {
       $('map-info').innerHTML = `<div>
-          <small>Fruit house · beside level ${mapHouse + 1}</small>
+          <small>${isAmmoHouse(mapHouse) ? 'Ammo house' : 'Fruit house'} · beside level ${mapHouse + 1}</small>
           <strong>${GROVES[groveKind(mapHouse)].name}</strong>
-          <em>${groveUsed(mapHouse) ? `You’ve been in here: the fruit grows back in ${regrowIn(mapHouse)}` : GROVES[groveKind(mapHouse)].what}</em>
+          <em>${groveUsed(mapHouse) ? `You’ve been in here: the ${isAmmoHouse(mapHouse) ? 'ammo comes' : 'fruit grows'} back in ${regrowIn(mapHouse)}` : GROVES[groveKind(mapHouse)].what}</em>
         </div>
         <div class="map-actions">${groveUsed(mapHouse) ? '' : '<button class="go" data-act="house">Go in</button>'}</div>`;
       const b = $('map-info').querySelector('[data-act]');
@@ -718,10 +723,18 @@
     springs: { name: 'Spring Garden', hud: '15 seconds', what: 'Springs fling you up to fruit hanging high in the air: 15 seconds to bounce for all you can' },
     ice: { name: 'Ice Rink', hud: '15 seconds', what: 'A grove frozen over: 15 seconds to slide about after the fruit' },
     climb: { name: 'Fruit Climb', hud: '20 seconds', what: 'Fruit on every ledge up a tall shaft: 20 seconds to climb for all you can' },
+    // Ammo groves (in the ammo houses): crates to grab, crates falling, panels of ammo.
+    ammoDash: { name: 'Ammo Dash', hud: '10 seconds', what: '10 seconds to grab all the ammo crates you can: the ammo goes with you into your next level' },
+    crateRain: { name: 'Crate Rain', hud: '20 seconds · catch them as they fall', what: 'Ammo crates fall from the sky: 20 seconds to catch all you can (the ammo goes with you into your next level)' },
+    ammoPanels: { name: 'Ammo Panels', hud: 'find two skulls and it’s over', what: 'Bump the panels from below: each hides ammo (3 to 25) or a skull. Turn up two skulls and it’s over; the ammo goes with you into your next level' },
   };
+  const AMMO_ORDER = ['ammoDash', 'crateRain', 'ammoPanels'];
   const GROVE_ORDER = ['grab', 'lucky', 'pairs', 'rain', 'springs', 'ice', 'climb'];
   LF.groveFor = (...a) => fruitGrove(...a);   // (for testing)
-  const groveKind = i => GROVE_ORDER[Math.max(0, HOUSE_LEVELS.indexOf(+i)) % GROVE_ORDER.length];
+  const groveKind = i => {
+    const same = HOUSE_LEVELS.filter(j => isAmmoHouse(j) === isAmmoHouse(i)), order = isAmmoHouse(i) ? AMMO_ORDER : GROVE_ORDER;
+    return order[Math.max(0, same.indexOf(+i)) % order.length];
+  };
   function fruitGrove(i) {
     const kind = groveKind(i), G = GROVES[kind], kinds = [...Object.keys(LF.FRUITS)];
     // (Shuffled afresh every visit.)
@@ -731,6 +744,34 @@
     const deck = n => { const d = shuffle(kinds.slice()); while (d.length < n) d.push(kinds[Math.floor(R() * kinds.length)]); return d; };
     const plant = (s, spots) => { const d = deck(spots.length); spots.forEach(([x, y], k) => s(x, y, d[k])); };
     const base = { name: G.name, dark: .3, noRegrow: true };
+    if (kind === 'ammoDash') return {
+      ...base, timeLimit: 10,
+      signs: [{ x: 2, y: 9.4, t: '10 seconds: grab all the ammo you can!' }],
+      map: LF.build(44, 14, ({ r, s }) => {
+        r(0, 12, 43, 13); s(2, 11, 'P');
+        for (let k = 0; k < 6; k++) {
+          const x = 5 + k * 6 + Math.floor(R() * 3), y = 7 + Math.floor(R() * 3), len = 3 + Math.floor(R() * 2);
+          r(x, y, x + len, y, R() < .5 ? '=' : '#');
+          s(x + 1 + Math.floor(R() * (len - 1)), y - 1, k % 3 === 2 ? 'Q' : 'q');
+          if (k === 3) s(x + Math.floor(len / 2), y - 4, '$');
+        }
+        for (let x = 6; x < 42; x += 5) if (x !== 20 && x !== 34) s(x, 11, 'q');
+        s(20, 11, 'B'); s(34, 11, 'B');
+      }),
+    };
+    if (kind === 'crateRain') return {
+      ...base, timeLimit: 20, ammoRain: { every: .45 },
+      signs: [{ x: 2, y: 9.4, t: 'catch the crates as they fall!' }],
+      map: LF.build(44, 14, ({ r, s }) => { r(0, 12, 43, 13); s(2, 11, 'P'); r(9, 9, 13, 9, '='); r(20, 7, 24, 7, '='); r(31, 9, 35, 9, '='); }),
+    };
+    if (kind === 'ammoPanels') {
+      const syms = shuffle(['+3', '+3', '+3', '+5', '+5', '+5', '+5', '+10', '+10', '+10', '+25', '+25', '☠', '☠', '☠']), w = 10 + syms.length * 3;
+      return {
+        ...base, timeLimit: 60, panelGame: { mode: 'lucky', syms },
+        signs: [{ x: 2, y: 5.4, t: 'bump the panels · the ammo is yours · two skulls and it’s over' }],
+        map: LF.build(w, 14, ({ r, s }) => { r(0, 12, w - 1, 13); s(2, 11, 'P'); syms.forEach((_, k) => s(7 + k * 3, 8, 'ǩ')); }),
+      };
+    }
     if (kind === 'lucky' || kind === 'pairs') {
       const syms = shuffle(kind === 'lucky' ? [...kinds, '☠', '☠', '☠'] : [...kinds, ...kinds]);
       const w = 10 + syms.length * 3;
@@ -1093,11 +1134,12 @@
     if (playCtx.kind === 'story' && !hardcore) { saveCarry({ ...W.player, ...(W.player.held || {}) }); if (!W.def.noAmmo) store.set('ammo', W.player.ammo); }
     // Out of the Fruit Grove: everything picked goes in the inventory.
     // (In practice, a grove's just for fun: the fruit isn't kept and the grove isn't used up.)
+    const ammoGot = Math.max(0, W.player.ammo - (W.ammoStart || 0));
     if (playCtx.kind === 'house' && playCtx.practice) {
       screen = 'clear';
       setVisible({ hud: true, overlay: true });
-      card(`<p class="eyebrow">${esc(W.def.name)} · practice</p><h2>${Object.values(W.got).reduce((a, b) => a + b, 0)} picked</h2>
-        <p class="lede">Practice is on, so the fruit isn't kept and the grove isn't used up.</p>
+      card(`<p class="eyebrow">${esc(W.def.name)} · practice</p><h2>${isAmmoHouse(playCtx.i) ? `${ammoGot} ammo` : `${Object.values(W.got).reduce((a, b) => a + b, 0)} picked`}</h2>
+        <p class="lede">Practice is on, so ${isAmmoHouse(playCtx.i) ? 'the ammo' : 'the fruit'} isn't kept and the grove isn't used up.</p>
         <div class="menu"><button class="go" data-act="menu">Back to the map</button></div>`);
       return;
     }
@@ -1113,6 +1155,14 @@
       store.set('inventory', inventory);
       mapHouse = null;
       const why = W.clearedBy === 'time' ? 'time’s up' : W.panelBad >= 2 ? 'two skulls' : W.def.panelGame?.mode === 'pairs' ? 'every pair matched!' : 'every one found!';
+      // (An ammo grove: the ammo goes on top of what you carry into your next level.)
+      if (isAmmoHouse(playCtx.i)) {
+        if (!hardcore) store.set('ammo', store.get('ammo', 0) + ammoGot);
+        card(`<p class="eyebrow">${esc(W.def.name)} · ${why}</p><h2>${ammoGot ? `+${ammoGot} ammo` : 'Nothing this time'}</h2>
+          <p class="lede">${ammoGot ? `It goes with you into your next level (you’re carrying ${store.get('ammo', 0)}${hardcore ? '; not in Hardcore' : ''}).` : 'The crates got away.'}</p>
+          <div class="menu"><button class="go" data-act="menu">Back to the map</button></div>`);
+        return;
+      }
       card(`<p class="eyebrow">${esc(W.def.name)} · ${why}</p><h2>${got.length ? 'A good haul' : 'Nothing this time'}</h2>
         <p class="lede">${got.length ? 'Into your inventory: ' + got.map(([t, n]) => `${FRUIT_ICON[t]} ×${n}`).join(' · ') + (twice > 1 ? ' (doubled: 🧺 Double Harvest)' : '') : 'The fruit got away.'} Press <kbd>Tab</kbd> on the map to use it (not in a level).</p>
         <div class="menu"><button class="go" data-act="menu">Back to the map</button></div>`);

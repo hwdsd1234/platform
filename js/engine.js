@@ -405,6 +405,7 @@
     if (def.carryAmmo) W.player.ammo += def.carryAmmo;
     // Boss towers: no ammo at all (stomp!).
     if (def.noAmmo) W.player.ammo = 0;
+    W.ammoStart = W.player.ammo;   // (what an ammo grove counts from)
     // Powers brought from the last level (or the inventory): def.powers = { shield, boost, dbl }.
     if (def.powers) {
       const pw = def.powers;
@@ -933,7 +934,12 @@
     const say = (t, c) => W.floaters.push({ x: tx * TS + 16, y: ty * TS - 10, t, life: 1.2, c });
     pn.open = true; pn.pop = 1; W.emit('blink');
     if (g.mode === 'lucky') {
-      if (pn.sym === '☠') {
+      if (pn.sym[0] === '+') {
+        // (An ammo panel: that much ammo.)
+        const n = +pn.sym.slice(1); pn.done = true; W.player.ammo += n; W.emit('bigammo'); say(`+${n} ammo`, '#FFE2A8');
+        burst(W, tx * TS + 16, ty * TS + 32, 12, ['#FFE2A8', '#FFB547'], 160, 200);
+        if (W.panels.every(q => q.sym === '☠' || q.open)) W.panelOver = 1.4;
+      } else if (pn.sym === '☠') {
         W.panelBad++; W.shake = Math.max(W.shake, .2); W.emit('buzz');
         say(W.panelBad >= 2 ? 'two skulls!' : 'a skull! (one more and it’s over)', '#FF8A8A');
         if (W.panelBad >= 2) W.panelOver = 1.4;
@@ -959,16 +965,18 @@
   // Fruit Rain (def.fruitRain = { every, kinds }): fruit falling from the sky, one every
   // `every` seconds somewhere along the grove, the kinds coming round in turn (so every kind
   // falls); catch it before it lands, or soon after (it lies there a moment, then it's gone).
+  // (Crate Rain, def.ammoRain = { every }: ammo crates instead, every sixth a big one.)
   function stepRain(W, dt) {
-    const fr = W.def.fruitRain;
+    const fr = W.def.fruitRain || W.def.ammoRain;
     if (!fr || W.cleared) return;
     W.rainT = (W.rainT ?? .5) - dt;
     if (W.rainT <= 0) {
       W.rainT += fr.every; W.rainN = (W.rainN || 0) + 1;
       const tx = 2 + Math.floor(Math.random() * (W.w - 4));
-      W.fruits.push({ type: fr.kinds[W.rainN % fr.kinds.length], tx, ty: 1, x: tx * TS + 16, y: TS * 1.5, taken: false, regrow: 0, pop: 1, vy: 40, rain: true });
+      if (W.def.ammoRain) { const big = W.rainN % 6 === 0; W.ammo.push({ big, huge: false, n: (big ? 10 : 3) * (LF.eventIs && LF.eventIs('ammo') ? 2 : 1), tx, ty: 1, x: tx * TS + 16, y: TS * 1.5, taken: false, vy: 40, rain: true }); }
+      else W.fruits.push({ type: fr.kinds[W.rainN % fr.kinds.length], tx, ty: 1, x: tx * TS + 16, y: TS * 1.5, taken: false, regrow: 0, pop: 1, vy: 40, rain: true });
     }
-    for (const f of W.fruits) {
+    for (const f of [...W.fruits, ...W.ammo]) {
       if (!f.rain || f.taken) continue;
       if (f.landed != null) { f.landed -= dt; continue; }
       f.vy = Math.min(190, f.vy + 220 * dt); f.y += f.vy * dt;
@@ -976,6 +984,7 @@
       if (isSolid(below) || below === '=') { f.y = Math.floor((f.y + 12) / TS) * TS - 14; f.landed = 1.6; }
     }
     W.fruits = W.fruits.filter(f => !f.rain || (!f.taken && !(f.landed < 0)));
+    W.ammo = W.ammo.filter(f => !f.rain || (!f.taken && !(f.landed < 0)));
   }
   function stepPanels(W, dt) {
     if (!W.panels) return;

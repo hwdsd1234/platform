@@ -243,6 +243,7 @@
           ctx.strokeStyle = !up ? '#B9A6FF' : q.sym === '☠' ? '#FF8A8A' : q.done ? '#FFE2A8' : '#9FC4FF'; ctx.lineWidth = 2; ctx.strokeRect(x + 2, y + 2 - k * 6, TS - 4, TS - 4);
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
           if (!up) { ctx.fillStyle = '#FFF4E8'; ctx.font = '700 18px ui-monospace, monospace'; ctx.fillText('?', x + 16, y + 17 - k * 6); }
+          else if (q.sym[0] === '+') { ctx.fillStyle = '#FFE2A8'; ctx.font = '700 12px ui-monospace, monospace'; ctx.fillText(q.sym, x + 16, y + 17 - k * 6); }
           else { ctx.font = '20px serif'; ctx.fillText(q.sym === '☠' ? '💀' : (LF.FRUIT_ICON || {})[q.sym] || '●', x + 16, y + 18 - k * 6); }
         } else if (c === '§') {
           // A switch block: red with an ON bar while red's on, blue with an OFF bar while blue's on.
