@@ -396,7 +396,8 @@
     // Every boss takes an exact number of hits, however it's hit (see BOSS_HITS).
     for (const e of W.enemies) if (isBoss(e)) e.hp = e.maxHp = def.bossHits || LF.ENEMIES[e.type].hits || BOSS_HITS;
     W.total = W.lanterns.length;
-    if (W.door && !W.total && !W.enemies.some(isBoss)) W.door.open = true;
+    // (A grove's bonus door, def.bonusDoor, stays shut till you've got everything: see stepBonus.)
+    if (W.door && !W.total && !W.enemies.some(isBoss) && !def.bonusDoor) W.door.open = true;
     W.checkpoint = { ...W.start };
     W.blinkT = 0; W.blinkOn = 'T';
     W.player = makePlayer(W.start);
@@ -797,6 +798,7 @@
     stepSwitch(W, dt);
     stepPanels(W, dt);
     stepRain(W, dt);
+    stepBonus(W);
     stepBullets(W, dt);
     stepAmmoFly(W, dt);
     stepTraps(W, dt, playing);
@@ -938,7 +940,7 @@
         // (An ammo panel: that much ammo.)
         const n = +pn.sym.slice(1); pn.done = true; W.player.ammo += n; W.emit('bigammo'); say(`+${n} ammo`, '#FFE2A8');
         burst(W, tx * TS + 16, ty * TS + 32, 12, ['#FFE2A8', '#FFB547'], 160, 200);
-        if (W.panels.every(q => q.sym === '☠' || q.open)) W.panelOver = 1.4;
+        if (W.panels.every(q => q.sym === '☠' || q.open) && !W.def.bonusDoor) W.panelOver = 1.4;
       } else if (pn.sym === '☠') {
         W.panelBad++; W.shake = Math.max(W.shake, .2); W.emit('buzz');
         say(W.panelBad >= 2 ? 'two skulls!' : 'a skull! (one more and it’s over)', '#FF8A8A');
@@ -946,7 +948,7 @@
       } else {
         pn.done = true; W.got[pn.sym] = (W.got[pn.sym] || 0) + 1; W.emit('fruit'); say('+1', '#FFE2A8');
         burst(W, tx * TS + 16, ty * TS + 32, 12, [(LF.FRUITS[pn.sym] || LF.FRUITS.a).color, '#FFFFFF'], 160, 200);
-        if (W.panels.every(q => q.sym === '☠' || q.open)) W.panelOver = 1.4;
+        if (W.panels.every(q => q.sym === '☠' || q.open) && !W.def.bonusDoor) W.panelOver = 1.4;
       }
       return;
     }
@@ -955,7 +957,7 @@
     if (first.sym === pn.sym) {
       first.done = pn.done = true; W.got[pn.sym] = (W.got[pn.sym] || 0) + 2; W.emit('fruit'); say('a match! +2', '#FFE2A8');
       burst(W, tx * TS + 16, ty * TS + 32, 16, [(LF.FRUITS[pn.sym] || LF.FRUITS.a).color, '#FFFFFF'], 180, 200);
-      if (W.panels.every(q => q.done)) W.panelOver = 1.4;
+      if (W.panels.every(q => q.done) && !W.def.bonusDoor) W.panelOver = 1.4;
     } else {
       // (No match: they just turn back over. Try again till the clock runs out.)
       W.emit('buzz'); say('no match', '#9FC4FF');
@@ -985,6 +987,17 @@
     }
     W.fruits = W.fruits.filter(f => !f.rain || (!f.taken && !(f.landed < 0)));
     W.ammo = W.ammo.filter(f => !f.rain || (!f.taken && !(f.landed < 0)));
+  }
+  // A grove's bonus door (def.bonusDoor): get every fruit, every crate, every panel's prize,
+  // and it opens; go through it and everything you got there counts twice (see ui.js).
+  function stepBonus(W) {
+    if (!W.def.bonusDoor || !W.door || W.door.open || W.cleared || W.panelOver) return;
+    const panels = W.panels || [], prize = q => q.sym !== '☠';
+    const any = W.fruits.length + W.ammo.length + panels.length > 0;
+    const all = W.fruits.every(f => f.taken) && W.ammo.every(a => a.taken) && panels.every(q => !prize(q) || (W.def.panelGame.mode === 'pairs' ? q.done : q.open));
+    if (!any || !all) return;
+    W.door.open = true; W.emit('door'); W.shake = Math.max(W.shake, .15);
+    W.floaters.push({ x: W.player.x + W.player.w / 2, y: W.player.y - 30, t: 'every one! the bonus door is open: double it all', life: 2.6, c: '#FFE066' });
   }
   function stepPanels(W, dt) {
     if (!W.panels) return;
@@ -2051,7 +2064,7 @@
   }
   // The door opens once every lantern is lit and no boss is left standing.
   function openDoorIfDone(W) {
-    if (!W.door || W.door.open || W.lanterns.some(l => !l.lit) || W.enemies.some(e => e.alive && isBoss(e))) return;
+    if (!W.door || W.door.open || W.def.bonusDoor || W.lanterns.some(l => !l.lit) || W.enemies.some(e => e.alive && isBoss(e))) return;
     W.door.open = true; W.emit('door');
   }
   // Gravity for bosses that walk. Returns the falling speed on the frame it lands, else 0.
@@ -3625,7 +3638,7 @@
     }
     const d = W.door;
     if (d && d.open && overlap(p, { x: d.x + 8, y: d.y + 10, w: 16, h: d.h - 10 })) {
-      W.cleared = true;
+      W.cleared = true; W.clearedBy = 'door';
       burst(W, d.x + 16, d.y + 20, 40, WARM, 260, 200, 3);
       W.emit('clear');
     }

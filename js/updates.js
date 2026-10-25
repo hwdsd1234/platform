@@ -6,6 +6,8 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'The ammo bank: ammo from the ammo houses goes straight into a bank at the top of your items (Tab on the map). Take it out to carry into your next level, or put carried ammo back in, 10 at a time or all at once. Ammo in the bank is safe when you die.',
+      'Bonus doors: every grove but the two rain ones has a door by the start, shut till you get every fruit, crate or panel prize in it. Go through it and everything you got there counts twice.',
       'How to play now explains doubles: what every fruit does at level 2 with a green apple.',
       'A triple shield looks like one now: a third ring, green, with sparks running round it, and picking up the third apple says “shield ×3”.',
       'Ammo groves: beside about one level in seven there’s now an ammo house (a blue roof and a crate on its sign), taking turns at Ammo Dash (grab the crates in 10 seconds), Crate Rain (catch them as they fall) and Ammo Panels (bump panels for 3 to 25 ammo each till you find two skulls). The ammo goes with you into your next level. They come back 15 minutes after you’ve been in, like the fruit groves.',

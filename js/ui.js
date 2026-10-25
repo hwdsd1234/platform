@@ -716,17 +716,17 @@
   // Garden (springs up to fruit high in the air), the Ice Rink (slide about after it) and
   // the Fruit Climb (up a shaft of ledges).
   const GROVES = {
-    grab: { name: 'Fruit Grove', hud: '10 seconds', what: '10 seconds to grab all the fruit you can: it all goes in your inventory' },
-    lucky: { name: 'Lucky Panels', hud: 'find two skulls and it’s over', what: 'Bump the panels from below: each hides a fruit (one of every kind is under them) or a skull. Turn up two skulls and it’s over' },
-    pairs: { name: 'Panel Pairs', hud: '45 seconds · match the pairs', what: 'Thirteen pairs of panels, one pair of every fruit: a 6-second look at them all, then bump them two at a time for 45 seconds. Every pair you match is two of that fruit; a miss just turns them back over' },
+    grab: { name: 'Fruit Grove', hud: '10 seconds', what: '10 seconds to grab all the fruit you can: it all goes in your inventory. Get every one and the bonus door opens: go through it to double it all' },
+    lucky: { name: 'Lucky Panels', hud: 'find two skulls and it’s over', what: 'Bump the panels from below: each hides a fruit (one of every kind is under them) or a skull. Turn up two skulls and it’s over. Get every one and the bonus door opens: go through it to double it all' },
+    pairs: { name: 'Panel Pairs', hud: '45 seconds · match the pairs', what: 'Thirteen pairs of panels, one pair of every fruit: a 6-second look at them all, then bump them two at a time for 45 seconds. Every pair you match is two of that fruit; a miss just turns them back over. Get every one and the bonus door opens: go through it to double it all' },
     rain: { name: 'Fruit Rain', hud: '20 seconds · catch it as it falls', what: 'Fruit falls from the sky, every kind in turn: 20 seconds to catch all you can before it lands and goes' },
-    springs: { name: 'Spring Garden', hud: '15 seconds', what: 'Springs fling you up to fruit hanging high in the air: 15 seconds to bounce for all you can' },
-    ice: { name: 'Ice Rink', hud: '15 seconds', what: 'A grove frozen over: 15 seconds to slide about after the fruit' },
-    climb: { name: 'Fruit Climb', hud: '20 seconds', what: 'Fruit on every ledge up a tall shaft: 20 seconds to climb for all you can' },
+    springs: { name: 'Spring Garden', hud: '15 seconds', what: 'Springs fling you up to fruit hanging high in the air: 15 seconds to bounce for all you can. Get every one and the bonus door opens: go through it to double it all' },
+    ice: { name: 'Ice Rink', hud: '15 seconds', what: 'A grove frozen over: 15 seconds to slide about after the fruit. Get every one and the bonus door opens: go through it to double it all' },
+    climb: { name: 'Fruit Climb', hud: '20 seconds', what: 'Fruit on every ledge up a tall shaft: 20 seconds to climb for all you can. Get every one and the bonus door opens: go through it to double it all' },
     // Ammo groves (in the ammo houses): crates to grab, crates falling, panels of ammo.
-    ammoDash: { name: 'Ammo Dash', hud: '10 seconds', what: '10 seconds to grab all the ammo crates you can: the ammo goes with you into your next level' },
-    crateRain: { name: 'Crate Rain', hud: '20 seconds · catch them as they fall', what: 'Ammo crates fall from the sky: 20 seconds to catch all you can (the ammo goes with you into your next level)' },
-    ammoPanels: { name: 'Ammo Panels', hud: 'find two skulls and it’s over', what: 'Bump the panels from below: each hides ammo (3 to 25) or a skull. Turn up two skulls and it’s over; the ammo goes with you into your next level' },
+    ammoDash: { name: 'Ammo Dash', hud: '10 seconds', what: '10 seconds to grab all the ammo crates you can: the ammo goes into the ammo bank in your items. Get every crate and the bonus door opens: go through it to double it all' },
+    crateRain: { name: 'Crate Rain', hud: '20 seconds · catch them as they fall', what: 'Ammo crates fall from the sky: 20 seconds to catch all you can (the ammo goes into the ammo bank in your items)' },
+    ammoPanels: { name: 'Ammo Panels', hud: 'find two skulls and it’s over', what: 'Bump the panels from below: each hides ammo (3 to 25) or a skull. Turn up two skulls and it’s over; the ammo goes into the ammo bank in your items. Find every prize and the bonus door opens: go through it to double it all' },
   };
   const AMMO_ORDER = ['ammoDash', 'crateRain', 'ammoPanels'];
   const GROVE_ORDER = ['grab', 'lucky', 'pairs', 'rain', 'springs', 'ice', 'climb'];
@@ -735,6 +735,16 @@
     const same = HOUSE_LEVELS.filter(j => isAmmoHouse(j) === isAmmoHouse(i)), order = isAmmoHouse(i) ? AMMO_ORDER : GROVE_ORDER;
     return order[Math.max(0, same.indexOf(+i)) % order.length];
   };
+  // Every grove but the rain ones has a bonus door by the start, shut till you've got every
+  // fruit, crate or panel prize in it; leave by it and all you got there counts twice.
+  function withBonusDoor(def) {
+    if (def.fruitRain || def.ammoRain) return def;
+    const map = def.map.map(r => r.split('')), py = map.findIndex(r => r.includes('P')), px = map[py].indexOf('P');
+    const dx = [3, 4, 5, -2].find(d => map[py][px + d] === '.' && map[py - 1]?.[px + d] === '.');
+    if (dx == null) return def;
+    map[py][px + dx] = 'D';
+    return { ...def, map: map.map(r => r.join('')), bonusDoor: true, signs: [...(def.signs || []), { x: px + dx - 3, y: py - 3.4, t: 'get every one and this door opens: double it all!' }] };
+  }
   function fruitGrove(i) {
     const kind = groveKind(i), G = GROVES[kind], kinds = [...Object.keys(LF.FRUITS)];
     // (Shuffled afresh every visit.)
@@ -969,6 +979,8 @@
     const now = carry || {};
     $('inv').innerHTML = `<div class="inv-card">
       <header><h2>Inventory</h2><button class="mini" id="inv-close">Close · Tab</button></header>
+      <div class="inv-bank"><span class="inv-icon">🎯</span><div><b>Ammo bank: ${store.get('ammoBank', 0)}</b><small>You’re carrying ${store.get('ammo', 0)} into your next level. Ammo from the ammo houses comes in here; take it out to carry it, or put carried ammo back.</small></div>
+        <div class="bank-btns">${[['w', 10, 'Take 10'], ['w', Infinity, 'Take all'], ['d', 10, 'Put 10'], ['d', Infinity, 'Put all']].map(([k, n, label]) => `<button class="mini" data-bank="${k}${n === Infinity ? 'all' : n}" ${practice || hardcore ? 'disabled' : ''}>${label}</button>`).join('')}</div></div>
       <ul class="inv-items">${Object.entries(LF.FRUITS).map(([t, f]) => `<li>
         <span class="inv-icon">${FRUIT_ICON[t]}</span><div><b>${f.name} ×${practice ? '∞' : inventory[t] || 0}</b><small>${esc(f.note)}</small></div>
         <button class="mini go-mini" data-use="${t}" ${(practice || (inventory[t] || 0) > 0) && !hardcore ? '' : 'disabled'}>Use</button></li>`).join('')}</ul>
@@ -977,6 +989,17 @@
     </div>`;
     $('inv-close').addEventListener('click', closeInventory);
     for (const b of $('inv').querySelectorAll('[data-use]')) b.addEventListener('click', () => useItem(b.dataset.use));
+    for (const b of $('inv').querySelectorAll('[data-bank]')) b.addEventListener('click', () => moveAmmo(b.dataset.bank));
+  }
+  // The ammo bank: w takes ammo out to carry into your next level, d puts carried ammo back.
+  function moveAmmo(how) {
+    if (practice || hardcore) return;
+    const bank = store.get('ammoBank', 0), carried = store.get('ammo', 0), all = how.endsWith('all');
+    const n = how[0] === 'w' ? Math.min(bank, all ? bank : 10) : Math.min(carried, all ? carried : 10);
+    if (!n) return flash(how[0] === 'w' ? 'The ammo bank is empty' : 'You’re not carrying any ammo');
+    store.set('ammoBank', bank + (how[0] === 'w' ? -n : n)); store.set('ammo', carried + (how[0] === 'w' ? n : -n));
+    flash(how[0] === 'w' ? `Took ${n} ammo out of the bank` : `Put ${n} ammo in the bank`); SFX.ammo && SFX.ammo();
+    renderInventory();
   }
   function useItem(t) {
     if (hardcore) return;
@@ -1149,23 +1172,26 @@
       setVisible({ hud: true, overlay: true });
       houses[playCtx.i] = { at: Date.now() }; store.set('houses', houses);
       LF.awards.grove();
-      // (A Double Harvest event: every fruit counts twice.)
-      const twice = LF.eventIs('harvest') ? 2 : 1;
+      // (A Double Harvest event: every fruit counts twice; out by the bonus door, twice again.)
+      const bonus = W.clearedBy === 'door' ? 2 : 1, twice = (LF.eventIs('harvest') ? 2 : 1) * bonus;
       const got = Object.entries(W.got).filter(([, n]) => n > 0).map(([t, n]) => [t, n * twice]);
       for (const [t, n] of got) inventory[t] = Math.min(INV_MAX, (inventory[t] || 0) + n);
       store.set('inventory', inventory);
       mapHouse = null;
-      const why = W.clearedBy === 'time' ? 'time’s up' : W.panelBad >= 2 ? 'two skulls' : W.def.panelGame?.mode === 'pairs' ? 'every pair matched!' : 'every one found!';
+      const why = W.clearedBy === 'door' ? 'out by the bonus door!' : W.clearedBy === 'time' ? 'time’s up' : W.panelBad >= 2 ? 'two skulls' : W.def.panelGame?.mode === 'pairs' ? 'every pair matched!' : 'every one found!';
       // (An ammo grove: the ammo goes on top of what you carry into your next level.)
+      // (Straight into the ammo bank in your items: see renderInventory. Out by the bonus
+      // door, twice as much.)
       if (isAmmoHouse(playCtx.i)) {
-        if (!hardcore) store.set('ammo', store.get('ammo', 0) + ammoGot);
-        card(`<p class="eyebrow">${esc(W.def.name)} · ${why}</p><h2>${ammoGot ? `+${ammoGot} ammo` : 'Nothing this time'}</h2>
-          <p class="lede">${ammoGot ? `It goes with you into your next level (you’re carrying ${store.get('ammo', 0)}${hardcore ? '; not in Hardcore' : ''}).` : 'The crates got away.'}</p>
+        const banked = ammoGot * (W.clearedBy === 'door' ? 2 : 1);
+        store.set('ammoBank', store.get('ammoBank', 0) + banked);
+        card(`<p class="eyebrow">${esc(W.def.name)} · ${why}</p><h2>${banked ? `+${banked} ammo` : 'Nothing this time'}</h2>
+          <p class="lede">${banked ? `Into the ammo bank in your items${W.clearedBy === 'door' ? ' (doubled: the bonus door)' : ''}: ${store.get('ammoBank', 0)} there now. Press <kbd>Tab</kbd> on the map to take some out for your next level.` : 'The crates got away.'}</p>
           <div class="menu"><button class="go" data-act="menu">Back to the map</button></div>`);
         return;
       }
       card(`<p class="eyebrow">${esc(W.def.name)} · ${why}</p><h2>${got.length ? 'A good haul' : 'Nothing this time'}</h2>
-        <p class="lede">${got.length ? 'Into your inventory: ' + got.map(([t, n]) => `${FRUIT_ICON[t]} ×${n}`).join(' · ') + (twice > 1 ? ' (doubled: 🧺 Double Harvest)' : '') : 'The fruit got away.'} Press <kbd>Tab</kbd> on the map to use it (not in a level).</p>
+        <p class="lede">${got.length ? 'Into your inventory: ' + got.map(([t, n]) => `${FRUIT_ICON[t]} ×${n}`).join(' · ') + (bonus > 1 ? ' (doubled: the bonus door)' : '') + (twice / bonus > 1 ? ' (doubled: 🧺 Double Harvest)' : '') : 'The fruit got away.'} Press <kbd>Tab</kbd> on the map to use it (not in a level).</p>
         <div class="menu"><button class="go" data-act="menu">Back to the map</button></div>`);
       return;
     }
@@ -1390,7 +1416,7 @@
     // Stand at a secret cannon you've found (from the level's button on the map).
     warp: d => { const i = +(d.i ?? mapAt); if (LF.LEVELS[i].secretTo != null && secrets[i]) { mapAt = i; mapCannon = { secret: i }; store.set('mapAt', i); renderMap(); } },
     // Into a fruit house's Fruit Grove (once every 15 minutes per house).
-    house: d => { const i = +d.i; if (houseOpen(i)) play(fruitGrove(i), { kind: 'house', i, practice }); },
+    house: d => { const i = +d.i; if (houseOpen(i)) play(withBonusDoor(fruitGrove(i)), { kind: 'house', i, practice }); },
     items: () => showInventory(),
     // From the clear screen: off to the cannon you've just reached.
     toCannon: () => ACTIONS.cannon(mapCannon),
