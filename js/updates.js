@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Every tower boss now takes exactly 3 hits, and every castle keeper (the Last Dark too) exactly 4. Some tower bosses used to take 12 or 14.',
       'Every tower is completely different now: each has its own shape (a tall spire, a long keep, twin spires, a staircase of climbs and halls, a pit to drop into and climb out of, a dungeon, a gauntlet, or a climb on top of a climb) and its own theme (lava, ice, clockwork, haunted, springs, pendulums, crumbling, flooded, Shellbacks or pitch dark), with that theme’s hazards, enemies, darkness and stone colour. No two towers share both, and towers next to each other share neither. The choir’s “ah” is gone from the music.',
       'Grander music, castle-theme style: under the map, groves, worlds and towers a full pipe organ (its pedal booming two octaves down), low brass doubling the tune, a choir singing “ah”, timpani on the downbeats rolling into a crash at the end of every phrase, and cymbals swelling into each new section. The castle gets the pedal, the choir and the timpani rolls too.',
       'Fruit groves grow back in 15 minutes now (was an hour).',

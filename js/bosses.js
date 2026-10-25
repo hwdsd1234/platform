@@ -1369,8 +1369,9 @@
     let startAt = { x: climbAt.x + 2, y: climbAt.y + parts[0].length - 1 };
     g.forEach((row, y) => { const x = row.indexOf('P'); if (x >= 0 && x < arena.x) startAt = { x, y }; });
     const out = {
-      // No guns in a tower: the boss falls to 3 stomps, and flies into a fury after each.
-      ...def, map: g.map(row => row.join('')), noDoor: true, bossEnds: true, arenaX: arena.x, noAmmo: true, bossFury: true, bossHits: def.bossHits ?? (castle ? 5 : 3), castle: !!castle,
+      // No guns in a tower: the boss falls to 3 hits (a castle's keeper, the Last Dark too, to 4),
+      // and flies into a fury after each.
+      ...def, map: g.map(row => row.join('')), noDoor: true, bossEnds: true, arenaX: arena.x, noAmmo: true, bossFury: true, bossHits: castle ? 4 : 3, castle: !!castle,
       signs: [
         look ? { x: startAt.x - 1, y: startAt.y - 3.6, t: `${look.theme.sign} · ${look.layout.hint} · no guns here: stomp` }
           : { x: climbAt.x + 2, y: climbAt.y + parts[0].length - 4.6, t: def.course ? `${def.name.toUpperCase()} · no guns here · onward →` : castle ? 'THE CASTLE · climb, floor after floor · no guns here' : 'CLIMB THE TOWER ↑ · no guns here: stomp' },
