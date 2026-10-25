@@ -21,7 +21,7 @@
   // Star coins you've got, by level: coins[i] = [true/false ×3] (kept once you finish the level).
   let coins = store.get('coins', {});
   const coinCount = i => (coins[i] || []).filter(Boolean).length;
-  const FRUIT_ICON = LF.FRUIT_ICON = { a: '🍎', o: '🍊', b: '🍌', m: '🍉', p: '🍐', 'ƥ': '🍍', 'ǥ': '🍇', 'ƫ': '🍑', 'ɯ': '🥭', s: '🍓', 'ç': '🍒', 'ƀ': '🫐', 'ŧ': '🍅' };
+  const FRUIT_ICON = LF.FRUIT_ICON = { a: '🍎', o: '🍊', b: '🍌', m: '🍉', p: '🍐', 'ƥ': '🍍', 'ǥ': '🍇', 'ƫ': '🍑', 'ɯ': '🥭', s: '🍓', 'ç': '🍒', 'ƀ': '🫐', 'ŧ': '🍅', 'ǵ': '🍏' };
   // The kinds of fruit growing in level i (as their map letters), power fruits first.
   const fruitCache = {};
   const fruitsIn = i => fruitCache[i] || (fruitCache[i] = (() => {
@@ -704,47 +704,92 @@
   // web fonts (which are wider than the fallback) have loaded.
   if (document.fonts) document.fonts.ready.then(() => { if (screen === 'map' && !mapBusy) renderMap(false); });
 
-  // The fruit houses take turns at three kinds of grove: the Fruit Grove (grab what you can in
-  // 10 seconds), Lucky Panels (bump panels over for fruit till you find two skulls) and Panel
-  // Pairs (turn panels over two at a time to match fruit; two bad matches and it's over).
+  // The fruit houses take turns at seven kinds of grove, and every one has every kind of
+  // fruit in it: the Fruit Grove (grab what you can in 10 seconds), Lucky Panels (bump
+  // panels over for fruit till you find two skulls), Panel Pairs (a look at them all, then
+  // match them two at a time for 45 seconds), Fruit Rain (catch it as it falls), the Spring
+  // Garden (springs up to fruit high in the air), the Ice Rink (slide about after it) and
+  // the Fruit Climb (up a shaft of ledges).
   const GROVES = {
     grab: { name: 'Fruit Grove', hud: '10 seconds', what: '10 seconds to grab all the fruit you can: it all goes in your inventory' },
-    lucky: { name: 'Lucky Panels', hud: 'find two skulls and it’s over', what: 'Bump the panels from below: each hides a fruit (yours to keep) or a skull. Turn up two skulls and it’s over' },
-    pairs: { name: 'Panel Pairs', hud: 'two bad matches and it’s over', what: 'Eight panels, four pairs of fruit: you get a 4-second look at them all first, then bump them two at a time. A matching pair is two of that fruit for you; two bad matches and it’s over' },
+    lucky: { name: 'Lucky Panels', hud: 'find two skulls and it’s over', what: 'Bump the panels from below: each hides a fruit (one of every kind is under them) or a skull. Turn up two skulls and it’s over' },
+    pairs: { name: 'Panel Pairs', hud: '45 seconds · match the pairs', what: 'Thirteen pairs of panels, one pair of every fruit: a 6-second look at them all, then bump them two at a time for 45 seconds. Every pair you match is two of that fruit; a miss just turns them back over' },
+    rain: { name: 'Fruit Rain', hud: '20 seconds · catch it as it falls', what: 'Fruit falls from the sky, every kind in turn: 20 seconds to catch all you can before it lands and goes' },
+    springs: { name: 'Spring Garden', hud: '15 seconds', what: 'Springs fling you up to fruit hanging high in the air: 15 seconds to bounce for all you can' },
+    ice: { name: 'Ice Rink', hud: '15 seconds', what: 'A grove frozen over: 15 seconds to slide about after the fruit' },
+    climb: { name: 'Fruit Climb', hud: '20 seconds', what: 'Fruit on every ledge up a tall shaft: 20 seconds to climb for all you can' },
   };
-  const groveKind = i => ['grab', 'lucky', 'pairs'][Math.max(0, HOUSE_LEVELS.indexOf(+i)) % 3];
+  const GROVE_ORDER = ['grab', 'lucky', 'pairs', 'rain', 'springs', 'ice', 'climb'];
+  LF.groveFor = (...a) => fruitGrove(...a);   // (for testing)
+  const groveKind = i => GROVE_ORDER[Math.max(0, HOUSE_LEVELS.indexOf(+i)) % GROVE_ORDER.length];
   function fruitGrove(i) {
-    const kind = groveKind(i), kinds = [...Object.keys(LF.FRUITS)];
-    if (kind !== 'grab') {
-      // (Shuffled afresh every visit, so there's no learning where they are.)
-      const R = LF.rng((Date.now() % 1e9) + i * 31), pick = () => kinds[Math.floor(R() * kinds.length)];
-      let syms;
-      if (kind === 'lucky') syms = [...Array(9)].map(pick).concat(['☠', '☠', '☠']);
-      else { const four = kinds.slice().sort(() => R() - .5).slice(0, 4); syms = [...four, ...four]; }
-      for (let k = syms.length - 1; k > 0; k--) { const j = Math.floor(R() * (k + 1)); [syms[k], syms[j]] = [syms[j], syms[k]]; }
+    const kind = groveKind(i), G = GROVES[kind], kinds = [...Object.keys(LF.FRUITS)];
+    // (Shuffled afresh every visit.)
+    const R = LF.rng((Date.now() % 1e9) + i * 31);
+    const shuffle = a => { for (let k = a.length - 1; k > 0; k--) { const j = Math.floor(R() * (k + 1)); [a[k], a[j]] = [a[j], a[k]]; } return a; };
+    // Fruit for a list of spots: one of every kind first (shuffled), then any.
+    const deck = n => { const d = shuffle(kinds.slice()); while (d.length < n) d.push(kinds[Math.floor(R() * kinds.length)]); return d; };
+    const plant = (s, spots) => { const d = deck(spots.length); spots.forEach(([x, y], k) => s(x, y, d[k])); };
+    const base = { name: G.name, dark: .3, noRegrow: true };
+    if (kind === 'lucky' || kind === 'pairs') {
+      const syms = shuffle(kind === 'lucky' ? [...kinds, '☠', '☠', '☠'] : [...kinds, ...kinds]);
+      const w = 10 + syms.length * 3;
       return {
-        name: GROVES[kind].name, dark: .3, timeLimit: 60, noRegrow: true, panelGame: { mode: kind, syms, peek: kind === 'pairs' ? 4 : 0 },
-        signs: [{ x: 2, y: 5.4, t: kind === 'lucky' ? 'bump the panels · fruit is yours · two skulls and it’s over' : 'remember where the fruit is! · bump two panels · match the fruit · two bad matches and it’s over' }],
-        map: LF.build(44, 14, ({ r, s }) => {
-          r(0, 12, 43, 13); s(2, 11, 'P');
-          // (Twelve panels for Lucky Panels; eight, four pairs, for Panel Pairs.)
-          for (let k = 0; k < syms.length; k++) s((kind === 'pairs' ? 8 + k * 4 : 6 + k * 3), 8, 'ǩ');
-        }),
+        ...base, timeLimit: kind === 'pairs' ? 45 : 60, panelGame: { mode: kind, syms, peek: kind === 'pairs' ? 6 : 0 },
+        signs: [{ x: 2, y: 5.4, t: kind === 'lucky' ? 'bump the panels · fruit is yours · two skulls and it’s over' : 'remember where the fruit is! · bump two panels · match the fruit' }],
+        map: LF.build(w, 14, ({ r, s }) => { r(0, 12, w - 1, 13); s(2, 11, 'P'); syms.forEach((_, k) => s(7 + k * 3, 8, 'ǩ')); }),
       };
     }
-    const R = LF.rng(4242 + i * 31);
+    if (kind === 'rain') return {
+      ...base, timeLimit: 20, fruitRain: { every: .4, kinds: shuffle(kinds.slice()) },
+      signs: [{ x: 2, y: 9.4, t: 'catch the fruit as it falls!' }],
+      map: LF.build(44, 14, ({ r, s }) => { r(0, 12, 43, 13); s(2, 11, 'P'); r(9, 9, 13, 9, '='); r(20, 7, 24, 7, '='); r(31, 9, 35, 9, '='); }),
+    };
+    if (kind === 'springs') return {
+      ...base, timeLimit: 15,
+      signs: [{ x: 2, y: 11.4, t: 'bounce on the springs for the fruit up high!' }],
+      map: LF.build(50, 16, ({ r, s }) => {
+        r(0, 14, 49, 15); s(2, 13, 'P');
+        const spots = [];
+        for (const x of [7, 17, 27, 37, 46]) { s(x, 14, 'O'); spots.push([x, 11], [x, 8], [x, 5]); }
+        for (const x of [11, 21, 31, 41]) { r(x, 6, x + 2, 6, '='); spots.push([x + 1, 5]); }
+        plant(s, spots);
+      }),
+    };
+    if (kind === 'ice') return {
+      ...base, timeLimit: 15,
+      signs: [{ x: 2, y: 9.4, t: 'it’s slippery!' }],
+      map: LF.build(50, 14, ({ r, s }) => {
+        r(0, 12, 49, 13, 'i'); s(2, 11, 'P');
+        const spots = [];
+        for (let k = 0; k < 7; k++) { const x = 6 + k * 6, y = k % 2 ? 8 : 10; r(x, y, x + 3, y, 'i'); spots.push([x + 1, y - 1], [x + 2, y - 3]); }
+        for (let x = 8; x < 48; x += 7) spots.push([x, 11]);
+        plant(s, spots);
+      }),
+    };
+    if (kind === 'climb') return {
+      ...base, timeLimit: 20,
+      signs: [{ x: 2, y: 34.4, t: 'climb for the fruit ↑' }],
+      map: LF.build(24, 40, ({ r, s }) => {
+        r(0, 0, 23, 0); r(0, 0, 0, 39); r(23, 0, 23, 39); r(0, 38, 23, 39); s(2, 37, 'P');
+        const spots = [], SP = [[14, 21], [8, 13], [2, 7], [8, 13]];
+        for (let k = 0, y = 35; y >= 4; y -= 3, k++) { const [x0, x1] = SP[k % 4]; r(x0, y, x1, y, k % 3 === 2 ? '=' : '#'); spots.push([x0 + 1 + Math.floor(R() * (x1 - x0 - 1)), y - 1]); if (k % 2) spots.push([Math.floor((x0 + x1) / 2), y - 2]); }
+        plant(s, spots);
+      }),
+    };
     return {
-      name: 'Fruit Grove', dark: .3, timeLimit: 10, noRegrow: true,
+      ...base, timeLimit: 10,
       signs: [{ x: 2, y: 9.4, t: '10 seconds: grab all the fruit you can!' }],
       map: LF.build(44, 14, ({ r, s }) => {
         r(0, 12, 43, 13); s(2, 11, 'P');
+        const spots = [];
         for (let k = 0; k < 6; k++) {
           const x = 5 + k * 6 + Math.floor(R() * 3), y = 7 + Math.floor(R() * 3), len = 3 + Math.floor(R() * 2);
           r(x, y, x + len, y, R() < .5 ? '=' : '#');
-          s(x + 1 + Math.floor(R() * (len - 1)), y - 1, kinds[Math.floor(R() * kinds.length)]);
-          if (R() < .6) s(x + Math.floor(len / 2), y - 4, kinds[Math.floor(R() * kinds.length)]);
+          spots.push([x + 1 + Math.floor(R() * (len - 1)), y - 1], [x + Math.floor(len / 2), y - 4]);
         }
-        for (let x = 6; x < 42; x += 5) if (R() < .7) s(x, 11, kinds[Math.floor(R() * kinds.length)]);
+        for (let x = 6; x < 42; x += 5) if (x !== 20 && x !== 34) spots.push([x, 11]);
+        plant(s, spots);
         s(20, 11, 'B'); s(34, 11, 'B');
       }),
     };
@@ -866,7 +911,7 @@
     carry = p.shield || LF.hasPowers(p) ? { shield: p.shield, ...LF.powerFlags(p) } : null;
     store.set('powers', carry);
   }
-  const powersText = p => [p.shield ? `🍎 shield${p.shield > 1 ? ' ×2' : ''}` : '', ...Object.entries(LF.POWERS).map(([t, k]) => p[k] ? `${FRUIT_ICON[t]} ${LF.FRUITS[t].power.toLowerCase()}` : '')].filter(Boolean).join(' · ') || 'none';
+  const powersText = p => [p.green ? '🍏 ripe' : '', p.shield ? `🍎 shield${p.shield > 1 ? ' ×' + p.shield : ''}` : '', ...Object.entries(LF.POWERS).map(([t, k]) => p[k] ? `${FRUIT_ICON[t]} ${LF.FRUITS[t].power.toLowerCase()}${p[k] > 1 ? ' ×2' : ''}` : '')].filter(Boolean).join(' · ') || 'none';
   function showInventory() {
     if (screen === 'play') return flash('Your items are on the map, not in a level');
     if (screen !== 'map' && screen !== 'inv') return;
@@ -920,14 +965,14 @@
       <ul class="keys">
         <li>Map: <kbd>←</kbd><kbd>↑</kbd><kbd>→</kbd><kbd>↓</kbd> walk along the paths (the little arrows show the ways on) · <kbd>Enter</kbd> play · crossroads open more than one level</li>
         <li><kbd>←</kbd><kbd>→</kbd> walk · <kbd>Space</kbd> jump (hold for height) · <kbd>↓</kbd> drop through planks</li>
-        <li>Every level has a clock: 300 seconds, 400 in a castle (a tower’s boss arena adds 100 seconds when you reach it, a castle’s 200); come back at a lantern and the clock gives you the share of the level still ahead of it, plus 30 seconds (never under 150 seconds): at 50 seconds left a hurry-up tune plays and the music speeds up; when it runs out you die (Fruit Groves have their own 10 seconds)</li>
+        <li>Every level has a clock: 300 seconds, 400 in a castle (a tower’s boss arena adds 100 seconds when you reach it, a castle’s 200); come back at a lantern and the clock gives you the share of the level still ahead of it, plus 30 seconds (never under 150 seconds): at 50 seconds left a hurry-up tune plays and the music speeds up; when it runs out you die (fruit groves have their own short clocks)</li>
         <li>Push into a wall to slide down it · jump off walls to climb</li>
         <li>Shellbacks: stomp one into its shell, touch the shell to kick it (it knocks out enemies, hits bosses, picks up coins for you, and comes back off walls) · hold <kbd>S</kbd> and run into a shell lying still to carry it (it can't come out while you hold it), press <kbd>S</kbd> again to let it go, kicked off ahead of you · stomp a Shellback or shell in mid-air for a big bounce: that's the shell jump: throw a shell off a ramp across a gap; it bounces off the wall on the far side and flies back off the lip there, and you jump from the edge and land on it in the air (in mid-air a shell's easy to land on: feet over its middle will do)</li>
         <li><kbd>E</kbd> fire: tap for one shot, hold for autofire; shots splash 1 block · <kbd>X</kbd> explosive round (2 ammo, 3-block blast) · <kbd>A</kbd> kill shot (3 ammo): kills whatever it hits in one go, golems and carts too (a boss takes it as one hit) · every shot counts as one hit (a grenade one per blast, up to three), so golems take 3 and TNT carts 5 (stomps count too); a TNT blast kills everything near it but you · <kbd>Q</kbd> bouncing grenade (3 ammo) · <kbd>D</kbd> dynamite (4 ammo): thrown, it falls and sits where it lands, and after a 3-second fuse kills everything within 5 blocks, golems and carts too (a boss takes it as one hit; it never hurts you) · <kbd>Shift</kbd>+<kbd>D</kbd> big dynamite (8 ammo, 10 blocks) · <kbd>W</kbd> nuke (10 ammo): primed right where you are, and after a 3-second fuse it kills everything within 30 blocks (a boss takes it as one hit; it never hurts you) · <kbd>Shift</kbd>+<kbd>W</kbd> big nuke (20 ammo, 60 blocks) · hold any of them to keep firing · hold <kbd>Shift</kbd> for a big shot: 2× size and blast, 2× ammo · ammo crates are hidden through each level; big crates hold 10, huge ones 25; enemies drop 1–5 ammo when killed, more for tougher ones (TNT carts drop none)</li>
         <li>Keys open the locked-door blocks you touch, one block at a time; you keep the key</li>
         <li>Water is safe: you sink slowly and can jump as often as you like</li>
         <li>Events: for the first hour of every three hours an event is on (the map shows which, and when the next one starts): 🧺 Double Harvest (grove fruit counts twice) · ✨ Power Stack (fruit powers stack) · 🌱 Quick Groves (groves grow straight back) · 🎯 Ammo Rain (double ammo) · 🕰️ Long Night (60 more seconds on every level clock)</li>
-        <li>Fruit: 🍎 shield (a second apple doubles it) · 🍊 jump boost · 🍌 double jump · 🍉 speed · 🍐 glide (hold <kbd>↑</kbd> or jump while falling; press <kbd>Space</kbd> in mid-air for a small lift, after which you can't glide and fall steadily till you land (wall jumps don't give it back); letting go of <kbd>↑</kbd> and pressing it again just keeps you gliding) · 🍍 spikes don't hurt · 🍇 double ammo from enemies · 🍑 stronger swimming · 🥭 a slower clock · 🍓 wall grip · 🍒 ammo magnet · 🫐 night eyes (twice the light) · 🍅 second chance (a hit with no shield is taken by the tomato, then 5 seconds of speed, a high jump, and touching kills) · only one fruit power besides the apple's shield works at a time: a new fruit takes the place of the last (except in a ✨ Power Stack event) · powers last until you die; powers and leftover ammo carry on to the next level</li>
+        <li>Fruit: 🍎 shield (a second apple doubles it) · 🍊 jump boost · 🍌 double jump · 🍉 speed · 🍐 glide (hold <kbd>↑</kbd> or jump while falling; press <kbd>Space</kbd> in mid-air for a small lift, after which you can't glide and fall steadily till you land (wall jumps don't give it back); letting go of <kbd>↑</kbd> and pressing it again just keeps you gliding) · 🍍 spikes don't hurt · 🍇 double ammo from enemies · 🍑 stronger swimming · 🥭 a slower clock · 🍓 wall grip · 🍒 ammo magnet · 🫐 night eyes (twice the light) · 🍅 second chance (a hit with no shield is taken by the tomato, then 5 seconds of speed, a high jump, and touching kills) · 🍏 green apple (takes no power slot: with it you can take one more of each fruit, so a third apple shield, or a second of any power fruit for a stronger power) · only one fruit power besides the apple's shield works at a time: a new fruit takes the place of the last (except in a ✨ Power Stack event) · powers last until you die; powers and leftover ammo carry on to the next level</li>
         <li>Towers have no guns: the boss falls to 3 hits (a castle's keeper to 4), but each stomp throws it into a 10-second fury: it glows red and rampages round the arena, leaping (with a slam where it lands) or darting about dropping bombs, and throwing rings of embers, rocks from the ceiling and fire round your feet; then it's worn out and stands dazed for a moment: stomp it then · its last fury (one stomp left) adds its own signature move · the Last Dark takes 4 stomps and you can't stomp it again until it calms down · your ammo waits for you outside</li>
         <li>Neo: when a slab sits right over your ledge, flush with its edge, run off the edge, jump at once and steer straight back in to land on top (miss, and you just drop back)</li>
         <li>Wheels turn their platforms round and round: ride one to the top · in the Sky Roads there's no floor at all, just the long drop</li>
@@ -1067,7 +1112,7 @@
       for (const [t, n] of got) inventory[t] = Math.min(INV_MAX, (inventory[t] || 0) + n);
       store.set('inventory', inventory);
       mapHouse = null;
-      const why = W.clearedBy === 'time' ? 'time’s up' : W.panelBad >= 2 ? (W.def.panelGame.mode === 'lucky' ? 'two skulls' : 'two bad matches') : 'every one found!';
+      const why = W.clearedBy === 'time' ? 'time’s up' : W.panelBad >= 2 ? 'two skulls' : W.def.panelGame?.mode === 'pairs' ? 'every pair matched!' : 'every one found!';
       card(`<p class="eyebrow">${esc(W.def.name)} · ${why}</p><h2>${got.length ? 'A good haul' : 'Nothing this time'}</h2>
         <p class="lede">${got.length ? 'Into your inventory: ' + got.map(([t, n]) => `${FRUIT_ICON[t]} ×${n}`).join(' · ') + (twice > 1 ? ' (doubled: 🧺 Double Harvest)' : '') : 'The fruit got away.'} Press <kbd>Tab</kbd> on the map to use it (not in a level).</p>
         <div class="menu"><button class="go" data-act="menu">Back to the map</button></div>`);
@@ -1435,11 +1480,14 @@
     $('hud-keys').innerHTML = held.map(k => `<i style="color:${LF.KEYS[k].color}">${LF.KEYS[k].name.split(' ')[0]}</i>`).join('');
     $('hud-ammo-wrap').className = p.ammo ? 'ammo' : 'ammo empty';
     const powers = [];
-    if (p.shield) powers.push(`<i class="pw-a">Shield${p.shield > 1 ? ' ×2' : ''}</i>`);
-    if (p.boost > 0) powers.push('<i class="pw-o">Boost</i>');
-    if (p.dbl > 0) powers.push('<i class="pw-b">Double</i>');
-    if (p.fast > 0) powers.push('<i class="pw-m">Speed</i>');
-    for (const [t, k, label] of [['p', 'glide', 'Glide'], ['ƥ', 'spiky', 'Spike-proof'], ['ǥ', 'lucky', 'Lucky'], ['ƫ', 'swimmer', 'Swimmer'], ['ɯ', 'slowtime', 'Slow clock'], ['s', 'grip', 'Grip'], ['ç', 'magnet', 'Magnet'], ['ƀ', 'glow', 'Eyes'], ['ŧ', 'tomato', 'Tomato']]) if (p[k]) powers.push(`<i style="color:${LF.FRUITS[t].color}">${label}</i>`);
+    // (A power ripened by a green apple is marked ×2.)
+    const lv = k => (p[k] > 1 ? ' ×2' : '');
+    if (p.green) powers.push(`<i style="color:${LF.FRUITS['ǵ'].color}">Ripe</i>`);
+    if (p.shield) powers.push(`<i class="pw-a">Shield${p.shield > 1 ? ' ×' + p.shield : ''}</i>`);
+    if (p.boost > 0) powers.push(`<i class="pw-o">Boost${lv('boost')}</i>`);
+    if (p.dbl > 0) powers.push(p.dbl > 1 ? '<i class="pw-b">Triple</i>' : '<i class="pw-b">Double</i>');
+    if (p.fast > 0) powers.push(`<i class="pw-m">Speed${lv('fast')}</i>`);
+    for (const [t, k, label] of [['p', 'glide', 'Glide'], ['ƥ', 'spiky', 'Spike-proof'], ['ǥ', 'lucky', 'Lucky'], ['ƫ', 'swimmer', 'Swimmer'], ['ɯ', 'slowtime', 'Slow clock'], ['s', 'grip', 'Grip'], ['ç', 'magnet', 'Magnet'], ['ƀ', 'glow', 'Eyes'], ['ŧ', 'tomato', 'Tomato']]) if (p[k]) powers.push(`<i style="color:${LF.FRUITS[t].color}">${label}${lv(k)}</i>`);
     $('hud-powers-wrap').hidden = !powers.length;
     $('hud-powers').innerHTML = powers.join('');
     $('boss-bar').hidden = !boss;

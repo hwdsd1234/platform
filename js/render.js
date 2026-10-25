@@ -1146,9 +1146,10 @@
       }
       ctx.save(); ctx.translate(f.x, f.y + bob); ctx.scale(s, s);
       ctx.globalAlpha = f.taken ? .3 : 1;
-      if (f.type === 'a') {
-        ctx.fillStyle = '#E5484D'; ctx.beginPath(); ctx.arc(-2.5, 1, 5.5, 0, TAU); ctx.arc(2.5, 1, 5.5, 0, TAU); ctx.fill();
-        ctx.fillStyle = '#FF8A8D'; ctx.fillRect(-5, -2, 2.5, 2.5);
+      if (f.type === 'a' || f.type === 'ǵ') {
+        const green = f.type === 'ǵ';
+        ctx.fillStyle = green ? '#7BC043' : '#E5484D'; ctx.beginPath(); ctx.arc(-2.5, 1, 5.5, 0, TAU); ctx.arc(2.5, 1, 5.5, 0, TAU); ctx.fill();
+        ctx.fillStyle = green ? '#C8F08A' : '#FF8A8D'; ctx.fillRect(-5, -2, 2.5, 2.5);
         ctx.strokeStyle = '#6B452C'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(0, -3); ctx.lineTo(1, -8); ctx.stroke();
         ctx.fillStyle = '#5FBF5A'; ctx.beginPath(); ctx.ellipse(4, -7, 3.5, 1.8, -.5, 0, TAU); ctx.fill();
       } else if (f.type === 'o') {
@@ -1435,7 +1436,7 @@
 
     function lights(W) {
       const out = [], p = W.player;
-      if (!p.dead) { const f = LF.flamePos(p); out.push({ x: f.x, y: f.y, r: 150 * (p.glow ? 2 : 1) * flick(0, .03) }); }
+      if (!p.dead) { const f = LF.flamePos(p); out.push({ x: f.x, y: f.y, r: 150 * (p.glow > 1 ? 3 : p.glow ? 2 : 1) * flick(0, .03) }); }
       for (const f of W.fruits) if (!f.taken) out.push({ x: f.x, y: f.y, r: 84 * flick(f.tx, .05) });
       for (let k = 0; k < W.lavaTop.length; k += 3) { const l = W.lavaTop[k]; out.push({ x: l.tx * TS + 16, y: l.ty * TS + 10, r: 95 }); }
       for (const f of W.flows || []) for (let x = f.x0; x <= f.x1; x += 3) out.push({ x: x * TS + 16, y: LF.flowSurface(W, f, x * TS + 16) + 8, r: 100 });

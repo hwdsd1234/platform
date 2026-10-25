@@ -64,13 +64,17 @@
     'ƫ': { name: 'Peach', power: 'Swimmer', color: '#FFA07A', note: 'swim strokes are stronger and you sink slower, until you die' },
     'ɯ': { name: 'Mango', power: 'Slow clock', color: '#FFB347', note: 'the level clock runs at two-thirds speed, until you die' },
     'ƀ': { name: 'Blueberry', power: 'Night eyes', color: '#5B6EE1', note: 'your light reaches twice as far, until you die' },
+    // The green apple isn't a power of its own and takes no power slot: it ripens the rest.
+    'ǵ': { name: 'Green apple', power: 'Ripe', color: '#7BC043', note: 'takes no power slot: with it you can take one more of each fruit: a third apple shield, and a second of any power fruit makes its power stronger (a triple jump, a bigger boost, faster, a slower glide and slide, a wider magnet, brighter eyes, spiked chains harmless, triple ammo, stronger swimming, a half-speed clock, two second chances), until you die' },
     'ŧ': { name: 'Tomato', power: 'Second chance', color: '#E8402A', note: 'a hit with no shield doesn’t kill you: the tomato takes it, then for 5 seconds you run fast, jump high and can’t be hurt, and whatever you touch dies (a boss takes a hit)' },
   };
   // Every fruit but the apple gives a power that's on or off: the player's flag for each.
   const POWERS = LF.POWERS = { o: 'boost', b: 'dbl', m: 'fast', p: 'glide', s: 'grip', 'ç': 'magnet', 'ƀ': 'glow', 'ƥ': 'spiky', 'ǥ': 'lucky', 'ƫ': 'swimmer', 'ɯ': 'slowtime', 'ŧ': 'tomato' };
   const FLAGS = Object.values(POWERS);
-  LF.powerFlags = p => Object.fromEntries(FLAGS.map(k => [k, p[k] ? 1 : 0]));
-  LF.hasPowers = p => FLAGS.some(k => p[k]);
+  // (A power's level: 1, or 2 when ripened by a green apple. The green apple's own flag
+  // rides along.)
+  LF.powerFlags = p => ({ ...Object.fromEntries(FLAGS.map(k => [k, p[k] || 0])), green: p.green ? 1 : 0 });
+  LF.hasPowers = p => FLAGS.some(k => p[k]) || !!p.green;
 
   // drop: ammo an enemy leaves behind when you kill it — the harder it is to kill, the more.
   LF.ENEMIES = {
@@ -104,11 +108,15 @@
   // boost, banana the double jump, watermelon speed, and so on (POWERS). Only one of those
   // works at a time: a new one takes the place of the last (but in a Power Stack event,
   // see events.js, they pile up). False if it would add nothing.
+  // With a green apple (p.green), each can be taken once more: a third shield, or a power
+  // you have already goes up to level 2 (stronger: see where each is used).
   LF.applyFruit = (p, type) => {
-    if (type === 'a') { if (p.shield >= 2) return false; p.shield++; return true; }
+    if (type === 'ǵ') { if (p.green) return false; p.green = 1; return true; }
+    if (type === 'a') { if (p.shield >= (p.green ? 3 : 2)) return false; p.shield++; return true; }
     const k = POWERS[type];
-    if (!k || p[k]) return false;
-    if (!(LF.eventIs && LF.eventIs('stack'))) { if (p.dbl) p.airJumps = Math.max(0, p.airJumps - 1); for (const f of FLAGS) p[f] = 0; }
+    if (!k || p[k] >= (p.green ? 2 : 1)) return false;
+    if (p[k]) { p[k] = 2; if (k === 'dbl') p.airJumps++; if (k === 'tomato') p.tomato = 2; return true; }
+    if (!(LF.eventIs && LF.eventIs('stack'))) { if (p.dbl) p.airJumps = Math.max(0, p.airJumps - p.dbl); for (const f of FLAGS) p[f] = 0; }
     p[k] = 1; if (k === 'dbl') p.airJumps = Math.max(p.airJumps, 1);
     return true;
   };
@@ -400,11 +408,12 @@
     // Powers brought from the last level (or the inventory): def.powers = { shield, boost, dbl }.
     if (def.powers) {
       const pw = def.powers;
-      W.player.shield = Math.min(2, pw.shield || 0);
+      W.player.shield = Math.min(pw.green ? 3 : 2, pw.shield || 0); W.player.green = pw.green ? 1 : 0;
       // (One power at a time: an old save carrying more keeps just the first.)
       // (...unless a Power Stack event is on: then all of them.)
-      if (LF.eventIs && LF.eventIs('stack')) { for (const k of FLAGS) if (pw[k]) W.player[k] = 1; }
-      else { const one = FLAGS.find(k => pw[k]); if (one) W.player[one] = 1; }
+      const lv = k => Math.min(pw.green ? 2 : 1, pw[k]);
+      if (LF.eventIs && LF.eventIs('stack')) { for (const k of FLAGS) if (pw[k]) W.player[k] = lv(k); }
+      else { const one = FLAGS.find(k => pw[k]); if (one) W.player[one] = lv(one); }
     }
     W.got = {};   // fruit picked up, by type
     // A panel grove (def.panelGame = { mode, syms }): what's under each panel, left to right.
@@ -680,7 +689,7 @@
   // touch (p.rush; see stepPlayer and the enemy checks).
   const RUSH = 5;
   function tomatoSave(W, p) {
-    p.tomato = 0; p.rush = RUSH; p.inv = RUSH; p.vy = -520; p.jumping = false;
+    p.tomato = Math.max(0, (p.tomato || 1) - 1); p.rush = RUSH; p.inv = RUSH; p.vy = -520; p.jumping = false;
     burst(W, p.x + p.w / 2, p.y + p.h / 2, 28, ['#E8402A', '#FFB547', '#FFE066', '#7FD87A'], 240, 200);
     ring(W, p.x + p.w / 2, p.y + p.h / 2, 60, '232,64,42', .5);
     W.floaters.push({ x: p.x + p.w / 2, y: p.y - 8, t: 'TOMATO RUSH!', life: 1.4, c: '#FF6B3D' });
@@ -786,6 +795,7 @@
     stepBlinks(W, dt);
     stepSwitch(W, dt);
     stepPanels(W, dt);
+    stepRain(W, dt);
     stepBullets(W, dt);
     stepAmmoFly(W, dt);
     stepTraps(W, dt, playing);
@@ -832,7 +842,7 @@
     if (playing && !W.cleared) {
       W.time += dt;
       // (The mango slows the level clock to two-thirds speed.)
-      if (W.player.slowtime && W.def.deadline && !W.player.dead) W.clockFrom = (W.clockFrom || 0) + dt / 3;
+      if (W.player.slowtime && W.def.deadline && !W.player.dead) W.clockFrom = (W.clockFrom || 0) + dt / (W.player.slowtime > 1 ? 2 : 3);
       if (p.dead) { if (!W.lost) { W.deadTimer -= dt; if (W.deadTimer <= 0) respawn(W); } }
       else if (p.inCannon) stepCannon(W, p, dt);
       else stepPlayer(W, p, input, dt);
@@ -913,7 +923,8 @@
 
   // Panel groves. Lucky Panels: every panel hides a fruit (yours) or a skull; turn them over
   // till you've found two skulls (or every fruit). Panel Pairs: a few seconds' peek at them
-  // all to remember where the fruit is, then turn them over two at a time;
+  // all to remember where the fruit is, then turn them over two at a time, as often as the
+  // clock allows;
   // a pair that matches is two of that fruit for you, one that doesn't flips back, and two
   // bad matches and it's over. (It ends a moment later, so you see what you turned up.)
   function hitPanel(W, tx, ty) {
@@ -940,10 +951,31 @@
       burst(W, tx * TS + 16, ty * TS + 32, 16, [(LF.FRUITS[pn.sym] || LF.FRUITS.a).color, '#FFFFFF'], 180, 200);
       if (W.panels.every(q => q.done)) W.panelOver = 1.4;
     } else {
-      W.panelBad++; W.shake = Math.max(W.shake, .2); W.emit('buzz');
-      say(W.panelBad >= 2 ? 'two bad matches!' : 'no match (one more and it’s over)', '#FF8A8A');
-      if (W.panelBad >= 2) W.panelOver = 1.6; else { W.panelWait = 1; W.panelBack = [first, pn]; }
+      // (No match: they just turn back over. Try again till the clock runs out.)
+      W.emit('buzz'); say('no match', '#9FC4FF');
+      W.panelWait = 1; W.panelBack = [first, pn];
     }
+  }
+  // Fruit Rain (def.fruitRain = { every, kinds }): fruit falling from the sky, one every
+  // `every` seconds somewhere along the grove, the kinds coming round in turn (so every kind
+  // falls); catch it before it lands, or soon after (it lies there a moment, then it's gone).
+  function stepRain(W, dt) {
+    const fr = W.def.fruitRain;
+    if (!fr || W.cleared) return;
+    W.rainT = (W.rainT ?? .5) - dt;
+    if (W.rainT <= 0) {
+      W.rainT += fr.every; W.rainN = (W.rainN || 0) + 1;
+      const tx = 2 + Math.floor(Math.random() * (W.w - 4));
+      W.fruits.push({ type: fr.kinds[W.rainN % fr.kinds.length], tx, ty: 1, x: tx * TS + 16, y: TS * 1.5, taken: false, regrow: 0, pop: 1, vy: 40, rain: true });
+    }
+    for (const f of W.fruits) {
+      if (!f.rain || f.taken) continue;
+      if (f.landed != null) { f.landed -= dt; continue; }
+      f.vy = Math.min(190, f.vy + 220 * dt); f.y += f.vy * dt;
+      const below = tile(W, Math.floor(f.x / TS), Math.floor((f.y + 12) / TS));
+      if (isSolid(below) || below === '=') { f.y = Math.floor((f.y + 12) / TS) * TS - 14; f.landed = 1.6; }
+    }
+    W.fruits = W.fruits.filter(f => !f.rain || (!f.taken && !(f.landed < 0)));
   }
   function stepPanels(W, dt) {
     if (!W.panels) return;
@@ -1092,7 +1124,7 @@
   // value. They fly to the player side by side as one group (n bullets, spaced so you can
   // count them) and arrive together for +n ammo. Hardcore has no ammo, so nothing drops there.
   function dropAmmo(W, e) {
-    const n = LF.ENEMIES[e.type].drop * (W.player.lucky ? 2 : 1) * (LF.eventIs && LF.eventIs('ammo') ? 2 : 1);   // (grapes, or an Ammo Rain event: twice the ammo)
+    const n = LF.ENEMIES[e.type].drop * (W.player.lucky > 1 ? 3 : W.player.lucky ? 2 : 1) * (LF.eventIs && LF.eventIs('ammo') ? 2 : 1);   // (grapes, or an Ammo Rain event: twice the ammo)
     if (!n || W.def.noSpawnInv || W.def.noAmmo) return;
     W.ammoFly.push({ n, x: e.x + e.w / 2, y: e.y + e.h / 2, vx: (Math.random() - .5) * 80, vy: -300, t: 0 });
   }
@@ -1256,7 +1288,7 @@
         const b = LF.pendBall(t);
         if (circleHits(b.x, b.y, 12, p)) return true;
         // A spiked chain hurts along its whole length.
-        if (t.spiked) for (let k = 1; k < 14; k++) { const f = k / 14; if (circleHits(t.ax + (b.x - t.ax) * f, t.ay + (b.y - t.ay) * f, 4, p)) return true; }
+        if (t.spiked && !(p.spiky > 1)) for (let k = 1; k < 14; k++) { const f = k / 14; if (circleHits(t.ax + (b.x - t.ax) * f, t.ay + (b.y - t.ay) * f, 4, p)) return true; }
       }
       else if (t.type === 'bar') { for (const b of LF.barBalls(t)) if (circleHits(b.x, b.y, 5, p)) return true; }
       // Crushers: only the spiked underside hurts. The top is a platform and the sides are solid.
@@ -3164,7 +3196,7 @@
     p.wet = wet;
     // (A watermelon makes you FAST times quicker on your feet. In water you move along just as
     // fast as you run on land.)
-    const T = playerTune(W.def), grav = G * T.gravity, run = RUN * T.run * (p.fast > 0 || p.rush > 0 ? FAST : 1);
+    const T = playerTune(W.def), grav = G * T.gravity, run = RUN * T.run * (p.fast > 1 ? FAST * 1.15 : p.fast > 0 || p.rush > 0 ? FAST : 1);
     const accel = p.onGround ? (p.ice ? (dir ? 450 : 120) : dir ? 2600 : 2200) : p.lock > 0 ? 250 : (dir ? 1700 : 700) * T.air;
     p.vx = approach(p.vx, dir * run, accel * dt);
 
@@ -3179,14 +3211,14 @@
 
     // Walls: touching one in the air allows a wall jump; pushing into it while falling slides slowly.
     p.wall = p.onGround ? 0 : wallBeside(W, p, -1) ? -1 : wallBeside(W, p, 1) ? 1 : p.spinWallT > 0 ? p.spinWallSide : 0;
-    const airJumps = T.airJumps + (p.dbl > 0 ? 1 : 0);
+    const airJumps = T.airJumps + (p.dbl || 0);   // (a ripe banana: a triple jump)
     if (p.wall) { p.wallDir = p.wall; p.wallCoyote = .1; p.airJumps = airJumps; }
     else p.wallCoyote -= dt;
     if (p.onGround || wet) { p.airJumps = airJumps; p.spun = false; }
     p.sliding = !!p.wall && dir === p.wall && p.vy > 0;
 
     // Jump speed scales with sqrt(height x gravity) so the height setting is exact at any gravity.
-    const jumpV = JUMP * Math.sqrt(T.jump * T.gravity) * (p.boost > 0 || p.rush > 0 ? BOOST : 1);
+    const jumpV = JUMP * Math.sqrt(T.jump * T.gravity) * (p.boost > 1 ? BOOST * 1.12 : p.boost > 0 || p.rush > 0 ? BOOST : 1);
     if (p.buffer > 0 && p.coyote > 0 && !dropping) {
       p.vy = -jumpV; p.buffer = 0; p.coyote = 0; p.jumping = true;
       p.onGround = false; p.onPlat = null; p.sx = .75; p.sy = 1.3;
@@ -3194,7 +3226,7 @@
       W.emit('jump');
     } else if (p.buffer > 0 && wet) {
       // Swimming: as many jumps as you like while in the water.
-      p.vy = -jumpV * .88 * (p.swimmer ? 1.15 : 1); p.buffer = 0; p.jumping = true; p.sx = .85; p.sy = 1.2;   // (the peach: stronger strokes)
+      p.vy = -jumpV * .88 * (p.swimmer > 1 ? 1.3 : p.swimmer ? 1.15 : 1); p.buffer = 0; p.jumping = true; p.sx = .85; p.sy = 1.2;   // (the peach: stronger strokes)
       burst(W, p.x + p.w / 2, p.y + p.h, 6, ['#7FB0E0', '#D9D0F0'], 70, 150, 2);
       W.emit('swim');
     } else if (p.buffer > 0 && p.wallCoyote > 0 && !p.onGround) {
@@ -3227,16 +3259,16 @@
     if (p.jumping && !input.jump && p.vy < 0) { p.vy *= .45; p.jumping = false; }
     if (p.vy >= 0) p.jumping = false;
     if (wet) {
-      p.vy = Math.min(SINK * (p.swimmer ? .5 : 1), p.vy + grav * WATER_G * dt);
+      p.vy = Math.min(SINK * (p.swimmer > 1 ? .3 : p.swimmer ? .5 : 1), p.vy + grav * WATER_G * dt);
       if (Math.random() < .05) W.particles.push({ x: p.x + p.w / 2 + p.face * 4, y: p.y + 4, vx: 0, vy: -40, life: .6, max: .6, c: '#9FD8FF', size: 2, g: -60 });
     } else p.vy = Math.min(MAXFALL * Math.sqrt(T.gravity), p.vy + grav * dt * (p.vy > 0 ? 1.15 : 1));
     // The pear's glide: holding jump while falling, you float down slowly. After its spin you
     // can't glide, and fall at up to SPUN_FALL, wall jumps and all, till you land.
     if (p.glide && p.spun && !wet) p.vy = Math.min(p.vy, SPUN_FALL);
     p.gliding = !!(p.glide && !p.spun && !p.onGround && !wet && !p.sliding && input.jump && p.vy > 0);
-    if (p.gliding) { p.vy = Math.min(p.vy, GLIDE_FALL); if (Math.random() < .15) W.particles.push({ x: p.x + p.w / 2 + (Math.random() - .5) * 20, y: p.y, vx: 0, vy: -30, life: .4, max: .4, c: '#C5D94A', size: 2, g: 0 }); }
+    if (p.gliding) { p.vy = Math.min(p.vy, GLIDE_FALL * (p.glide > 1 ? .6 : 1)); if (Math.random() < .15) W.particles.push({ x: p.x + p.w / 2 + (Math.random() - .5) * 20, y: p.y, vx: 0, vy: -30, life: .4, max: .4, c: '#C5D94A', size: 2, g: 0 }); }
     if (p.sliding) {
-      p.vy = Math.min(p.vy, WALL_SLIDE * T.wallSlide / (p.grip ? 3 : 1));
+      p.vy = Math.min(p.vy, WALL_SLIDE * T.wallSlide / (p.grip > 1 ? 6 : p.grip ? 3 : 1));
       if (Math.random() < .12) W.particles.push({ x: p.wall > 0 ? p.x + p.w : p.x, y: p.y + p.h - 4, vx: -p.wall * 20, vy: -30, life: .35, max: .35, c: '#9A8FBF', size: 2, g: 200 });
     }
     if (p.boost > 0 && Math.random() < .08) W.particles.push({ x: p.x + Math.random() * p.w, y: p.y + p.h, vx: 0, vy: -40, life: .4, max: .4, c: '#FFB547', size: 2, g: -40 });
@@ -3513,7 +3545,7 @@
 
     for (const a of W.ammo) {
       // (With the cherry's magnet, crates nearby come flying to you.)
-      if (!a.taken && p.magnet && Math.hypot(cx - a.x, cy - a.y) < 4 * TS && !(Math.abs(cx - a.x) <= 20 && Math.abs(cy - a.y) <= 22)) {
+      if (!a.taken && p.magnet && Math.hypot(cx - a.x, cy - a.y) < (p.magnet > 1 ? 8 : 4) * TS && !(Math.abs(cx - a.x) <= 20 && Math.abs(cy - a.y) <= 22)) {
         a.taken = true; W.ammoFly.push({ n: a.n, x: a.x, y: a.y, vx: 0, vy: -120, t: .2 });
         burst(W, a.x, a.y, 10, ['#FFE2A8', '#B3123A'], 110, 100, 2); W.emit('ammo');
         continue;
