@@ -1257,6 +1257,14 @@
     function drawShield(p) {
       const cx = p.x + p.w / 2, cy = p.y + p.h / 2 - 4;
       const pulse = reduced ? 0 : Math.sin(clock * 4) * 1.5;
+      // A triple shield (a green apple's) gets a third ring, outermost, in the green apple's
+      // green, with sparks running round it.
+      if (p.shield > 2) {
+        ctx.strokeStyle = 'rgba(160,230,110,.7)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.ellipse(cx, cy, 27 + pulse, 33 + pulse, 0, 0, TAU); ctx.stroke();
+        ctx.fillStyle = '#D8FFB0';
+        for (let k = 0; k < 3; k++) { const a = clock * 2.2 + k * TAU / 3; ctx.beginPath(); ctx.arc(cx + Math.cos(a) * (27 + pulse), cy + Math.sin(a) * (33 + pulse), 2, 0, TAU); ctx.fill(); }
+      }
       // A double shield gets an outer ring too.
       if (p.shield > 1) {
         ctx.strokeStyle = 'rgba(159,216,255,.55)'; ctx.lineWidth = 1.5;

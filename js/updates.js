@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'A triple shield looks like one now: a third ring, green, with sparks running round it, and picking up the third apple says “shield ×3”.',
       'Ammo groves: beside about one level in seven there’s now an ammo house (a blue roof and a crate on its sign), taking turns at Ammo Dash (grab the crates in 10 seconds), Crate Rain (catch them as they fall) and Ammo Panels (bump panels for 3 to 25 ammo each till you find two skulls). The ammo goes with you into your next level. They come back 15 minutes after you’ve been in, like the fruit groves.',
       'New fruit: 🍏 the green apple. It takes no power slot, and with it you can take one more of each fruit: a third apple shield, or a second of any power fruit for a stronger power (a triple jump, a bigger boost, more speed, a slower glide and wall slide, an 8-block magnet, brighter eyes, harmless spiked chains, triple ammo, stronger swimming, a half-speed clock, two second chances). Lasts until you die.',
       'Four new fruit groves: Fruit Rain (catch it as it falls), the Spring Garden (bounce up to fruit high in the air), the Ice Rink and the Fruit Climb. Every grove now has every kind of fruit in it. Panel Pairs is now 45 seconds with a pair of every fruit and a 6-second look first, and missed matches don’t end it any more.',

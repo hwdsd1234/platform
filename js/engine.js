@@ -3573,7 +3573,7 @@
       LF.applyFruit(p, f.type);
       W.got[f.type] = (W.got[f.type] || 0) + 1;
       burst(W, f.x, f.y, 16, [spec.color, '#FFF6C2'], 130, 150, 2.5);
-      W.floaters.push({ x: f.x, y: f.y - 20, t: f.type === 'a' && p.shield > 1 ? 'shield ×2' : spec.power.toLowerCase(), life: 1.1, c: spec.color });
+      W.floaters.push({ x: f.x, y: f.y - 20, t: f.type === 'a' && p.shield > 1 ? `shield ×${p.shield}` : spec.power.toLowerCase(), life: 1.1, c: spec.color });
       W.emit('fruit', { type: f.type });
     }
 
