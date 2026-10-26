@@ -585,6 +585,7 @@
     const wc = worldCoins(L[mapAt].world);
     $('map-stats').textContent = `World ${L[mapAt].world + 1} of ${LF.WORLDS.length} · ${lit} of ${n} lit · coins here ${wc.have} of ${wc.all} · secret exits ${found} of ${total}${hardcore ? ` · hardcore ${Object.keys(progressHC).length} lit` : ''}`;
     renderEvent();
+    if (screen === 'map' && needPick()) showPick();
     $('map-awards').textContent = `Awards · ${LF.awards.count().earned}/${LF.awards.count().total}`;
     markUpdates();
     $('map-hc').textContent = `Hardcore: ${hardcore ? 'on' : 'off'}`; $('map-hc').classList.toggle('hc-on', hardcore);
@@ -665,7 +666,20 @@
     el.innerHTML = ev ? `<b>${ev.icon} ${ev.name}</b> · ${esc(ev.note)} · <em>${LF.eventLeft(ev.ends - Date.now())} left</em>`
       : `<span>Next event: ${nx.ev.icon} ${nx.ev.name} in ${LF.eventLeft(nx.starts - Date.now())}</span>`;
   }
-  setInterval(() => { if (screen === 'map') renderEvent(); }, 30000);
+  setInterval(() => { if (screen === 'map') { renderEvent(); if (needPick()) showPick(); } }, 30000);
+  // When a Power Stack event's over and you're carrying more than one fruit power, you choose
+  // the one to keep (shields and the green apple stay: they take no power slot). In practice,
+  // the same for your practice powers.
+  const stackedPowers = () => { const c = practice ? practiceCarry : carry; return c ? Object.values(LF.POWERS).filter(k => c[k]) : []; };
+  const needPick = () => !LF.eventIs('stack') && stackedPowers().length > 1;
+  function showPick() {
+    screen = 'pick';
+    setVisible({ overlay: true });
+    const c = practice ? practiceCarry : carry, keyOf = Object.fromEntries(Object.entries(LF.POWERS).map(([t, k]) => [k, t]));
+    card(`<p class="eyebrow">✨ Power Stack is over</p><h2>Choose a fruit to keep</h2>
+      <p class="lede">The event’s ended, so only one fruit power works at a time again. Pick the one you keep; the others go${c.shield || c.green ? ' (your ' + [c.shield ? 'apple shield' : '', c.green ? 'green apple' : ''].filter(Boolean).join(' and ') + ' stay' + (c.shield && c.green ? '' : 's') + ': no power slot)' : ''}.</p>
+      <div class="menu">${stackedPowers().map(k => { const t = keyOf[k]; return `<button class="go" data-act="keepPower" data-k="${k}">${FRUIT_ICON[t]} ${k === 'dbl' && c[k] > 1 ? 'Triple jump' : esc(LF.FRUITS[t].power) + (c[k] > 1 ? ' ×2' : '')}</button>`; }).join('')}</div>`);
+  }
   function mapInfo() {
     const L = LF.LEVELS, lv = L[mapAt], p = progress[mapAt], hc = progressHC[mapAt];
     if (mapHouse != null) {
@@ -1403,6 +1417,7 @@
   // ---------- actions ----------
   const ACTIONS = {
     story: d => {
+      if (needPick()) return showPick();
       const lv = LF.LEVELS[+d.i];
       if (lv.starOf != null && !starOpen(+d.i)) { const c = starCoins(+d.i); return flash(`Collect every star coin ${lv.starOfStars ? 'on the rest of the Star Road' : `in ${LF.WORLDS[lv.starOf].name}`} to open this (${c.have} of ${c.all})`); }
       if (practice) return play(LF.LEVELS[+d.i], { kind: 'practice', index: +d.i });
@@ -1416,6 +1431,13 @@
     // Stand at a secret cannon you've found (from the level's button on the map).
     warp: d => { const i = +(d.i ?? mapAt); if (LF.LEVELS[i].secretTo != null && secrets[i]) { mapAt = i; mapCannon = { secret: i }; store.set('mapAt', i); renderMap(); } },
     // Into a fruit house's Fruit Grove (once every 15 minutes per house).
+    keepPower: d => {
+      const c = { ...(practice ? practiceCarry : carry) };
+      for (const k of Object.values(LF.POWERS)) if (k !== d.k) c[k] = 0;
+      if (practice) practiceCarry = c; else { carry = c; store.set('powers', carry); }
+      flash(`Kept ${LF.FRUITS[Object.keys(LF.POWERS).find(t => LF.POWERS[t] === d.k)].power.toLowerCase()}`);
+      screen = 'map'; setVisible({ map: true }); renderMap(false);
+    },
     house: d => { const i = +d.i; if (houseOpen(i)) play(withBonusDoor(fruitGrove(i)), { kind: 'house', i, practice }); },
     items: () => showInventory(),
     // From the clear screen: off to the cannon you've just reached.
