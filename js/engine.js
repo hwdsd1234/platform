@@ -411,11 +411,9 @@
     if (def.powers) {
       const pw = def.powers;
       W.player.shield = Math.min(pw.green ? 3 : 2, pw.shield || 0); W.player.green = pw.green ? 1 : 0;
-      // (One power at a time: an old save carrying more keeps just the first.)
-      // (...unless a Power Stack event is on: then all of them.)
-      const lv = k => Math.min(pw.green ? 2 : 1, pw[k]);
-      if (LF.eventIs && LF.eventIs('stack')) { for (const k of FLAGS) if (pw[k]) W.player[k] = lv(k); }
-      else { const one = FLAGS.find(k => pw[k]); if (one) W.player[one] = lv(one); }
+      // (Every power you're carrying: powers stacked in a Power Stack event stay stacked
+      // until you die, even once the event's over.)
+      for (const k of FLAGS) if (pw[k]) W.player[k] = Math.min(pw.green ? 2 : 1, pw[k]);
     }
     W.got = {};   // fruit picked up, by type
     // A panel grove (def.panelGame = { mode, syms }): what's under each panel, left to right.

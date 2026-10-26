@@ -585,7 +585,6 @@
     const wc = worldCoins(L[mapAt].world);
     $('map-stats').textContent = `World ${L[mapAt].world + 1} of ${LF.WORLDS.length} · ${lit} of ${n} lit · coins here ${wc.have} of ${wc.all} · secret exits ${found} of ${total}${hardcore ? ` · hardcore ${Object.keys(progressHC).length} lit` : ''}`;
     renderEvent();
-    if (screen === 'map' && needPick()) showPick();
     $('map-awards').textContent = `Awards · ${LF.awards.count().earned}/${LF.awards.count().total}`;
     markUpdates();
     $('map-hc').textContent = `Hardcore: ${hardcore ? 'on' : 'off'}`; $('map-hc').classList.toggle('hc-on', hardcore);
@@ -666,20 +665,8 @@
     el.innerHTML = ev ? `<b>${ev.icon} ${ev.name}</b> · ${esc(ev.note)} · <em>${LF.eventLeft(ev.ends - Date.now())} left</em>`
       : `<span>Next event: ${nx.ev.icon} ${nx.ev.name} in ${LF.eventLeft(nx.starts - Date.now())}</span>`;
   }
-  setInterval(() => { if (screen === 'map') { renderEvent(); if (needPick()) showPick(); } }, 30000);
-  // When a Power Stack event's over and you're carrying more than one fruit power, you choose
-  // the one to keep (shields and the green apple stay: they take no power slot). In practice,
-  // the same for your practice powers.
-  const stackedPowers = () => { const c = practice ? practiceCarry : carry; return c ? Object.values(LF.POWERS).filter(k => c[k]) : []; };
-  const needPick = () => !LF.eventIs('stack') && stackedPowers().length > 1;
-  function showPick() {
-    screen = 'pick';
-    setVisible({ overlay: true });
-    const c = practice ? practiceCarry : carry, keyOf = Object.fromEntries(Object.entries(LF.POWERS).map(([t, k]) => [k, t]));
-    card(`<p class="eyebrow">✨ Power Stack is over</p><h2>Choose a fruit to keep</h2>
-      <p class="lede">The event’s ended, so only one fruit power works at a time again. Pick the one you keep; the others go${c.shield || c.green ? ' (your ' + [c.shield ? 'apple shield' : '', c.green ? 'green apple' : ''].filter(Boolean).join(' and ') + ' stay' + (c.shield && c.green ? '' : 's') + ': no power slot)' : ''}.</p>
-      <div class="menu">${stackedPowers().map(k => { const t = keyOf[k]; return `<button class="go" data-act="keepPower" data-k="${k}">${FRUIT_ICON[t]} ${k === 'dbl' && c[k] > 1 ? 'Triple jump' : esc(LF.FRUITS[t].power) + (c[k] > 1 ? ' ×2' : '')}</button>`; }).join('')}</div>`);
-  }
+  setInterval(() => { if (screen === 'map') renderEvent(); }, 30000);
+
   function mapInfo() {
     const L = LF.LEVELS, lv = L[mapAt], p = progress[mapAt], hc = progressHC[mapAt];
     if (mapHouse != null) {
@@ -1049,8 +1036,8 @@
         <li><kbd>E</kbd> fire: tap for one shot, hold for autofire; shots splash 1 block · <kbd>X</kbd> explosive round (2 ammo, 3-block blast) · <kbd>A</kbd> kill shot (3 ammo): kills whatever it hits in one go, golems and carts too (a boss takes it as one hit) · every shot counts as one hit (a grenade one per blast, up to three), so golems take 3 and TNT carts 5 (stomps count too); a TNT blast kills everything near it but you · <kbd>Q</kbd> bouncing grenade (3 ammo) · <kbd>D</kbd> dynamite (4 ammo): thrown, it falls and sits where it lands, and after a 3-second fuse kills everything within 5 blocks, golems and carts too (a boss takes it as one hit; it never hurts you) · <kbd>Shift</kbd>+<kbd>D</kbd> big dynamite (8 ammo, 10 blocks) · <kbd>W</kbd> nuke (10 ammo): primed right where you are, and after a 3-second fuse it kills everything within 30 blocks (a boss takes it as one hit; it never hurts you) · <kbd>Shift</kbd>+<kbd>W</kbd> big nuke (20 ammo, 60 blocks) · hold any of them to keep firing · hold <kbd>Shift</kbd> for a big shot: 2× size and blast, 2× ammo · ammo crates are hidden through each level; big crates hold 10, huge ones 25; enemies drop 1–5 ammo when killed, more for tougher ones (TNT carts drop none)</li>
         <li>Keys open the locked-door blocks you touch, one block at a time; you keep the key</li>
         <li>Water is safe: you sink slowly and can jump as often as you like</li>
-        <li>Events: for the first hour of every three hours an event is on (the map shows which, and when the next one starts): 🧺 Double Harvest (grove fruit counts twice) · ✨ Power Stack (fruit powers stack) · 🌱 Quick Groves (groves grow straight back) · 🎯 Ammo Rain (double ammo) · 🕰️ Long Night (60 more seconds on every level clock)</li>
-        <li>Fruit: 🍎 shield (a second apple doubles it) · 🍊 jump boost · 🍌 double jump · 🍉 speed · 🍐 glide (hold <kbd>↑</kbd> or jump while falling; press <kbd>Space</kbd> in mid-air for a small lift, after which you can't glide and fall steadily till you land (wall jumps don't give it back); letting go of <kbd>↑</kbd> and pressing it again just keeps you gliding) · 🍍 spikes don't hurt · 🍇 double ammo from enemies · 🍑 stronger swimming · 🥭 a slower clock · 🍓 wall grip · 🍒 ammo magnet · 🫐 night eyes (twice the light) · 🍅 second chance (a hit with no shield is taken by the tomato, then 5 seconds of speed, a high jump, and touching kills) · 🍏 green apple (takes no power slot: with it you can take one more of each fruit, so a third apple shield, or a second of any power fruit for a stronger power) · only one fruit power besides the apple's shield works at a time: a new fruit takes the place of the last (except in a ✨ Power Stack event) · powers last until you die; powers and leftover ammo carry on to the next level</li>
+        <li>Events: for the first hour of every three hours an event is on (the map shows which, and when the next one starts): 🧺 Double Harvest (grove fruit counts twice) · ✨ Power Stack (fruit powers stack, and stay stacked until you die) · 🌱 Quick Groves (groves grow straight back) · 🎯 Ammo Rain (double ammo) · 🕰️ Long Night (60 more seconds on every level clock)</li>
+        <li>Fruit: 🍎 shield (a second apple doubles it) · 🍊 jump boost · 🍌 double jump · 🍉 speed · 🍐 glide (hold <kbd>↑</kbd> or jump while falling; press <kbd>Space</kbd> in mid-air for a small lift, after which you can't glide and fall steadily till you land (wall jumps don't give it back); letting go of <kbd>↑</kbd> and pressing it again just keeps you gliding) · 🍍 spikes don't hurt · 🍇 double ammo from enemies · 🍑 stronger swimming · 🥭 a slower clock · 🍓 wall grip · 🍒 ammo magnet · 🫐 night eyes (twice the light) · 🍅 second chance (a hit with no shield is taken by the tomato, then 5 seconds of speed, a high jump, and touching kills) · 🍏 green apple (takes no power slot: with it you can take one more of each fruit, so a third apple shield, or a second of any power fruit for a stronger power) · only one fruit power besides the apple's shield works at a time: a new fruit takes the place of the last (except in a ✨ Power Stack event, and powers stacked then stay stacked until you die) · powers last until you die; powers and leftover ammo carry on to the next level</li>
         <li>Doubles: with a 🍏 green apple, eat the same fruit a second time (picked up or from your items) and its power goes up to level 2, marked ×2 (a different power fruit still takes its place, unless a ✨ Power Stack event is on; the green apple itself stays) · 🍎 a third shield (a green ring) · 🍊 an even bigger jump (about 1.9× as high instead of 1.5×) · 🍌 a triple jump (two air jumps; each resets your rise, so it's more steering than height) · 🍉 faster still (1.61× instead of 1.4×) · 🍐 a slower glide (about 1.8 tiles a second instead of 3) · 🍓 wall slide at a sixth of the speed instead of a third · 🍒 the magnet reaches 8 blocks instead of 4 · 🫐 your light reaches 3× as far instead of 2× · 🍍 spiked pendulum chains don't hurt either (the ball still does) · 🍇 triple ammo from enemies instead of double · 🍑 stronger strokes still (1.3× instead of 1.15×) and you sink at 30% instead of half speed · 🥭 the clock at half speed instead of two-thirds · 🍅 two second chances instead of one · doubles last until you die, like every power</li>
         <li>Towers have no guns: the boss falls to 3 hits (a castle's keeper to 4), but each stomp throws it into a 10-second fury: it glows red and rampages round the arena, leaping (with a slam where it lands) or darting about dropping bombs, and throwing rings of embers, rocks from the ceiling and fire round your feet; then it's worn out and stands dazed for a moment: stomp it then · its last fury (one stomp left) adds its own signature move · the Last Dark takes 4 stomps and you can't stomp it again until it calms down · your ammo waits for you outside</li>
         <li>Neo: when a slab sits right over your ledge, flush with its edge, run off the edge, jump at once and steer straight back in to land on top (miss, and you just drop back)</li>
@@ -1417,7 +1404,6 @@
   // ---------- actions ----------
   const ACTIONS = {
     story: d => {
-      if (needPick()) return showPick();
       const lv = LF.LEVELS[+d.i];
       if (lv.starOf != null && !starOpen(+d.i)) { const c = starCoins(+d.i); return flash(`Collect every star coin ${lv.starOfStars ? 'on the rest of the Star Road' : `in ${LF.WORLDS[lv.starOf].name}`} to open this (${c.have} of ${c.all})`); }
       if (practice) return play(LF.LEVELS[+d.i], { kind: 'practice', index: +d.i });
@@ -1431,13 +1417,6 @@
     // Stand at a secret cannon you've found (from the level's button on the map).
     warp: d => { const i = +(d.i ?? mapAt); if (LF.LEVELS[i].secretTo != null && secrets[i]) { mapAt = i; mapCannon = { secret: i }; store.set('mapAt', i); renderMap(); } },
     // Into a fruit house's Fruit Grove (once every 15 minutes per house).
-    keepPower: d => {
-      const c = { ...(practice ? practiceCarry : carry) };
-      for (const k of Object.values(LF.POWERS)) if (k !== d.k) c[k] = 0;
-      if (practice) practiceCarry = c; else { carry = c; store.set('powers', carry); }
-      flash(`Kept ${LF.FRUITS[Object.keys(LF.POWERS).find(t => LF.POWERS[t] === d.k)].power.toLowerCase()}`);
-      screen = 'map'; setVisible({ map: true }); renderMap(false);
-    },
     house: d => { const i = +d.i; if (houseOpen(i)) play(withBonusDoor(fruitGrove(i)), { kind: 'house', i, practice }); },
     items: () => showInventory(),
     // From the clear screen: off to the cannon you've just reached.
