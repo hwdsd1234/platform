@@ -8,7 +8,7 @@
   const HOUR = 60 * 60 * 1000, EVERY = 3 * HOUR, LASTS = HOUR;
   const EVENTS = LF.EVENTS = [
     { id: 'harvest', icon: '🧺', name: 'Double Harvest', note: 'every fruit you get in a fruit grove counts twice' },
-    { id: 'stack', icon: '✨', name: 'Power Stack', note: 'fruit powers stack: keep more than one at a time (on top of your apple shields), and they stay stacked until you die' },
+    { id: 'stack', icon: '✨', name: 'Power Stack', note: 'play during it and fruit powers stack until you die: every fruit power you get adds to the ones you have (on top of your apple shields)' },
     { id: 'regrow', icon: '🌱', name: 'Quick Groves', note: 'fruit groves grow straight back: go in as often as you like' },
     { id: 'ammo', icon: '🎯', name: 'Ammo Rain', note: 'ammo crates and enemy drops are worth twice as much' },
     { id: 'clock', icon: '🕰️', name: 'Long Night', note: 'every level clock gets 60 more seconds' },

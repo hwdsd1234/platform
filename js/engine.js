@@ -73,8 +73,9 @@
   const FLAGS = Object.values(POWERS);
   // (A power's level: 1, or 2 when ripened by a green apple. The green apple's own flag
   // rides along.)
-  LF.powerFlags = p => ({ ...Object.fromEntries(FLAGS.map(k => [k, p[k] || 0])), green: p.green ? 1 : 0 });
-  LF.hasPowers = p => FLAGS.some(k => p[k]) || !!p.green;
+  // (p.stack: caught a Power Stack event, so powers stack till you die: see applyFruit.)
+  LF.powerFlags = p => ({ ...Object.fromEntries(FLAGS.map(k => [k, p[k] || 0])), green: p.green ? 1 : 0, stack: p.stack ? 1 : 0 });
+  LF.hasPowers = p => FLAGS.some(k => p[k]) || !!p.green || !!p.stack;
 
   // drop: ammo an enemy leaves behind when you kill it — the harder it is to kill, the more.
   LF.ENEMIES = {
@@ -116,7 +117,9 @@
     const k = POWERS[type];
     if (!k || p[k] >= (p.green ? 2 : 1)) return false;
     if (p[k]) { p[k] = 2; if (k === 'dbl') p.airJumps++; if (k === 'tomato') p.tomato = 2; return true; }
-    if (!(LF.eventIs && LF.eventIs('stack'))) { if (p.dbl) p.airJumps = Math.max(0, p.airJumps - p.dbl); for (const f of FLAGS) p[f] = 0; }
+    // (Playing during a Power Stack event marks you: powers stack until you die, event or no.)
+    if (LF.eventIs && LF.eventIs('stack')) p.stack = 1;
+    if (!p.stack) { if (p.dbl) p.airJumps = Math.max(0, p.airJumps - p.dbl); for (const f of FLAGS) p[f] = 0; }
     p[k] = 1; if (k === 'dbl') p.airJumps = Math.max(p.airJumps, 1);
     return true;
   };
@@ -410,11 +413,12 @@
     // Powers brought from the last level (or the inventory): def.powers = { shield, boost, dbl }.
     if (def.powers) {
       const pw = def.powers;
-      W.player.shield = Math.min(pw.green ? 3 : 2, pw.shield || 0); W.player.green = pw.green ? 1 : 0;
+      W.player.shield = Math.min(pw.green ? 3 : 2, pw.shield || 0); W.player.green = pw.green ? 1 : 0; W.player.stack = pw.stack ? 1 : 0;
       // (Every power you're carrying: powers stacked in a Power Stack event stay stacked
       // until you die, even once the event's over.)
       for (const k of FLAGS) if (pw[k]) W.player[k] = Math.min(pw.green ? 2 : 1, pw[k]);
     }
+    if (LF.eventIs && LF.eventIs('stack')) W.player.stack = 1;
     W.got = {};   // fruit picked up, by type
     // A panel grove (def.panelGame = { mode, syms }): what's under each panel, left to right.
     if (W.panels && def.panelGame) { W.panels.sort((a, b) => a.tx - b.tx || a.ty - b.ty); W.panels.forEach((q, k) => { q.sym = def.panelGame.syms[k]; }); W.panelBad = 0; W.panelPeek = def.panelGame.peek || 0; }
@@ -703,7 +707,8 @@
     // Dying costs you all your ammo; the level's crates fill up again, so a shot door can
     // never be left out of reach.
     const { keys } = W.player;
-    Object.assign(W.player, makePlayer(W.checkpoint), { ammo: 0, keys });
+    // (Every fruit power goes too, the green apple's ripeness and Power Stack's stacking with them.)
+    Object.assign(W.player, makePlayer(W.checkpoint), Object.fromEntries(FLAGS.map(k => [k, 0])), { ammo: 0, keys, green: 0, stack: 0 });
     for (const f of W.flows) if (f.trigger != null || f.triggerY != null) Object.assign(f, { s: (f.mode === 'fall' ? f.hi : f.lo) * TS, on: false, t: 0 });
     // (Cracked shingles you'd broken are back, for another go.)
     for (const pl of W.plats) if (pl.once && pl.state === 'gone') Object.assign(pl, { state: 'idle', t: 0, y: pl.oy, prevY: pl.oy });

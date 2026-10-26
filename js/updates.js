@@ -6,7 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
-      'Powers stacked in a ✨ Power Stack event now stay stacked until you die, even after the event ends.',
+      'Power Stack lasts until you die: play during the ✨ Power Stack event and, from then until your next death, every fruit power you get adds to the ones you have, even after the event ends (✨ Stacking shows in your powers).',
       'The ammo bank: ammo from the ammo houses goes straight into a bank at the top of your items (Tab on the map). Take it out to carry into your next level, or put carried ammo back in, 10 at a time or all at once. Ammo in the bank is safe when you die.',
       'Bonus doors: every grove but the two rain ones has a door by the start, shut till you get every fruit, crate or panel prize in it. Go through it and everything you got there counts twice.',
       'How to play now explains doubles: what every fruit does at level 2 with a green apple.',
