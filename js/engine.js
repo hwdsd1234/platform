@@ -420,6 +420,9 @@
       for (const k of FLAGS) if (pw[k]) W.player[k] = Math.min(pw.green ? 2 : 1, pw[k]);
     }
     if (LF.eventIs && LF.eventIs('stack')) W.player.stack = 1;
+    // (The enemies there at the start, bosses aside: if they're all still alive when you
+    // finish, you killed nothing. See the Pacifist award.)
+    W.foes0 = W.enemies.filter(e => e.alive && !isBoss(e));
     W.got = {};   // fruit picked up, by type
     // A panel grove (def.panelGame = { mode, syms }): what's under each panel, left to right.
     if (W.panels && def.panelGame) { W.panels.sort((a, b) => a.tx - b.tx || a.ty - b.ty); W.panels.forEach((q, k) => { q.sym = def.panelGame.syms[k]; }); W.panelBad = 0; W.panelPeek = def.panelGame.peek || 0; }

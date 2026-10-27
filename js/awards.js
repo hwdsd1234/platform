@@ -54,6 +54,7 @@
     { id: 'quick60', name: 'Brisk', desc: 'Clear a story level in under a minute.' },
     { id: 'quick120', name: 'No Dawdling', desc: 'Clear a story level in under two minutes.' },
     // Fifty seconds: once, then on different levels, then a whole world at that pace.
+    { id: 'pacifist', name: 'Pacifist', desc: 'Clear a story level without killing a single enemy.' },
     { id: 'quick50', name: 'Fifty Flat', desc: 'Clear a story level in under 50 seconds.' },
     { id: 'fast50x10', name: 'Fleet Wick', desc: 'Clear 10 different story levels in under 50 seconds each.', stat: 'fast50', goal: 10 },
     { id: 'fast50x25', name: 'Racing the Dark', desc: 'Clear 25 different story levels in under 50 seconds each.', stat: 'fast50', goal: 25 },
@@ -156,7 +157,7 @@
       }
     },
     // A level was cleared. Only story levels count, except that a random map earns Wanderer.
-    clear({ kind, index, time, falls, hardcore, horde, storyLit, hcLit, progress, secrets }) {
+    clear({ kind, index, time, falls, hardcore, horde, storyLit, hcLit, progress, secrets, pacifist }) {
       const hurried = stats.hurried; stats.hurried = false;
       if (kind === 'random') { earn('random'); bump('randoms'); return; }
       if (kind === 'custom') return earn('custom');
@@ -172,6 +173,7 @@
         if (LF.WORLDS.some(w => { for (let i = w.first; i <= w.last; i++) if (!fast.has(i)) return false; return true; })) earn('fast50world');
       }
       if (hurried) earn('hurry');
+      if (pacifist) earn('pacifist');
       if (falls === 0) { earn('flawless'); bump('flawless'); }
       // (A world all lit.)
       if (progress) LF.WORLDS.forEach((w, k) => { let all = true; for (let i = w.first; i <= w.last; i++) if (!progress[i]) all = false; if (all) earn('world' + k); });
