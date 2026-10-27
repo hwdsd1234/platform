@@ -66,7 +66,7 @@
     'ƀ': { name: 'Blueberry', power: 'Night eyes', color: '#5B6EE1', note: 'your light reaches twice as far, until you die' },
     // The green apple isn't a power of its own and takes no power slot: it ripens the rest.
     'ǵ': { name: 'Green apple', power: 'Ripe', color: '#7BC043', note: 'takes no power slot: with it you can take one more of each fruit: a third apple shield, and a second of any power fruit makes its power stronger (a triple jump, a bigger boost, faster, a slower glide and slide, a wider magnet, brighter eyes, spiked chains harmless, triple ammo, stronger swimming, a half-speed clock, two second chances), until you die' },
-    'ŧ': { name: 'Tomato', power: 'Second chance', color: '#E8402A', note: 'a hit with no shield doesn’t kill you: the tomato takes it, then for 5 seconds you run fast, jump high and can’t be hurt, and whatever you touch dies (a boss takes a hit)' },
+    'ŧ': { name: 'Tomato', power: 'Second chance', color: '#E8402A', note: 'takes no power slot: a hit with no shield doesn’t kill you: the tomato takes it, then for 5 seconds you run fast, jump high and can’t be hurt, and whatever you touch dies (a boss takes a hit)' },
   };
   // Every fruit but the apple gives a power that's on or off: the player's flag for each.
   const POWERS = LF.POWERS = { o: 'boost', b: 'dbl', m: 'fast', p: 'glide', s: 'grip', 'ç': 'magnet', 'ƀ': 'glow', 'ƥ': 'spiky', 'ǥ': 'lucky', 'ƫ': 'swimmer', 'ɯ': 'slowtime', 'ŧ': 'tomato' };
@@ -119,7 +119,8 @@
     if (p[k]) { p[k] = 2; if (k === 'dbl') p.airJumps++; if (k === 'tomato') p.tomato = 2; return true; }
     // (Playing during a Power Stack event marks you: powers stack until you die, event or no.)
     if (LF.eventIs && LF.eventIs('stack')) p.stack = 1;
-    if (!p.stack) { if (p.dbl) p.airJumps = Math.max(0, p.airJumps - p.dbl); for (const f of FLAGS) p[f] = 0; }
+    // (The tomato takes no power slot either: it neither replaces another power nor is replaced.)
+    if (!p.stack && k !== 'tomato') { if (p.dbl) p.airJumps = Math.max(0, p.airJumps - p.dbl); for (const f of FLAGS) if (f !== 'tomato') p[f] = 0; }
     p[k] = 1; if (k === 'dbl') p.airJumps = Math.max(p.airJumps, 1);
     return true;
   };
