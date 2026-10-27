@@ -53,7 +53,8 @@
     return LF.normalize(g.map).map(r => [...r].map(c => (LF.FRUITS[c] ? def.pureFruit || 'a' : c)).join(''));
   }
   LF.lengthen = def => {
-    if (!def || def.boss || def.arenaX || !Array.isArray(def.map) || !find(def.map, 'D') || !find(def.map, 'P')) return def;
+    // (def.keepLength: a level that's long enough already, like the Bat Tower's climb.)
+    if (!def || def.boss || def.arenaX || def.keepLength || !Array.isArray(def.map) || !find(def.map, 'D') || !find(def.map, 'P')) return def;
     if (cache.has(def.name)) return cache.get(def.name);
     const base = LF.normalize(def.map);
     const pick = k => (def.sky || def.pear ? base : generated(def, k, def.world));

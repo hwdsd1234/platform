@@ -1508,6 +1508,6 @@
   // ...and the last of all, Star of Star Road: the hardest level there is, opened by holding
   // every star coin on the rest of the Star Road (see special.js and ui.js). (Its starOf is the
   // Star Road itself, the tenth world.)
-  out.push({ chapter: 'The Star Road', name: 'Star of Star Road', starOf: 9, starOfStars: true, since: 19, dark: .96, map: ['P........D', '##########'] });
+  out.push({ chapter: 'The Star Road', name: 'Star of Star Road', starOf: 9, starOfStars: true, since: 18, dark: .96, map: ['P........D', '##########'] });
   L.length = 0; L.push(...out);
 })();

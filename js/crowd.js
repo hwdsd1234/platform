@@ -10,7 +10,8 @@
   const CROWD = { 'ĸ': 10, a: 5 };
   const ground = c => '#=i<>C'.includes(c) || !!(LF.SLOPES && LF.SLOPES[c]);
   LF.addCrowd = def => {
-    if (!def || !Array.isArray(def.map) || def.timeLimit) return def;
+    // (def.noCrowd: no room for them, like the Bat Tower's little ledges.)
+    if (!def || !Array.isArray(def.map) || def.timeLimit || def.noCrowd) return def;
     if (cache.has(def.name)) return cache.get(def.name);
     const rows = LF.normalize(def.map).map(r => r.split('')), h = rows.length, w = rows[0].length;
     const at = (x, y) => (y >= 0 && y < h && x >= 0 && x < w ? rows[y][x] : '#');

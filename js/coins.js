@@ -17,6 +17,8 @@
   LF.addCoins = def => {
     if (!def || !Array.isArray(def.map) || def.timeLimit) return def;
     if (cache.has(def.name)) return cache.get(def.name);
+    // (A level that places its own three, like the Bat Tower, keeps them.)
+    if (def.map.join('').split('¢').length - 1 >= 3) { cache.set(def.name, def); return def; }
     const map = LF.normalize(def.map), h = map.length, w = map[0].length;
     const marks = [];
     map.forEach((r, y) => [...r].forEach((c, x) => { if (MARKS.includes(c)) marks.push([x, y]); }));

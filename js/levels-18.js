@@ -15,9 +15,11 @@
   // by turn markers either side (so it only bobs and wobbles). Returns the last one's column.
   // (A held-jump bounce carries you about four and a half tiles, so they're four and a half
   // apart on average: four, five, four, five.)
-  const bats = ({ s }) => (x, y, n, gap = 4.5, rise = 0) => {
+  // (move: every second bat drifts back and forth across three tiles instead, its markers
+  // two out, so you time your bounce onto it.)
+  const bats = ({ s }) => (x, y, n, gap = 4.5, rise = 0, move = false) => {
     // (A chain that rises or falls does it a row every second bat, gently.)
-    for (let k = 0; k < n; k++) { const bx = x + Math.floor(k * gap), by = y + rise * Math.floor(k / 2); s(bx, by, 'F'); s(bx - 1, by, '|'); s(bx + 1, by, '|'); }
+    for (let k = 0; k < n; k++) { const bx = x + Math.floor(k * gap), by = y + rise * Math.floor(k / 2), m = move && k % 2 ? 2 : 1; s(bx, by, 'F'); s(bx - m, by, '|'); s(bx + m, by, '|'); }
     return x + Math.floor((n - 1) * gap);
   };
 
@@ -28,17 +30,52 @@
   const course = ({ s, isle, bats }) => (parts, endW) => {
     const at = [];
     let x = 0;
-    parts.forEach(({ w, y, n, rise = 0 }, k) => {
+    parts.forEach(({ w, y, n, rise = 0, move }, k) => {
       isle(x, y, w); at.push({ x, y, w });
       if (k === 0) s(x + 2, y - 1, 'P');
       // (The next island's top a row over the last bat.)
-      const last = bats(x + w + 1, y + 1, n, 4.5, rise), ny = y + rise * Math.floor((n - 1) / 2);
+      // (A chain with drifting bats is closer together, so a bat at the far end of its drift is
+      // still in reach.)
+      const last = bats(x + w + 1, y + 1, n, move ? 3.5 : 4.5, rise, move), ny = y + rise * Math.floor((n - 1) / 2);
       x = last + 3;
       if (k === parts.length - 1) { isle(x, ny, endW); at.push({ x, y: ny, w: endW }); s(x + endW - 5, ny - 1, 'D'); }
       else parts[k + 1].y = ny;
     });
     return at;
   };
+
+  // A tower of bats: up a shaft over the void, bounce by bounce, each bat three rows above the
+  // last and two tiles over (an updraft, def.batLift, lifts a held bounce about five and a half
+  // rows, clear over the next bat before you come down on it), zigzagging
+  // between the walls; a ledge to rest on (with a lantern) every so often, and the door on
+  // a ledge at the top. In the upper half, every third bat drifts.
+  const tower = (H, legs) => B(18, H, ({ r, s }) => {
+    r(0, 0, 17, 0); r(0, 0, 0, H - 1); r(17, 0, 17, H - 1);
+    let y = H - 6;
+    r(1, y, 5, y); s(2, y - 1, 'P');
+    // (The first bat of each stretch is level with the ledge you leave, three tiles out: hop off onto it.)
+    let bx = 8, by = y, dir = 1;
+    legs.forEach((n, leg) => {
+      for (let k = 0; k < n; k++) {
+        const m = leg >= legs.length / 2 && k % 3 === 2 ? 2 : 1;
+        s(bx, by, 'F'); s(bx - m, by, '|'); s(bx + m, by, '|');
+        // (A star coin in each stretch, halfway up: out past the next bat, a little over it, so
+        // you overshoot for it and come back down onto the bat.)
+        if (k === n >> 1) s(Math.max(1, Math.min(16, bx + 3 * dir)), by - 2, '¢');
+        if (k < n - 1) { if (bx + 2 * dir > 13 || bx + 2 * dir < 4) dir = -dir; bx += 2 * dir; by -= 3; }
+      }
+      // (The ledge: three rows over the last bat, starting two tiles on the side it was heading.)
+      const lx = bx + 2 * dir, ly = by - 3, [x0, x1] = dir > 0 ? [Math.min(lx, 13), 16] : [1, Math.max(lx, 4)];
+      r(x0, ly, x1, ly);
+      if (leg === legs.length - 1) s(dir > 0 ? x1 - 1 : x0 + 1, ly - 1, 'D');
+      else {
+        s(dir > 0 ? x1 - 1 : x0 + 1, ly - 1, 'L');
+        // (Off the ledge the other way, onto the next bat, level with it and two tiles back past
+        // the last bat, clear of the way up to the ledge.)
+        dir = -dir; bx = (dir > 0 ? x1 : x0) + 4 * dir; by = ly;
+      }
+    });
+  });
 
   LF.BAT_LEVELS = [
     lvl('Bat Bridge', 130, 'STOMP CHAIN: run off the edge onto the bats, and hold jump to bounce on along them', a => {
@@ -54,5 +91,13 @@
       const at = course(a)([{ w: 10, y: 14, n: 5 }, { w: 12, n: 5 }, { w: 12, n: 6 }], 20);
       a.s(at[2].x + 4, at[2].y - 1, 'L'); for (const k of [1, 2, 3]) a.s(at[k].x + at[k].w - 3, at[k].y - 1, 'ĸ');
     }),
+    // Moving bats: every second bat in each chain drifts to and fro.
+    { ...lvl('Drifting Flock', 140, 'every second bat drifts to and fro: time each bounce', a => {
+      const at = course(a)([{ w: 10, y: 14, n: 4, move: true }, { w: 9, n: 5, move: true }, { w: 10, n: 6, move: true }], 18); a.s(at[1].x + 4, at[1].y - 1, 'L');
+    }), since: 20 },
+    // A vertical climb, bat by bat.
+    { chapter: 'The Bat Bridges', name: 'Bat Tower', sky: true, batChain: true, batLift: 1.35, keepLength: true, noCrowd: true, since: 20, dark: .4,
+      signs: [{ x: 1, y: 76.4, t: 'BAT TOWER: an updraft lifts every bounce: hold jump and bounce up bat to bat to the top' }],
+      map: tower(84, [8, 7, 8]) },
   ];
 })();

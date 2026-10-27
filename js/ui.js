@@ -44,12 +44,12 @@
   // Later additions say which save version brought them in (lv.since): the Storm Heights
   // and the Sky Spire came with version 6, the Melon Vault with 7, the High Winds with 8,
   // the Neo Ledges with 9, the world castles with 10, the Pear Cliffs with 11, the sunken
-  // castles with 12, the Star Road (at the very end) with 14, the Shell Hills with 15, the Shell Slopes with 16, the Shell Skies with 17, the Bat Bridges with 18. With 13, two castles went (one castle a world): Lighthouse Castle and
+  // castles with 12, the Star Road (at the very end) with 14, the Shell Hills with 15, the Shell Slopes with 16, the Shell Skies with 17, the Bat Bridges with 18 (the Star of Star Road, at the very end, came then too), Drifting Flock and Bat Tower with 20. With 13, two castles went (one castle a world): Lighthouse Castle and
   // Rat Castle, the sunken castles taking their places; Drowned Castle moved to after the
   // Pear Cliffs. So a save's numbering is rebuilt as it was (GONE puts the old castles back
   // where they stood), each level found again by name; a cleared castle that's gone counts
   // as its world's castle cleared.
-  const SAVE_V = 18;
+  const SAVE_V = 20;
   const GONE = [{ name: 'Lighthouse Castle', after: 'Sunken Keep', now: 'Sunken Keep' }, { name: 'Rat Castle', after: 'The Long Glide', now: 'Drowned Castle' }];
   if (levelsV < SAVE_V) {
     let old = LF.LEVELS.map((lv, i) => ({ name: lv.name, since: lv.since || 0, boss: lv.boss, giantFight: lv.giantFight, i }));
@@ -746,6 +746,26 @@
     map[py][px + dx] = 'D';
     return { ...def, map: map.map(r => r.join('')), bonusDoor: true, signs: [...(def.signs || []), { x: px + dx - 3, y: py - 3.4, t: 'get every one and this door opens: double it all!' }] };
   }
+  // Panels in a rectangle: rows of them stacked like the floors of a house, each row's floor
+  // on top of the row below's panels, so you stand on one floor and bump the row above it;
+  // plank steps up the left side from floor to floor (they're one-way: jump up through).
+  // Six or seven to a row.
+  const PANEL_T = 5, PANEL_X0 = 8;
+  const panelCols = n => (n > 20 ? 7 : 6), panelRows = n => Math.ceil(n / panelCols(n));
+  const panelSignY = n => panelRows(n) * PANEL_T + 7 - 9.4;
+  function panelHall(n) {
+    const cols = panelCols(n), rows = panelRows(n), w = PANEL_X0 + cols * 3 + 3, h = rows * PANEL_T + 7;
+    return LF.build(w, h, ({ r, s }) => {
+      r(0, 0, w - 1, 0); r(0, 0, 0, h - 1); r(w - 1, 0, w - 1, h - 1);
+      const F0 = h - 3; r(0, F0, w - 1, h - 1); s(2, F0 - 1, 'P');
+      let k = 0;
+      for (let row = 0; row < rows; row++) {
+        const F = F0 - row * PANEL_T, py = F - 4;
+        for (let c = 0; c < cols && k < n; c++, k++) s(PANEL_X0 + c * 3, py, 'ǩ');
+        if (row < rows - 1) { r(PANEL_X0 - 2, py - 1, w - 2, py - 1); r(1, py - 1, PANEL_X0 - 3, py - 1, '='); r(1, F - 3, PANEL_X0 - 3, F - 3, '='); }
+      }
+    });
+  }
   function fruitGrove(i) {
     const kind = groveKind(i), G = GROVES[kind], kinds = [...Object.keys(LF.FRUITS)];
     // (Shuffled afresh every visit.)
@@ -776,20 +796,19 @@
       map: LF.build(44, 14, ({ r, s }) => { r(0, 12, 43, 13); s(2, 11, 'P'); r(9, 9, 13, 9, '='); r(20, 7, 24, 7, '='); r(31, 9, 35, 9, '='); }),
     };
     if (kind === 'ammoPanels') {
-      const syms = shuffle(['+3', '+3', '+3', '+5', '+5', '+5', '+5', '+10', '+10', '+10', '+25', '+25', '☠', '☠', '☠']), w = 10 + syms.length * 3;
+      const syms = shuffle(['+3', '+3', '+3', '+5', '+5', '+5', '+5', '+10', '+10', '+10', '+25', '+25', '☠', '☠', '☠']);
       return {
         ...base, timeLimit: 60, panelGame: { mode: 'lucky', syms },
-        signs: [{ x: 2, y: 5.4, t: 'bump the panels · the ammo is yours · two skulls and it’s over' }],
-        map: LF.build(w, 14, ({ r, s }) => { r(0, 12, w - 1, 13); s(2, 11, 'P'); syms.forEach((_, k) => s(7 + k * 3, 8, 'ǩ')); }),
+        signs: [{ x: 2, y: panelSignY(syms.length), t: 'bump the panels · the ammo is yours · two skulls and it’s over' }],
+        map: panelHall(syms.length),
       };
     }
     if (kind === 'lucky' || kind === 'pairs') {
       const syms = shuffle(kind === 'lucky' ? [...kinds, '☠', '☠', '☠'] : [...kinds, ...kinds]);
-      const w = 10 + syms.length * 3;
       return {
         ...base, timeLimit: kind === 'pairs' ? 45 : 60, panelGame: { mode: kind, syms, peek: kind === 'pairs' ? 6 : 0 },
-        signs: [{ x: 2, y: 5.4, t: kind === 'lucky' ? 'bump the panels · fruit is yours · two skulls and it’s over' : 'remember where the fruit is! · bump two panels · match the fruit' }],
-        map: LF.build(w, 14, ({ r, s }) => { r(0, 12, w - 1, 13); s(2, 11, 'P'); syms.forEach((_, k) => s(7 + k * 3, 8, 'ǩ')); }),
+        signs: [{ x: 2, y: panelSignY(syms.length), t: kind === 'lucky' ? 'bump the panels · fruit is yours · two skulls and it’s over' : 'remember where the fruit is! · bump two panels · match the fruit' }],
+        map: panelHall(syms.length),
       };
     }
     if (kind === 'rain') return {

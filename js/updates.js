@@ -6,6 +6,8 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Two new Bat Bridges levels: Drifting Flock, where every second bat in a chain drifts to and fro so you time each bounce, and Bat Tower, a climb straight up a shaft over the void, bat by bat, with an updraft lifting every bounce. In bat levels a bat you brush past on the way up no longer hurts: only landing on it counts.',
+      'Lucky Panels, Panel Pairs and Ammo Panels are laid out in a rectangle now: rows of panels stacked like the floors of a house, steps up the left side, so every panel is close at hand.',
       'The 🍅 tomato takes no power slot now: it sits alongside whatever fruit power you have, and a new fruit power doesn’t replace it.',
       'Power Stack lasts until you die: play during the ✨ Power Stack event and, from then until your next death, every fruit power you get adds to the ones you have, even after the event ends (✨ Stacking shows in your powers).',
       'The ammo bank: ammo from the ammo houses goes straight into a bank at the top of your items (Tab on the map). Take it out to carry into your next level, or put carried ammo back in, 10 at a time or all at once. Ammo in the bank is safe when you die.',
