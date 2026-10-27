@@ -53,6 +53,12 @@
     // ---- Skill ----
     { id: 'quick60', name: 'Brisk', desc: 'Clear a story level in under a minute.' },
     { id: 'quick120', name: 'No Dawdling', desc: 'Clear a story level in under two minutes.' },
+    // Fifty seconds: once, then on different levels, then a whole world at that pace.
+    { id: 'quick50', name: 'Fifty Flat', desc: 'Clear a story level in under 50 seconds.' },
+    { id: 'fast50x10', name: 'Fleet Wick', desc: 'Clear 10 different story levels in under 50 seconds each.', stat: 'fast50', goal: 10 },
+    { id: 'fast50x25', name: 'Racing the Dark', desc: 'Clear 25 different story levels in under 50 seconds each.', stat: 'fast50', goal: 25 },
+    { id: 'fast50x50', name: 'Lightning Lamplighter', desc: 'Clear 50 different story levels in under 50 seconds each.', stat: 'fast50', goal: 50 },
+    { id: 'fast50world', name: 'World on Fire', desc: 'Clear every level of a world in under 50 seconds each.' },
     { id: 'flawless10', name: 'Sure-Footed', desc: 'Clear 10 story levels without falling.', stat: 'flawless', goal: 10 },
     { id: 'flawless25', name: 'Untouchable', desc: 'Clear 25 story levels without falling.', stat: 'flawless', goal: 25 },
     { id: 'hc25', name: 'Tempered', desc: 'Clear 25 story levels on Hardcore.', stat: 'hcLit', goal: 25 },
@@ -159,6 +165,12 @@
       if (time < 15) earn('quick');
       if (time < 60) earn('quick60');
       if (time < 120) earn('quick120');
+      if (time < 50) {
+        earn('quick50');
+        const fast = new Set(stats.fast50Seen || []); fast.add(index);
+        stats.fast50Seen = [...fast]; bump('fast50', fast.size - (stats.fast50 || 0));
+        if (LF.WORLDS.some(w => { for (let i = w.first; i <= w.last; i++) if (!fast.has(i)) return false; return true; })) earn('fast50world');
+      }
       if (hurried) earn('hurry');
       if (falls === 0) { earn('flawless'); bump('flawless'); }
       // (A world all lit.)

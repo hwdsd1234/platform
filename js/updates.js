@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Five new awards for speed: clear a story level in under 50 seconds (Fifty Flat), then 10, 25 and 50 different levels that fast, and every level of a world that fast (World on Fire).',
       'Bat Tower uses ordinary bounces now (no updraft), and touching a bat from below hurts again in every bat level; the tower was rebuilt to suit, every bat two rows over the last and two tiles across.',
       'Fairer Bat Tower coins: each is now right on the way up, between two bats, where your bounce carries you anyway.',
       'Lucky Panels (and Ammo Panels): when it’s over, every panel you didn’t turn over flips up, dimmed, so you can see what you missed.',
