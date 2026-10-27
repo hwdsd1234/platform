@@ -44,34 +44,35 @@
     return at;
   };
 
-  // A tower of bats: up a shaft over the void, bounce by bounce, each bat three rows above the
-  // last and two tiles over (an updraft, def.batLift, lifts a held bounce about five and a half
-  // rows, clear over the next bat before you come down on it), zigzagging
-  // between the walls; a ledge to rest on (with a lantern) every so often, and the door on
-  // a ledge at the top. In the upper half, every third bat drifts.
+  // A tower of bats: up a shaft over the void, bounce by bounce, each bat two rows above the
+  // last and two tiles over (a held bounce lifts you about two and a half rows: rise first,
+  // then steer over and come down on it, or you'll hit it from below), zigzagging between the
+  // walls (turning back three tiles, so no bat hangs straight over the one before last); a
+  // ledge to rest on (with a lantern) between stretches, two rows over the last bat, and the
+  // door on a ledge at the top. In the upper half, every third bat drifts.
   const tower = (H, legs) => B(18, H, ({ r, s }) => {
     r(0, 0, 17, 0); r(0, 0, 0, H - 1); r(17, 0, 17, H - 1);
     let y = H - 6;
     r(1, y, 5, y); s(2, y - 1, 'P');
-    // (The first bat of each stretch is level with the ledge you leave, three tiles out: hop off onto it.)
+    // (The first bat of each stretch is level with the ledge you leave, out from its end: hop off onto it.)
     let bx = 8, by = y, dir = 1;
     legs.forEach((n, leg) => {
       for (let k = 0; k < n; k++) {
         const m = leg >= legs.length / 2 && k % 3 === 2 ? 2 : 1;
         s(bx, by, 'F'); s(bx - m, by, '|'); s(bx + m, by, '|');
         // (A star coin in each stretch, halfway up, right on the way: between this bat and the
-        // next, a row over the next, where the bounce up to it carries you anyway.)
-        if (k === n >> 1) s(bx + dir, by - 4, '¢');
-        if (k < n - 1) { if (bx + 2 * dir > 13 || bx + 2 * dir < 4) dir = -dir; bx += 2 * dir; by -= 3; }
+        // next, a row over the next, where you steer across at the top of the bounce.)
+        if (k === n >> 1) s(bx + dir, by - 3, '¢');
+        if (k < n - 1) { if (bx + 2 * dir > 13 || bx + 2 * dir < 4) { dir = -dir; bx += 3 * dir; } else bx += 2 * dir; by -= 2; }
       }
-      // (The ledge: three rows over the last bat, starting two tiles on the side it was heading.)
-      const lx = bx + 2 * dir, ly = by - 3, [x0, x1] = dir > 0 ? [Math.min(lx, 13), 16] : [1, Math.max(lx, 4)];
+      // (The ledge: two rows over the last bat, from two tiles on the side it was heading.)
+      const lx = bx + 2 * dir, ly = by - 2, [x0, x1] = dir > 0 ? [Math.min(lx, 13), 16] : [1, Math.max(lx, 4)];
       r(x0, ly, x1, ly);
       if (leg === legs.length - 1) s(dir > 0 ? x1 - 1 : x0 + 1, ly - 1, 'D');
       else {
         s(dir > 0 ? x1 - 1 : x0 + 1, ly - 1, 'L');
-        // (Off the ledge the other way, onto the next bat, level with it and two tiles back past
-        // the last bat, clear of the way up to the ledge.)
+        // (Off the ledge the other way, onto the next bat: level with the ledge, two tiles
+        // back past the last bat, out of the way of the bounce up to the ledge.)
         dir = -dir; bx = (dir > 0 ? x1 : x0) + 4 * dir; by = ly;
       }
     });
@@ -96,8 +97,8 @@
       const at = course(a)([{ w: 10, y: 14, n: 4, move: true }, { w: 9, n: 5, move: true }, { w: 10, n: 6, move: true }], 18); a.s(at[1].x + 4, at[1].y - 1, 'L');
     }), since: 20 },
     // A vertical climb, bat by bat.
-    { chapter: 'The Bat Bridges', name: 'Bat Tower', sky: true, batChain: true, batLift: 1.35, keepLength: true, noCrowd: true, since: 20, dark: .4,
-      signs: [{ x: 1, y: 76.4, t: 'BAT TOWER: an updraft lifts every bounce: hold jump and bounce up bat to bat to the top' }],
-      map: tower(84, [8, 7, 8]) },
+    { chapter: 'The Bat Bridges', name: 'Bat Tower', sky: true, batChain: true, keepLength: true, noCrowd: true, since: 20, dark: .4,
+      signs: [{ x: 1, y: 62.4, t: 'BAT TOWER: hold jump, rise, then steer onto the next bat up: bat to bat to the top' }],
+      map: tower(70, [9, 8, 9]) },
   ];
 })();

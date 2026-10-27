@@ -6,9 +6,10 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Bat Tower uses ordinary bounces now (no updraft), and touching a bat from below hurts again in every bat level; the tower was rebuilt to suit, every bat two rows over the last and two tiles across.',
       'Fairer Bat Tower coins: each is now right on the way up, between two bats, where your bounce carries you anyway.',
       'Lucky Panels (and Ammo Panels): when it’s over, every panel you didn’t turn over flips up, dimmed, so you can see what you missed.',
-      'Two new Bat Bridges levels: Drifting Flock, where every second bat in a chain drifts to and fro so you time each bounce, and Bat Tower, a climb straight up a shaft over the void, bat by bat, with an updraft lifting every bounce. In bat levels a bat you brush past on the way up no longer hurts: only landing on it counts.',
+      'Two new Bat Bridges levels: Drifting Flock, where every second bat in a chain drifts to and fro so you time each bounce, and Bat Tower, a climb straight up a shaft over the void, bat by bat: rise on each bounce, then steer onto the next bat up.',
       'Lucky Panels, Panel Pairs and Ammo Panels are laid out in a rectangle now: rows of panels stacked like the floors of a house, steps up the left side, so every panel is close at hand.',
       'The 🍅 tomato takes no power slot now: it sits alongside whatever fruit power you have, and a new fruit power doesn’t replace it.',
       'Power Stack lasts until you die: play during the ✨ Power Stack event and, from then until your next death, every fruit power you get adds to the ones you have, even after the event ends (✨ Stacking shows in your powers).',

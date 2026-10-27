@@ -3529,13 +3529,9 @@
         } else if (e.stompCool <= 0) { hurt(W); if (p.dead) return; }
         continue;
       }
-      // (In a level of stomp chains, def.batChain, a bat you brush past on the way up doesn't
-      // hurt: only coming down on it counts, as a stomp.)
-      if (W.def.batChain && e.type === 'F' && p.vy <= 0) continue;
       // (In a level of stomp chains, def.batChain, falling onto a bat anywhere counts.)
       if (spec.stomp && p.vy > 0 && (p.y + p.h - e.y < 14 || (W.def.batChain && e.type === 'F'))) {
-        // (def.batLift: an updraft in a tower of bats, every bounce higher.)
-        e.alive = false; dropAmmo(W, e); p.vy = (input.jump ? -620 : -460) * Math.sqrt(T.gravity) * (W.def.batLift || 1); p.jumping = input.jump; p.spun = false;
+        e.alive = false; dropAmmo(W, e); p.vy = (input.jump ? -620 : -460) * Math.sqrt(T.gravity); p.jumping = input.jump; p.spun = false;
         burst(W, e.x + e.w / 2, e.y + e.h / 2, 14, ['#FF6B3D', '#463C6B'], 160, 500);
         W.floaters.push({ x: e.x + e.w / 2, y: e.y - 6, t: 'stomp', life: .8, c: '#FF6B3D' });
         W.shake = .12; W.freeze = .05; ring(W, e.x + e.w / 2, e.y + e.h / 2, 28, '255,107,61'); W.emit('stomp', { type: e.type, kill: true });
