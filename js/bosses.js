@@ -1470,7 +1470,8 @@
   // extra sections should grow.)
   // (Pears, the best of them, are twice as common: twice the pure levels, twice the turns.)
   const PURE = 10, TWICE = { p: 2 };
-  const powerFruit = Object.keys(LF.FRUITS).filter(t => t !== 'a').flatMap(t => Array(TWICE[t] || 1).fill(t));
+  // (The green apple isn't one of them: every story level has one of its own, below.)
+  const powerFruit = Object.keys(LF.FRUITS).filter(t => t !== 'a' && t !== 'ǵ').flatMap(t => Array(TWICE[t] || 1).fill(t));
   const isFruit = c => !!LF.FRUITS[c];
   const story = out.filter(d => !d.boss && Array.isArray(d.map));
   for (const d of story) if (d.melon) d.pureFruit = 'm'; else if (d.pear) d.pureFruit = 'p';
@@ -1497,6 +1498,11 @@
       const c = d.pureFruit || (k ? powerFruit[(turn++) % powerFruit.length] : 'a');
       rows[y] = rows[y].slice(0, x) + c + rows[y].slice(x + 1);
     }
+    // A green apple in every story level, on an open spot standing on stone about two-fifths
+    // of the way along (or, failing that, in place of one of its fruit).
+    const free = spots.filter(([x, y]) => rows[y][x] === '.');
+    if (free.length) { const [x, y] = free[Math.floor(free.length * .4)]; rows[y] = rows[y].slice(0, x) + 'ǵ' + rows[y].slice(x + 1); }
+    else { const y = rows.findIndex(r => [...r].some(isFruit)); if (y >= 0) { const x = [...rows[y]].findIndex(isFruit); rows[y] = rows[y].slice(0, x) + 'ǵ' + rows[y].slice(x + 1); } }
     d.map = rows;
   }
   // ---- The Star Road ----

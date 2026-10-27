@@ -1266,6 +1266,11 @@
     function drawShield(p) {
       const cx = p.x + p.w / 2, cy = p.y + p.h / 2 - 4;
       const pulse = reduced ? 0 : Math.sin(clock * 4) * 1.5;
+      // A fourth shield (two green apples'): a gold ring outside the rest.
+      if (p.shield > 3) {
+        ctx.strokeStyle = 'rgba(255,210,74,.75)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.ellipse(cx, cy, 32 - pulse, 38 - pulse, 0, 0, TAU); ctx.stroke();
+      }
       // A triple shield (a green apple's) gets a third ring, outermost, in the green apple's
       // green, with sparks running round it.
       if (p.shield > 2) {
@@ -1454,7 +1459,7 @@
 
     function lights(W) {
       const out = [], p = W.player;
-      if (!p.dead) { const f = LF.flamePos(p); out.push({ x: f.x, y: f.y, r: 150 * (p.glow > 1 ? 3 : p.glow ? 2 : 1) * flick(0, .03) }); }
+      if (!p.dead) { const f = LF.flamePos(p); out.push({ x: f.x, y: f.y, r: 150 * (p.glow > 2 ? 4 : p.glow > 1 ? 3 : p.glow ? 2 : 1) * flick(0, .03) }); }
       for (const f of W.fruits) if (!f.taken) out.push({ x: f.x, y: f.y, r: 84 * flick(f.tx, .05) });
       for (let k = 0; k < W.lavaTop.length; k += 3) { const l = W.lavaTop[k]; out.push({ x: l.tx * TS + 16, y: l.ty * TS + 10, r: 95 }); }
       for (const f of W.flows || []) for (let x = f.x0; x <= f.x1; x += 3) out.push({ x: x * TS + 16, y: LF.flowSurface(W, f, x * TS + 16) + 8, r: 100 });
