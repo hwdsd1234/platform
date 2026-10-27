@@ -64,12 +64,13 @@
     'ƫ': { name: 'Peach', power: 'Swimmer', color: '#FFA07A', note: 'swim strokes are stronger and you sink slower, until you die' },
     'ɯ': { name: 'Mango', power: 'Slow clock', color: '#FFB347', note: 'the level clock runs at two-thirds speed, until you die' },
     'ƀ': { name: 'Blueberry', power: 'Night eyes', color: '#5B6EE1', note: 'your light reaches twice as far, until you die' },
+    'ǫ': { name: 'Kiwi', power: 'Multishot', color: '#8DB33A', note: 'every gun button fires two at once (three with a green apple’s ripeness), for the ammo of one, until you die (not the nuke)' },
     // The green apple isn't a power of its own and takes no power slot: it ripens the rest.
     'ǵ': { name: 'Green apple', power: 'Ripe', color: '#7BC043', note: 'takes no power slot: with it you can take one more of each fruit: a third apple shield, and a second of any power fruit makes its power stronger (a triple jump, a bigger boost, faster, a slower glide and slide, a wider magnet, brighter eyes, spiked chains harmless, triple ammo, stronger swimming, a half-speed clock, two second chances), until you die' },
     'ŧ': { name: 'Tomato', power: 'Second chance', color: '#E8402A', note: 'takes no power slot: a hit with no shield doesn’t kill you: the tomato takes it, then for 5 seconds you run fast, jump high and can’t be hurt, and whatever you touch dies (a boss takes a hit)' },
   };
   // Every fruit but the apple gives a power that's on or off: the player's flag for each.
-  const POWERS = LF.POWERS = { o: 'boost', b: 'dbl', m: 'fast', p: 'glide', s: 'grip', 'ç': 'magnet', 'ƀ': 'glow', 'ƥ': 'spiky', 'ǥ': 'lucky', 'ƫ': 'swimmer', 'ɯ': 'slowtime', 'ŧ': 'tomato' };
+  const POWERS = LF.POWERS = { o: 'boost', b: 'dbl', m: 'fast', p: 'glide', s: 'grip', 'ç': 'magnet', 'ƀ': 'glow', 'ƥ': 'spiky', 'ǥ': 'lucky', 'ƫ': 'swimmer', 'ɯ': 'slowtime', 'ŧ': 'tomato', 'ǫ': 'multi' };
   const FLAGS = Object.values(POWERS);
   // (A power's level: 1, or 2 when ripened by a green apple. The green apple's own flag
   // rides along.)
@@ -1114,7 +1115,7 @@
       return;
     }
     if (b.kind === 'rocket') {
-      b.x += b.vx * dt;
+      b.x += b.vx * dt; b.y += (b.vy || 0) * dt;
       if (Math.random() < .6) W.particles.push({ x: b.x - Math.sign(b.vx) * 6, y: b.y, vx: -b.vx * .15, vy: (Math.random() - .5) * 30, life: .3, max: .3, c: LF.WARM[Math.floor(Math.random() * 3)], size: 2.5, g: 0 });
       if (inHorde()) { b.life = 0; return; }
       const hitWall = isSolid(tile(W, Math.floor(b.x / TS), Math.floor(b.y / TS)));
@@ -1248,10 +1249,12 @@
     for (const e of W.enemies) if (e.alive && !e.phased && e !== except && circleHits(x, y, TS * s, e)) shootEnemy(W, e, dir, shot);
   }
 
+  // How many shots each press fires, fanned out (-1 … 1): one, or a kiwi's two, or three ripe.
+  const spread = p => (p.multi > 1 ? [-1, 0, 1] : p.multi ? [-.5, .5] : [0]);
   function stepBullets(W, dt) {
     for (const b of W.bullets) {
       if (b.kind) { stepSpecial(W, b, dt); continue; }
-      b.x += b.vx * dt; b.life -= dt;
+      b.x += b.vx * dt; b.y += (b.vy || 0) * dt; b.life -= dt;
       const btx = Math.floor(b.x / TS), bty = Math.floor(b.y / TS);
       if (isSolid(tile(W, btx, bty)) || tile(W, btx, bty) === 'l') {
         const d = W.shotDoorAt[bty * W.w + btx];
@@ -3335,7 +3338,7 @@
       if (p.ammo >= s) {
         p.ammo -= s; p.cool = .16; p.flash = .08;
         const g = LF.gunPos(p);
-        W.bullets.push({ id: newShot(W), x: g.x, y: g.y, vx: p.face * BULLET, life: 1.1, s });
+        for (const sp of spread(p)) W.bullets.push({ id: newShot(W), x: g.x, y: g.y, vx: p.face * BULLET, vy: sp * 70, life: 1.1, s });
         p.vx -= p.face * 40;
         W.emit('shoot');
       } else if (tapped) {
@@ -3348,7 +3351,7 @@
       if (p.ammo >= KILL_COST) {
         p.ammo -= KILL_COST; p.cool = .35; p.flash = .12;
         const g = LF.gunPos(p);
-        W.bullets.push({ id: newShot(W), x: g.x, y: g.y, vx: p.face * BULLET * 1.25, life: 1.1, s: 1, kill: true });
+        for (const sp of spread(p)) W.bullets.push({ id: newShot(W), x: g.x, y: g.y, vx: p.face * BULLET * 1.25, vy: sp * 70, life: 1.1, s: 1, kill: true });
         p.vx -= p.face * 60;
         W.emit('rocket');
       } else {
@@ -3373,10 +3376,13 @@
       }
       p.ammo -= cost; p.cool = .4; p.flash = .1;
       const g = LF.gunPos(p);
-      if (kind === 'rocket') W.bullets.push({ id: newShot(W), kind, x: g.x, y: g.y, vx: p.face * 430, vy: 0, life: 1.6, s });
-      else if (kind === 'dyn') W.bullets.push({ id: newShot(W), kind, x: g.x, y: g.y - 4, vx: p.face * 240 + p.vx * .3, vy: -380, life: FUSE, s });
-      else if (kind === 'nuke') W.bullets.push({ id: newShot(W), kind, x: p.x + p.w / 2, y: p.y + p.h - 8, vx: 0, vy: 0, life: FUSE, s });
-      else W.bullets.push({ id: newShot(W, 3), kind, x: g.x, y: g.y - 4, vx: p.face * 270 + p.vx * .3, vy: -420, life: 2.2, bounces: 0, s });
+      // (A kiwi's Multishot: two or three of it, fanned out; not a nuke.)
+      for (const sp of kind === 'nuke' ? [0] : spread(p)) {
+        if (kind === 'rocket') W.bullets.push({ id: newShot(W), kind, x: g.x, y: g.y, vx: p.face * 430, vy: sp * 60, life: 1.6, s });
+        else if (kind === 'dyn') W.bullets.push({ id: newShot(W), kind, x: g.x, y: g.y - 4, vx: p.face * (240 + sp * 60) + p.vx * .3, vy: -380 - sp * 40, life: FUSE, s });
+        else if (kind === 'nuke') W.bullets.push({ id: newShot(W), kind, x: p.x + p.w / 2, y: p.y + p.h - 8, vx: 0, vy: 0, life: FUSE, s });
+        else W.bullets.push({ id: newShot(W, 3), kind, x: g.x, y: g.y - 4, vx: p.face * (270 + sp * 70) + p.vx * .3, vy: -420 - sp * 50, life: 2.2, bounces: 0, s });
+      }
       if (kind !== 'dyn' && kind !== 'nuke') p.vx -= p.face * 70;
       W.emit(kind === 'rocket' ? 'rocket' : 'lob');
     }

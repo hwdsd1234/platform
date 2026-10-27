@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'New fruit: 🥝 the kiwi, Multishot. Every gun button fires two shots at once (three with a green apple), fanned out, for the ammo of one: bullets, kill shots, rockets, grenades and dynamite (not the nuke). Until you die.',
       'New award, Pacifist: clear a story level without killing a single enemy (bosses aside). Stomps, shots, kicked shells and explosions all count as kills.',
       'Five new awards for speed: clear a story level in under 50 seconds (Fifty Flat), then 10, 25 and 50 different levels that fast, and every level of a world that fast (World on Fire).',
       'Bat Tower uses ordinary bounces now (no updraft), and touching a bat from below hurts again in every bat level; the tower was rebuilt to suit, every bat two rows over the last and two tiles across.',

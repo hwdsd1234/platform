@@ -1211,6 +1211,12 @@
         ctx.fillStyle = '#4E9A3A'; ctx.beginPath();
         for (let k = 0; k < 10; k++) { const ang = -Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? 1.2 : 4; ctx.lineTo(Math.cos(ang) * rr, -4 + Math.sin(ang) * rr * .6); }
         ctx.fill();
+      } else if (f.type === 'ǫ') {
+        // A kiwi cut in half: fuzzy brown rim, green flesh, a pale heart ringed with seeds.
+        ctx.fillStyle = '#7A5A34'; ctx.beginPath(); ctx.ellipse(0, 1, 7, 6.5, 0, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#8DB33A'; ctx.beginPath(); ctx.ellipse(0, 1, 5.6, 5.1, 0, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#E8F0C8'; ctx.beginPath(); ctx.ellipse(0, 1, 1.8, 1.6, 0, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#2A2318'; for (let k = 0; k < 8; k++) { const ang = k * TAU / 8; ctx.fillRect(Math.cos(ang) * 3 - .5, 1 + Math.sin(ang) * 2.8 - .5, 1, 1); }
       } else if (f.type === 'ƀ') {
         // A little cluster of blueberries.
         ctx.fillStyle = '#5B6EE1'; for (const [bx, by] of [[-3.5, 3], [3.5, 3], [0, -2.5]]) { ctx.beginPath(); ctx.arc(bx, by, 4, 0, TAU); ctx.fill(); }
