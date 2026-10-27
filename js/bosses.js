@@ -1369,12 +1369,12 @@
     let startAt = { x: climbAt.x + 2, y: climbAt.y + parts[0].length - 1 };
     g.forEach((row, y) => { const x = row.indexOf('P'); if (x >= 0 && x < arena.x) startAt = { x, y }; });
     const out = {
-      // No guns in a tower: the boss falls to 3 hits (a castle's keeper, the Last Dark too, to 4),
-      // and flies into a fury after each.
-      ...def, map: g.map(row => row.join('')), noDoor: true, bossEnds: true, arenaX: arena.x, noAmmo: true, bossFury: true, bossHits: castle ? 4 : 3, castle: !!castle,
+      // The boss falls to 3 hits (a castle's keeper, the Last Dark too, to 4), and flies into a
+      // fury after each; a stomp is a hit, ten gun hits are one (see GUN_HITS in engine.js).
+      ...def, map: g.map(row => row.join('')), noDoor: true, bossEnds: true, arenaX: arena.x, bossFury: true, bossHits: castle ? 4 : 3, castle: !!castle,
       signs: [
-        look ? { x: startAt.x - 1, y: startAt.y - 3.6, t: `${look.theme.sign} · ${look.layout.hint} · no guns here: stomp` }
-          : { x: climbAt.x + 2, y: climbAt.y + parts[0].length - 4.6, t: def.course ? `${def.name.toUpperCase()} · no guns here · onward →` : castle ? 'THE CASTLE · climb, floor after floor · no guns here' : 'CLIMB THE TOWER ↑ · no guns here: stomp' },
+        look ? { x: startAt.x - 1, y: startAt.y - 3.6, t: `${look.theme.sign} · ${look.layout.hint} · stomp it, or ten shots for a hit` }
+          : { x: climbAt.x + 2, y: climbAt.y + parts[0].length - 4.6, t: def.course ? `${def.name.toUpperCase()} · onward →` : castle ? 'THE CASTLE · climb, floor after floor' : 'CLIMB THE TOWER ↑' },
         ...(look ? [] : [{ x: runAt.x + 2, y: runAt.y + parts[parts.length - 2].length - 6.6, t: def.course ? 'keep going →' : 'along the battlements →' }]),
         ...(def.signs || []).map(s => ({ ...s, x: s.x + arena.x, y: s.y + arena.y })),
       ],

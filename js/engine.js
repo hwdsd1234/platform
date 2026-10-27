@@ -1210,6 +1210,11 @@
   // times for a grenade (once per blast).
   const newShot = (W, max = 1) => { W.shots = (W.shots || 0) + 1; (W.shotMax ||= {})[W.shots] = max; return W.shots; };
   // One hit on an enemy: armored ones (golems, TNT carts, bosses) lose `dmg` points, the rest die.
+  // A shot the player fired (bullets, kill shots, rockets, grenades, dynamite, nukes, and
+  // whatever their blasts and splashes hit): a boss in a tower or castle takes ten of them
+  // (GUN_HITS) for one hit, where a stomp, a kicked shell or a TNT cart is a hit outright.
+  const GUN_HITS = 10;
+  function gunShot(W, k) { const id = newShot(W, k); (W.gunShots ||= new Set()).add(id); return id; }
   function shootEnemy(W, e, dir, shot, how = 'zap', dmg = 1) {
     const boss = isBoss(e);
     if (shot) {
@@ -1218,7 +1223,19 @@
       if (hits >= (W.shotMax[shot] || 1)) return;
       e.hitBy[shot] = hits + 1;
     }
-    if (boss) { if (e.fury > 0) return; dmg = 1; wakeBoss(W, e); }
+    if (boss) {
+      if (e.fury > 0) return;
+      dmg = 1; wakeBoss(W, e);
+      if (W.def.bossFury && shot != null && W.gunShots && W.gunShots.has(shot)) {
+        e.gunHits = (e.gunHits || 0) + 1;
+        if (e.gunHits < GUN_HITS) {
+          e.hurt = .08; burst(W, e.x + e.w / 2, e.y + e.h / 2, 5, ['#FFE2A8'], 90, 300, 2); W.emit('clank');
+          W.floaters.push({ x: e.x + e.w / 2, y: e.y - 6, t: `${e.gunHits}/${GUN_HITS}`, life: .6, c: '#FFE2A8' });
+          return;
+        }
+        e.gunHits = 0;
+      }
+    }
     if (e.armored && how !== 'KO') {
       W.floaters.push({ x: e.x + e.w / 2, y: e.y - 6, t: 'armored', life: .6, c: '#CFC6E8' });
       burst(W, e.x + e.w / 2, e.y + e.h / 2, 6, ['#CFC6E8'], 100, 300, 2); W.emit('clank');
@@ -3338,7 +3355,7 @@
       if (p.ammo >= s) {
         p.ammo -= s; p.cool = .16; p.flash = .08;
         const g = LF.gunPos(p);
-        for (const sp of spread(p)) W.bullets.push({ id: newShot(W), x: g.x, y: g.y, vx: p.face * BULLET, vy: sp * 70, life: 1.1, s });
+        for (const sp of spread(p)) W.bullets.push({ id: gunShot(W), x: g.x, y: g.y, vx: p.face * BULLET, vy: sp * 70, life: 1.1, s });
         p.vx -= p.face * 40;
         W.emit('shoot');
       } else if (tapped) {
@@ -3351,7 +3368,7 @@
       if (p.ammo >= KILL_COST) {
         p.ammo -= KILL_COST; p.cool = .35; p.flash = .12;
         const g = LF.gunPos(p);
-        for (const sp of spread(p)) W.bullets.push({ id: newShot(W), x: g.x, y: g.y, vx: p.face * BULLET * 1.25, vy: sp * 70, life: 1.1, s: 1, kill: true });
+        for (const sp of spread(p)) W.bullets.push({ id: gunShot(W), x: g.x, y: g.y, vx: p.face * BULLET * 1.25, vy: sp * 70, life: 1.1, s: 1, kill: true });
         p.vx -= p.face * 60;
         W.emit('rocket');
       } else {
@@ -3378,10 +3395,10 @@
       const g = LF.gunPos(p);
       // (A kiwi's Multishot: two or three of it, fanned out; not a nuke.)
       for (const sp of kind === 'nuke' ? [0] : spread(p)) {
-        if (kind === 'rocket') W.bullets.push({ id: newShot(W), kind, x: g.x, y: g.y, vx: p.face * 430, vy: sp * 60, life: 1.6, s });
-        else if (kind === 'dyn') W.bullets.push({ id: newShot(W), kind, x: g.x, y: g.y - 4, vx: p.face * (240 + sp * 60) + p.vx * .3, vy: -380 - sp * 40, life: FUSE, s });
-        else if (kind === 'nuke') W.bullets.push({ id: newShot(W), kind, x: p.x + p.w / 2, y: p.y + p.h - 8, vx: 0, vy: 0, life: FUSE, s });
-        else W.bullets.push({ id: newShot(W, 3), kind, x: g.x, y: g.y - 4, vx: p.face * (270 + sp * 70) + p.vx * .3, vy: -420 - sp * 50, life: 2.2, bounces: 0, s });
+        if (kind === 'rocket') W.bullets.push({ id: gunShot(W), kind, x: g.x, y: g.y, vx: p.face * 430, vy: sp * 60, life: 1.6, s });
+        else if (kind === 'dyn') W.bullets.push({ id: gunShot(W), kind, x: g.x, y: g.y - 4, vx: p.face * (240 + sp * 60) + p.vx * .3, vy: -380 - sp * 40, life: FUSE, s });
+        else if (kind === 'nuke') W.bullets.push({ id: gunShot(W), kind, x: p.x + p.w / 2, y: p.y + p.h - 8, vx: 0, vy: 0, life: FUSE, s });
+        else W.bullets.push({ id: gunShot(W, 3), kind, x: g.x, y: g.y - 4, vx: p.face * (270 + sp * 70) + p.vx * .3, vy: -420 - sp * 50, life: 2.2, bounces: 0, s });
       }
       if (kind !== 'dyn' && kind !== 'nuke') p.vx -= p.face * 70;
       W.emit(kind === 'rocket' ? 'rocket' : 'lob');

@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Guns are back in towers and castles, ammo crates and all. A boss still falls to 3 hits (a castle’s keeper to 4): a stomp is a hit, and ten gun hits make one (it shows the count), each hit sending it into its fury.',
       'New fruit: 🥝 the kiwi, Multishot. Every gun button fires two shots at once (three with a green apple), fanned out, for the ammo of one: bullets, kill shots, rockets, grenades and dynamite (not the nuke). Until you die.',
       'New award, Pacifist: clear a story level without killing a single enemy (bosses aside). Stomps, shots, kicked shells and explosions all count as kills.',
       'Five new awards for speed: clear a story level in under 50 seconds (Fifty Flat), then 10, 25 and 50 different levels that fast, and every level of a world that fast (World on Fire).',
