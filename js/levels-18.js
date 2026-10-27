@@ -59,9 +59,9 @@
       for (let k = 0; k < n; k++) {
         const m = leg >= legs.length / 2 && k % 3 === 2 ? 2 : 1;
         s(bx, by, 'F'); s(bx - m, by, '|'); s(bx + m, by, '|');
-        // (A star coin in each stretch, halfway up: out past the next bat, a little over it, so
-        // you overshoot for it and come back down onto the bat.)
-        if (k === n >> 1) s(Math.max(1, Math.min(16, bx + 3 * dir)), by - 2, '¢');
+        // (A star coin in each stretch, halfway up, right on the way: between this bat and the
+        // next, a row over the next, where the bounce up to it carries you anyway.)
+        if (k === n >> 1) s(bx + dir, by - 4, '¢');
         if (k < n - 1) { if (bx + 2 * dir > 13 || bx + 2 * dir < 4) dir = -dir; bx += 2 * dir; by -= 3; }
       }
       // (The ledge: three rows over the last bat, starting two tiles on the side it was heading.)

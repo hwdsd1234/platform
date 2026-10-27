@@ -1009,6 +1009,11 @@
     // (Panel Pairs starts with a peek: every panel face up for a few seconds, then over.)
     if (W.panelPeek > 0 && (W.panelPeek -= dt) <= 0) { for (const q of W.panels) q.pop = 1; W.emit('blink'); }
     if (W.panelWait > 0 && (W.panelWait -= dt) <= 0 && W.panelBack) { for (const q of W.panelBack) q.open = false; W.panelBack = null; }
+    // (Lucky Panels: when it's over, every panel left turns over, to show what you missed.)
+    if (W.def.panelGame?.mode === 'lucky' && (W.panelOver || W.cleared) && !W.revealed) {
+      W.revealed = true;
+      for (const q of W.panels) if (!q.open) { q.open = true; q.missed = true; q.pop = 1; }
+    }
     if (W.panelOver && !W.cleared && (W.panelOver -= dt) <= 0) { W.cleared = true; W.clearedBy = 'panels'; W.emit('clear'); }
   }
   function stepSwitch(W, dt) {

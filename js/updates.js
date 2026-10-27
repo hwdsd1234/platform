@@ -6,6 +6,8 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Fairer Bat Tower coins: each is now right on the way up, between two bats, where your bounce carries you anyway.',
+      'Lucky Panels (and Ammo Panels): when it’s over, every panel you didn’t turn over flips up, dimmed, so you can see what you missed.',
       'Two new Bat Bridges levels: Drifting Flock, where every second bat in a chain drifts to and fro so you time each bounce, and Bat Tower, a climb straight up a shaft over the void, bat by bat, with an updraft lifting every bounce. In bat levels a bat you brush past on the way up no longer hurts: only landing on it counts.',
       'Lucky Panels, Panel Pairs and Ammo Panels are laid out in a rectangle now: rows of panels stacked like the floors of a house, steps up the left side, so every panel is close at hand.',
       'The 🍅 tomato takes no power slot now: it sits alongside whatever fruit power you have, and a new fruit power doesn’t replace it.',
