@@ -54,6 +54,8 @@
     { id: 'quick60', name: 'Brisk', desc: 'Clear a story level in under a minute.' },
     { id: 'quick120', name: 'No Dawdling', desc: 'Clear a story level in under two minutes.' },
     // Fifty seconds: once, then on different levels, then a whole world at that pace.
+    { id: 'air10', name: 'Hang Time', desc: 'Stay off the ground for 10 seconds without landing.' },
+    { id: 'air30', name: 'Never Touch Down', desc: 'Stay off the ground for 30 seconds without landing.' },
     { id: 'pacifist', name: 'Pacifist', desc: 'Clear a story level without killing a single enemy.' },
     { id: 'quick50', name: 'Fifty Flat', desc: 'Clear a story level in under 50 seconds.' },
     { id: 'fast50x10', name: 'Fleet Wick', desc: 'Clear 10 different story levels in under 50 seconds each.', stat: 'fast50', goal: 10 },
@@ -132,6 +134,7 @@
       else if (ev.type === 'zap') { bump('zap'); killed(d.type); if (d.type === '*') earn('bubble'); }
       else if (['spring', 'warp', 'shoot', 'rocket', 'lob', 'ammo', 'light'].includes(ev.type)) bump(ev.type);
       else if (ev.type === 'timeup') earn('timeup');
+      else if (ev.type === 'airtime') earn(d.s >= 30 ? 'air30' : 'air10');
       else if (ev.type === 'hurry') stats.hurried = true;
       else if (ev.type === 'walljump') bump('walljump');
       else if (ev.type === 'djump') bump('djump');

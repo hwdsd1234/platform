@@ -3292,6 +3292,10 @@
     if (p.wall) { p.wallDir = p.wall; p.wallCoyote = .1; p.airJumps = airJumps; }
     else p.wallCoyote -= dt;
     if (p.onGround || wet) { p.airJumps = airJumps; p.spun = false; }
+    // How long you've been off the ground (jumps, wall jumps, glides and bounces off enemies
+    // all keep it going; standing on anything, or swimming, stops it): see the airtime awards.
+    if (p.onGround || wet || p.dead) p.airT = 0;
+    else { const was = p.airT || 0; p.airT = was + dt; for (const s of [10, 30]) if (was < s && p.airT >= s) W.emit('airtime', { s }); }
     p.sliding = !!p.wall && dir === p.wall && p.vy > 0;
 
     // Jump speed scales with sqrt(height x gravity) so the height setting is exact at any gravity.

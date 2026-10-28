@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Two new awards for staying in the air: Hang Time (10 seconds without landing) and Never Touch Down (30 seconds). Jumps, wall jumps, glides and bounces off enemies keep you going; standing on anything or swimming ends it.',
       'Fixed: the Fruit Salad award came for any three kinds of fruit; now it’s the apple, the orange and the banana, as it says.',
       'Stomping an enemy gives you back your air jumps (double, triple and so on), as landing does.',
       'Explosives go off the moment they touch lava, with twice their usual blast: dynamite, grenades, rockets, nukes and bombs. And moving lava (tides, waves, floods, drains) now works just like ordinary lava: explosives go off in it, and any enemy it reaches burns (bosses aside).',
