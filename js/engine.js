@@ -3535,13 +3535,13 @@
         if (e.state === 'shell') {
           const dir = p.x + p.w / 2 < e.x + e.w / 2 ? 1 : -1;
           e.state = 'spin'; e.vx = dir * SHELL_SPEED; e.stompCool = .3; e.shot = 0;
-          if (top) { p.vy = (input.jump ? -620 : -460) * Math.sqrt(T.gravity); p.jumping = input.jump; p.spun = false; }
+          if (top) { p.vy = (input.jump ? -620 : -460) * Math.sqrt(T.gravity); p.jumping = input.jump; p.spun = false; p.airJumps = T.airJumps + (p.dbl || 0); }
           ring(W, e.x + e.w / 2, e.y + e.h / 2, 26, '159,240,200'); W.emit('stomp', { type: e.type });
         } else if (top) {
           // (Stomped in mid-air, it gives you a far bigger bounce.)
           const midair = !supported(W, e);
           e.state = 'shell'; e.shellT = SHELL_WAIT; e.vx = 0; e.stompCool = .3;
-          p.vy = (midair ? -AIR_STOMP : input.jump ? -620 : -460) * Math.sqrt(T.gravity); p.jumping = input.jump && !midair; p.spun = false;
+          p.vy = (midair ? -AIR_STOMP : input.jump ? -620 : -460) * Math.sqrt(T.gravity); p.jumping = input.jump && !midair; p.spun = false; p.airJumps = T.airJumps + (p.dbl || 0);
           if (midair) W.floaters.push({ x: e.x + e.w / 2, y: e.y - 18, t: 'air stomp!', life: .9, c: '#9FF0C8' });
           W.floaters.push({ x: e.x + e.w / 2, y: e.y - 6, t: 'stomp', life: .8, c: '#FF6B3D' });
           W.shake = .1; W.emit('stomp', { type: e.type });
@@ -3555,11 +3555,12 @@
         if (!(e.fury > 0) && !(e.stompCool > 0)) { e.stompCool = .4; W.shake = .15; shootEnemy(W, e, 0, null, 'rush'); }
         continue;
       }
-      // (Any stomp, or a bounce off a raging boss, ends the pear's spin: you can glide again.)
+      // (Any stomp, or a bounce off a raging boss, ends the pear's spin, so you can glide again,
+      // and gives you back your air jumps, as landing would.)
       // A boss in a fury can't be stomped: you just bounce off it.
       if (spec.boss && e.fury > 0) {
         if (p.vy > 0 && p.y + p.h - e.y < 18) {
-          p.vy = -560 * Math.sqrt(T.gravity); p.jumping = false; p.spun = false;
+          p.vy = -560 * Math.sqrt(T.gravity); p.jumping = false; p.spun = false; p.airJumps = T.airJumps + (p.dbl || 0);
           if (!W.floaters.some(f => f.t === 'it’s raging!')) W.floaters.push({ x: e.x + e.w / 2, y: e.y - 8, t: 'it’s raging!', life: .8, c: '#FF4D3D' });
         } else if (e.stompCool <= 0) { hurt(W); if (p.dead) return; }
         continue;
@@ -3568,7 +3569,7 @@
       // sets them off) can be stomped again and again, with a short pause between.
       if ((spec.stomp || e.dazed > 0) && (spec.boss || e.hp > 1 || e.type === '@')) {
         if (p.vy > 0 && p.y + p.h - e.y < 18) {
-          p.vy = (input.jump ? -680 : -520) * Math.sqrt(T.gravity); p.jumping = input.jump; p.spun = false;
+          p.vy = (input.jump ? -680 : -520) * Math.sqrt(T.gravity); p.jumping = input.jump; p.spun = false; p.airJumps = T.airJumps + (p.dbl || 0);
           if (e.stompCool <= 0) {
             e.stompCool = .4; W.shake = .15;
             W.floaters.push({ x: e.x + e.w / 2, y: e.y - 6, t: 'stomp', life: .8, c: '#FF6B3D' });
@@ -3580,7 +3581,7 @@
       }
       // (In a level of stomp chains, def.batChain, falling onto a bat anywhere counts.)
       if (spec.stomp && p.vy > 0 && (p.y + p.h - e.y < 14 || (W.def.batChain && e.type === 'F'))) {
-        e.alive = false; dropAmmo(W, e); p.vy = (input.jump ? -620 : -460) * Math.sqrt(T.gravity); p.jumping = input.jump; p.spun = false;
+        e.alive = false; dropAmmo(W, e); p.vy = (input.jump ? -620 : -460) * Math.sqrt(T.gravity); p.jumping = input.jump; p.spun = false; p.airJumps = T.airJumps + (p.dbl || 0);
         burst(W, e.x + e.w / 2, e.y + e.h / 2, 14, ['#FF6B3D', '#463C6B'], 160, 500);
         W.floaters.push({ x: e.x + e.w / 2, y: e.y - 6, t: 'stomp', life: .8, c: '#FF6B3D' });
         W.shake = .12; W.freeze = .05; ring(W, e.x + e.w / 2, e.y + e.h / 2, 28, '255,107,61'); W.emit('stomp', { type: e.type, kill: true });
