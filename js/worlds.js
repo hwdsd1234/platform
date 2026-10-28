@@ -7,7 +7,7 @@
   const WORLDS = [
     { name: 'Old Town', chapters: ['The Chandlery', 'The Belfry', 'The Kilns', 'The Hollow Spire', 'The Shell Hills'] },
     { name: 'The Waterfront', chapters: ['The Orchard', 'The Drowned Quarter', 'The Lighthouse', 'The Shell Slopes'] },
-    { name: 'The Clockwork Quarter', chapters: ['The Clockworks', 'The Frost Roofs', 'The Clock Tower', 'The Vault', 'The Horde', 'The Powder Works'] },
+    { name: 'The Clockwork Quarter', chapters: ['The Clockworks', 'The Frost Roofs', 'The Clock Tower', 'The Vault', 'The Horde', 'The Powder Works', 'The Switch Works'] },
     { name: 'The Sky Roads', chapters: ['The Cloud Steps', 'The Wind Wheels', 'The Storm Heights', 'The High Winds', 'The Neo Ledges', 'The Shell Skies'] },
     { name: 'The Canal District', chapters: ['The Tallow Docks', 'The Soot Canals', 'The Pear Cliffs'] },
     { name: 'The Garden Market', chapters: ['The Wax Market', 'The Ember Gardens', 'The Melon Patch'] },

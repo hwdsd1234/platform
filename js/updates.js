@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'A new chapter of switch blocks, the Switch Works, closes the Clockwork Quarter before Clockwork Castle: Red Light, Blue Light (walls to open, bridges to build), Switchback Bridges (flip on every island for the next bridge), Switch Stairs (a climb up red and blue stairs), Shell Switch (kick a shell down a spiked tunnel to hit the switch) and Over the Embers (stepping blocks over lava: flip from the stone pillars, or the block goes out from under you).',
       'Hold up to two green apples: the second lets you take each fruit once more again, for a fourth apple shield or a level 3 power (×3). And every story level now has a green apple in it.',
       'Guns are back in towers and castles, ammo crates and all. A boss still falls to 3 hits (a castle’s keeper to 4): a stomp is a hit, and ten gun hits make one (it shows the count), each hit sending it into its fury.',
       'New fruit: 🥝 the kiwi, Multishot. Every gun button fires two shots at once (three with a green apple), fanned out, for the ammo of one: bullets, kill shots, rockets, grenades and dynamite (not the nuke). Until you die.',
