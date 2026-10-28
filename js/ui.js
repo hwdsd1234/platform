@@ -1252,7 +1252,7 @@
         if (hardcore && !progress[i]) { progress[i] = { best: t, falls }; store.set('progress', progress); }
         // The star coins you picked up are yours now.
         if (W.coinsGot) { coins[i] = [0, 1, 2].map(k => !!((coins[i] || [])[k] || W.coinsGot[k])); store.set('coins', coins); }
-        LF.awards.clear({ kind: 'story', index: i, time: t, falls, hardcore, horde: !!W.horde, pacifist: W.foes0.length > 0 && W.foes0.every(e => e.alive), storyLit: Object.keys(progress).length, hcLit: Object.keys(progressHC).length, progress, secrets: Object.keys(secrets).length });
+        LF.awards.clear({ kind: 'story', index: i, time: t, falls, hardcore, horde: !!W.horde, pacifist: W.foes0.length > 0 && W.foes0.every(e => e.alive), skyborne: !!W.leftGround && !W.touchedDown && !W.def.resume, storyLit: Object.keys(progress).length, hcLit: Object.keys(progressHC).length, progress, secrets: Object.keys(secrets).length });
         story.time += t; story.falls += falls;
       }
       // On the map the lamplighter moves on: to the next level, or down the secret path.

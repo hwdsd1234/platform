@@ -3294,6 +3294,9 @@
     if (p.onGround || wet) { p.airJumps = airJumps; p.spun = false; }
     // How long you've been off the ground (jumps, wall jumps, glides and bounces off enemies
     // all keep it going; standing on anything, or swimming, stops it): see the airtime awards.
+    // (And for Sky Walker: once you've left the ground, did you ever stand on anything again?)
+    // (Settling onto the floor at the start doesn't count: only leaving it after standing.)
+    if (p.onGround) { if (W.leftGround) W.touchedDown = true; W.stood = true; } else if (W.stood) W.leftGround = true;
     if (p.onGround || wet || p.dead) p.airT = 0;
     else { const was = p.airT || 0; p.airT = was + dt; for (const s of [10, 30]) if (was < s && p.airT >= s) W.emit('airtime', { s }); }
     p.sliding = !!p.wall && dir === p.wall && p.vy > 0;
