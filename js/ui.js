@@ -1476,6 +1476,7 @@
 
   // ---------- input ----------
   // (No WASD: A is the kill shot.)
+  const heldKeys = new Set();   // (the keys down right now: see keyup)
   const KEYMAP = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'jump', Space: 'jump', KeyZ: 'jump', ArrowDown: 'down', KeyE: 'fire', KeyF: 'fire', KeyX: 'rocket', KeyC: 'rocket', KeyQ: 'grenade', KeyA: 'kill', KeyD: 'dyn', KeyS: 'carry', KeyW: 'nuke' };
   const SHOTS = ['fire', 'rocket', 'grenade', 'kill', 'dyn', 'nuke'];
   // Big shots: hold Shift, or on a phone tap BIG to switch them on until tapped again.
@@ -1511,7 +1512,7 @@
         if ((e.code === 'Space' || e.code === 'KeyZ') && !e.repeat) input.spinPressed = true;
         if (SHOTS.includes(k) && !input[k] && !e.repeat) input[k + 'Pressed'] = true;
         if (k === 'carry' && !input.carry && !e.repeat) input.carryPressed = true;
-        input[k] = true;
+        input[k] = true; heldKeys.add(e.code);
       }
       // R gives up: it's a death like any other (back to the map, your lit lanterns kept), and
       // in the story you lose everything you were carrying too: fruit powers and ammo.
@@ -1534,8 +1535,10 @@
     if (k === 'jump' || e.code === 'Space') e.preventDefault();
   });
   addEventListener('pointerdown', () => initAudio());
-  addEventListener('keyup', e => { syncBig(e.shiftKey); const k = KEYMAP[e.code]; if (k) input[k] = false; });
-  addEventListener('blur', () => { for (const k in input) input[k] = false; syncBig(false); });
+  // (An action stays on while any of its keys is still held: let go of Space after the pear's
+  // spin while holding ↑, and you're still holding jump, so you glide.)
+  addEventListener('keyup', e => { syncBig(e.shiftKey); heldKeys.delete(e.code); const k = KEYMAP[e.code]; if (k) input[k] = [...heldKeys].some(c => KEYMAP[c] === k); });
+  addEventListener('blur', () => { heldKeys.clear(); for (const k in input) input[k] = false; syncBig(false); });
   document.addEventListener('visibilitychange', () => { if (document.hidden && screen === 'play') pause(); });
 
   function bindTouch(id, k) {
