@@ -1104,7 +1104,11 @@
   // you reach it, a castle's 200: see play.)
   // (A Long Night event adds 60 seconds: see events.js.)
   const clockFor = def => (def.clock || (def.castle ? 400 : 300)) + (LF.eventIs('clock') ? 60 : 0);
+  // Analytics (the Google tag in lanternfall.html): a level_start every time a level starts
+  // and a level_clear when one's finished, with what kind of play it was.
+  const track = (name, params) => { try { if (window.gtag) window.gtag('event', name, params); } catch (e) {} };
   function play(def, ctx) {
+    track('level_start', { level_name: def.name, play_kind: ctx.kind, level_index: ctx.index ?? ctx.i ?? null });
     // Story levels are four times as long (see lengthen.js).
     // (A Star Road level is built from its world's level, already as long: special.js.)
     if (def.starOf != null && LF.starLevel) def = LF.starLevel(def);
@@ -1171,6 +1175,7 @@
   }
 
   function cleared() {
+    track('level_clear', { level_name: W.def.name, play_kind: playCtx.kind, level_index: playCtx.index ?? playCtx.i ?? null, time: Math.round(W.time) });
     // Clearing a story level carries your fruit powers and leftover ammo on to the next
     // (and its lanterns are done with).
     if (playCtx.kind === 'story') { store.set('midway', null); store.set('inLevel', null); }
