@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Fixed: the Fruit Salad award came for any three kinds of fruit; now it’s the apple, the orange and the banana, as it says.',
       'Stomping an enemy gives you back your air jumps (double, triple and so on), as landing does.',
       'Explosives go off the moment they touch lava, with twice their usual blast: dynamite, grenades, rockets, nukes and bombs. And moving lava (tides, waves, floods, drains) now works just like ordinary lava: explosives go off in it, and any enemy it reaches burns (bosses aside).',
       'A new chapter of switch blocks, the Switch Works, closes the Clockwork Quarter before Clockwork Castle: Red Light, Blue Light (walls to open, bridges to build), Switchback Bridges (flip on every island for the next bridge), Switch Stairs (a climb up red and blue stairs), Shell Switch (kick a shell down a spiked tunnel to hit the switch) and Over the Embers (stepping blocks over lava: flip from the stone pillars, or the block goes out from under you).',

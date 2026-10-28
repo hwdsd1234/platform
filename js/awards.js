@@ -30,7 +30,7 @@
     { id: 'wall', name: 'Wall Runner', desc: 'Wall jump 100 times.', stat: 'walljump', goal: 100 },
     { id: 'djump', name: 'Second Wind', desc: 'Double jump 25 times.', stat: 'djump', goal: 25 },
     { id: 'swim', name: 'Deep Diver', desc: 'Kick 50 times while swimming.', stat: 'swim', goal: 50 },
-    { id: 'fruit', name: 'Fruit Salad', desc: 'Eat an apple, an orange and a banana.', stat: 'fruitKinds', goal: 3 },
+    { id: 'fruit', name: 'Fruit Salad', desc: 'Eat an apple, an orange and a banana.', stat: 'salad', goal: 3 },
     { id: 'shield', name: 'Close Call', desc: 'Let an apple shield take a hit for you.' },
     { id: 'keys', name: 'Keymaster', desc: 'Unlock 20 locked-door blocks.', stat: 'unlock', goal: 20 },
     { id: 'crates', name: 'Challenge Accepted', desc: 'Grab 5 big ammo crates.', stat: 'bigammo', goal: 5 },
@@ -154,6 +154,8 @@
         bump('fruitEaten');
         const kinds = new Set(stats.fruitSeen || []); kinds.add(d.type);
         stats.fruitSeen = [...kinds]; bump('fruitKinds', kinds.size - (stats.fruitKinds || 0));
+        // (Fruit Salad: the apple, the orange and the banana in particular.)
+        const salad = ['a', 'o', 'b'].filter(t => kinds.has(t)).length; bump('salad', salad - (stats.salad || 0));
       }
     },
     // A level was cleared. Only story levels count, except that a random map earns Wanderer.
