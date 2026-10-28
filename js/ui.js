@@ -793,7 +793,7 @@
     if (kind === 'crateRain') return {
       ...base, timeLimit: 20, ammoRain: { every: .45 },
       signs: [{ x: 2, y: 9.4, t: 'catch the crates as they fall!' }],
-      map: LF.build(44, 14, ({ r, s }) => { r(0, 12, 43, 13); s(2, 11, 'P'); r(9, 9, 13, 9, '='); r(20, 7, 24, 7, '='); r(31, 9, 35, 9, '='); }),
+      map: LF.build(44, 14, ({ r, s }) => { r(0, 12, 43, 13); s(2, 11, 'P'); r(8, 9, 12, 9, '='); r(15, 7, 19, 7, '='); r(22, 9, 26, 9, '='); r(29, 7, 33, 7, '='); r(36, 9, 40, 9, '='); }),
     };
     if (kind === 'ammoPanels') {
       const syms = shuffle(['+3', '+3', '+3', '+5', '+5', '+5', '+5', '+10', '+10', '+10', '+25', '+25', '☠', '☠', '☠']);
@@ -814,7 +814,7 @@
     if (kind === 'rain') return {
       ...base, timeLimit: 20, fruitRain: { every: .4, kinds: shuffle(kinds.slice()) },
       signs: [{ x: 2, y: 9.4, t: 'catch the fruit as it falls!' }],
-      map: LF.build(44, 14, ({ r, s }) => { r(0, 12, 43, 13); s(2, 11, 'P'); r(9, 9, 13, 9, '='); r(20, 7, 24, 7, '='); r(31, 9, 35, 9, '='); }),
+      map: LF.build(44, 14, ({ r, s }) => { r(0, 12, 43, 13); s(2, 11, 'P'); r(8, 9, 12, 9, '='); r(15, 7, 19, 7, '='); r(22, 9, 26, 9, '='); r(29, 7, 33, 7, '='); r(36, 9, 40, 9, '='); }),
     };
     if (kind === 'springs') return {
       ...base, timeLimit: 15,

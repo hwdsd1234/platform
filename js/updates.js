@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Fixed: in Fruit Rain and Crate Rain the high plank in the middle couldn’t be reached; the planks are now a chain you can hop along.',
       'A spring now resets the pear’s spin, like a stomp, so you can glide again on the way down; it gives you back your air jumps too.',
       'The giant towers have real names now, after their boss and their look: The Matriarch’s Spire, The Bog King’s Clocks, The Hive Pit, The Widow’s Ruin, The Frozen Kiln, The Moonwell, The Gar Lord’s Haunt, The Black Gauntlet and more; the last level is the Castle of the Last Dark.',
       'Fixed: letting go of Space while still holding ↑ dropped your jump, so after the pear’s spin and a stomp you had to press ↑ again to glide. Now a key held is a key held: stomp with ↑ down and you glide again straight away.',
