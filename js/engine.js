@@ -3485,7 +3485,10 @@
       }
     }
     if (bounced) {
+      // (A spring, like a stomp, ends the pear's spin, so you can glide again, and gives you
+      // back your air jumps: you'd never touch the ground to get them otherwise.)
       p.vy = -SPRING * Math.sqrt(T.gravity); p.onGround = false; p.coyote = 0; p.jumping = false; p.sx = .7; p.sy = 1.35;
+      p.spun = false; p.airJumps = T.airJumps + (p.dbl || 0);
       burst(W, p.x + p.w / 2, p.y + p.h, 10, ['#FFB547', '#D9D0F0'], 120, 300, 2);
       ring(W, p.x + p.w / 2, p.y + p.h, 30, '255,181,71', .3);
       p.trail = .4; p.trailC = '255,181,71';
