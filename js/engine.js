@@ -618,7 +618,9 @@
     return false;
   };
   function hazardHit(W, p, swims = false) {
-    if (lavaAt(W, p) || (p === W.player && inFlow(W, p))) return true;
+    // (Moving lava, the tides, waves, floods and drains, is lava like any other: it kills
+    // you and any enemy in it, bosses aside.)
+    if (lavaAt(W, p) || ((p === W.player || !isBoss(p)) && inFlow(W, p))) return true;
     const x0 = Math.floor((p.x + 3) / TS), x1 = Math.floor((p.x + p.w - 3) / TS);
     const y0 = Math.floor((p.y + 4) / TS), y1 = Math.floor((p.y + p.h - 1) / TS);
     for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
@@ -1070,16 +1072,22 @@
     W.emit(big ? 'boom' : 'pop');
   }
 
-  // In water or lava (the tile it's in), a bomb, a grenade or a stick of dynamite sinks
-  // slowly, as you do (SINK), and slows as it goes along: returns true if it's in.
+  // In water, a bomb, a grenade or a stick of dynamite sinks slowly, as you do (SINK), and
+  // slows as it goes along: returns true if it's in. (In lava it goes off: see lavaHere.)
   function sinkIn(W, b, dt) {
     const c = tile(W, Math.floor(b.x / TS), Math.floor(b.y / TS));
-    if (c !== '~' && c !== '!') return false;
+    if (c !== '~') return false;
     b.vy = Math.min(b.vy, SINK); if (b.vy < -SINK) b.vy = -SINK;
     b.vx *= Math.pow(.15, dt);
     return true;
   }
 
+  // Is this point in lava: a lava tile, or under the surface of moving lava? An explosive
+  // that touches lava goes off on the spot, with twice its blast (LAVA_BLAST).
+  const LAVA_BLAST = 2;
+  const lavaHere = (W, x, y) => tile(W, Math.floor(x / TS), Math.floor(y / TS)) === '!' ||
+    W.flows.some(f => (f.on || f.mode !== 'rise') && x >= f.x0 * TS && x <= (f.x1 + 1) * TS && y < (f.bottom + 1) * TS && y > LF.flowSurface(W, f, x));
+  LF.lavaHere = lavaHere;
   function stepSpecial(W, b, dt) {
     b.life -= dt;
     const inHorde = () => W.horde && along(W.horde, b.x, b.y) < W.horde.f;
@@ -1102,10 +1110,12 @@
       else b.y = ny;
       if (Math.random() < .5) W.particles.push({ x: b.x + 3, y: b.y - 8 * b.s, vx: (Math.random() - .5) * 60, vy: -40 - Math.random() * 60, life: .25, max: .25, c: Math.random() < .5 ? '#FFE066' : '#FF6B3D', size: 1.6, g: 200 });
       if (b.y > W.h * TS + 40) { b.life = 0; return; }
+      if (lavaHere(W, b.x, b.y)) { b.life = 0; return explode(W, b.x, b.y, TS * DYN_R * b.s * LAVA_BLAST, true, b.id, true); }
       if (b.life <= 0) explode(W, b.x, b.y, TS * DYN_R * b.s, true, b.id, true);
       return;
     }
     if (b.kind === 'nuke') {
+      if (b.life > 0 && lavaHere(W, b.x, b.y - 8)) { b.life = 0; b.s *= LAVA_BLAST; }
       if (Math.random() < .6) W.particles.push({ x: b.x + (Math.random() - .5) * 10, y: b.y - 10, vx: (Math.random() - .5) * 40, vy: -50, life: .4, max: .4, c: Math.random() < .5 ? '#9FF07A' : '#FFE066', size: 2, g: 0 });
       if (b.life <= 0) {
         explode(W, b.x, b.y, TS * NUKE_R * b.s, true, b.id, true);
@@ -1122,6 +1132,7 @@
       if (inHorde()) { b.life = 0; return; }
       const hitWall = isSolid(tile(W, Math.floor(b.x / TS), Math.floor(b.y / TS)));
       const hitEnemy = W.enemies.some(e => e.alive && !e.phased && overlap({ x: b.x - 5 * b.s, y: b.y - 3 * b.s, w: 10 * b.s, h: 6 * b.s }, e));
+      if (lavaHere(W, b.x, b.y)) { b.life = 0; return explode(W, b.x, b.y, TS * 3 * b.s * LAVA_BLAST, true, b.id); }
       if (hitWall || hitEnemy || b.life <= 0) { b.life = 0; explode(W, b.x - Math.sign(b.vx) * (hitWall ? 6 : 0), b.y, TS * 3 * b.s, true, b.id); }
       return;
     }
@@ -1149,6 +1160,7 @@
     if (foe && !b.lastFoe) { b.vx = -b.vx * .7; b.vy = -Math.max(220, Math.abs(b.vy) * .6); bounced = true; }
     b.lastFoe = foe;
     if (inHorde()) { b.life = 0; return; }
+    if (lavaHere(W, b.x, b.y)) { b.life = 0; return explode(W, b.x, b.y, TS * 3 * b.s * LAVA_BLAST, true, b.id); }
     if (bounced) {
       b.bounces++;
       if (b.bounces >= 3) { b.life = 0; return explode(W, b.x, b.y, TS * 3 * b.s, true, b.id); }
@@ -1466,6 +1478,11 @@
 
   function stepEnemy(W, e, dt, playing) {
     e.t += dt;
+    // Moving lava rising over an enemy burns it, just as a lava tile would (bosses aside, and
+    // lava bubbles, which live in it; a shell being carried or gone is out of reach).
+    if (W.flows.length && !isBoss(e) && e.type !== '*' && e.state !== 'carried' && e.state !== 'away' && inFlow(W, e)) {
+      e.alive = false; burst(W, e.x + e.w / 2, e.y + e.h / 2, 10, ['#FFB547', '#FF6B3D'], 120, 200, 2); return;
+    }
     if (isBoss(e)) {
       // Raging walkers and flyers rampage round the arena instead of their usual routine;
       // the rest keep to it, faster.
@@ -3157,13 +3174,16 @@
         b.cluster = false;
         for (const d of [-1, 1]) W.projectiles.push({ ...b, x: b.x + d * 4, vx: b.vx + d * 130, land: undefined });
       }
-      if (isSolid(tile(W, Math.floor(bx / TS), Math.floor(by / TS)))) {
+      // (A bomb that falls in lava goes off there and then, twice as wide.)
+      const inLava = b.kind === 'bomb' && lavaHere(W, bx, by);
+      if (inLava || isSolid(tile(W, Math.floor(bx / TS), Math.floor(by / TS)))) {
         b.life = 0; burst(W, bx, by, 6, WARM, 90, 200, 2);
         // The Powder King's bombs burst where they land and hurt anyone close by.
         if (b.kind === 'bomb') {
-          burst(W, bx, by - 6, 22, ['#FFF1CF', '#FFB547', '#FF6B3D', '#463C6B'], 220, 300, 3);
-          ring(W, bx, by - 6, 52, '255,181,71', .35); W.shake = Math.max(W.shake, .15); W.emit('pop');
-          if (playing && !p.dead && Math.hypot(p.x + p.w / 2 - bx, p.y + p.h / 2 - by) < 52) hurt(W);
+          const br = 52 * (inLava ? LAVA_BLAST : 1);
+          burst(W, bx, by - 6, inLava ? 40 : 22, ['#FFF1CF', '#FFB547', '#FF6B3D', '#463C6B'], inLava ? 320 : 220, 300, 3);
+          ring(W, bx, by - 6, br, '255,181,71', .35); W.shake = Math.max(W.shake, inLava ? .3 : .15); W.emit(inLava ? 'boom' : 'pop');
+          if (playing && !p.dead && Math.hypot(p.x + p.w / 2 - bx, p.y + p.h / 2 - by) < br) hurt(W);
           // In the Fuse Hall the bombs leave a patch of fire behind.
           if (b.burn) W.projectiles.push({ kind: 'flame', x: bx - 7, y: Math.floor(by / TS) * TS - 18, w: 14, h: 18, vx: 0, vy: 0, life: 2.5 });
         }
