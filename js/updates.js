@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'A new finale: when the Last Dark is down to its last stomp, a cutscene shows it swelling to a giant and smashing the wall, and the chase is now over a lake of lava with nothing but lifts to ride. At the end you blow up the TNT cart yourself (five hits, stomp or shoot) with the Last Dark close behind; too soon, and another cart rolls up. Then a second cutscene: an even greater castle rises out of the lava, and the very last thing is crossing it, tower by tower, to its door.',
       'Fixed: in Fruit Rain and Crate Rain the high plank in the middle couldn’t be reached; the planks are now a chain you can hop along.',
       'A spring now resets the pear’s spin, like a stomp, so you can glide again on the way down; it gives you back your air jumps too.',
       'The giant towers have real names now, after their boss and their look: The Matriarch’s Spire, The Bog King’s Clocks, The Hive Pit, The Widow’s Ruin, The Frozen Kiln, The Moonwell, The Gar Lord’s Haunt, The Black Gauntlet and more; the last level is the Castle of the Last Dark.',

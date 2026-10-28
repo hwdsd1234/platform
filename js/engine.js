@@ -298,6 +298,8 @@
       // The Last Dark's chase (def.finalChase): Ħ is the wall that breaks open when it begins,
       // Ŧ the TNT cart waiting at the end of the run.
       else if (c === 'Ħ') { (W.chaseGate ||= []).push([x, y]); tiles[y][x] = '#'; }
+      // Ȟ: the wall in front of the final castle, gone once the castle has risen.
+      else if (c === 'Ȟ') { (W.castleGate ||= []).push([x, y]); tiles[y][x] = '#'; }
       else if (c === 'Ŧ') { W.chaseCart = { x: x * TS + 2, y: (y + 1) * TS - 22, w: 28, h: 22, state: 'idle', vx: 0 }; tiles[y][x] = ' '; }
       // + is a cannon: climb in with ↓ and it fires you out of the level (that finishes it).
       else if (c === '+') { W.cannon = { x: x * TS + 16, y: (y + 1) * TS, state: 'idle', t: 0 }; tiles[y][x] = ' '; }
@@ -431,6 +433,26 @@
     if (W.panels && def.panelGame) { W.panels.sort((a, b) => a.tx - b.tx || a.ty - b.ty); W.panels.forEach((q, k) => { q.sym = def.panelGame.syms[k]; }); W.panelBad = 0; W.panelPeek = def.panelGame.peek || 0; }
     // Back into a level whose lanterns you'd lit last time (def.resume = { lit: [lantern
     // indexes], cp: { tx, ty } }): they're still lit, and you start at the last one.
+    // The final castle (def.castleFrom on): hidden, all but the outer walls, till it rises
+    // (see riseCastle): its blocks kept bottom row first, its door and lantern out of sight.
+    if (def.castleFrom != null) {
+      const list = [];
+      for (let ty = def.castleTop || 1; ty < W.h - 1; ty++) for (let tx = def.castleFrom; tx < W.w - 1; tx++) {
+        const c = W.tiles[ty][tx];
+        if (c !== ' ' && c !== '.') { list.push({ x: tx, y: ty, c }); W.tiles[ty][tx] = ' '; }
+      }
+      W.castleHidden = list.sort((a, b) => b.y - a.y || a.x - b.x);
+      if (W.door && W.door.tx >= def.castleFrom) W.door.hidden = true;
+      for (const l of W.lanterns) if (l.tx >= def.castleFrom) l.hidden = true;
+      // (Back in from the castle's own lantern: the Last Dark's gone, the castle's up.)
+      if (def.resume && def.resume.cp && def.resume.cp.tx >= def.castleFrom) {
+        for (const b of list) W.tiles[b.y][b.x] = b.c;
+        for (const [x, y] of [...(W.chaseGate || []), ...(W.castleGate || [])]) W.tiles[y][x] = ' ';
+        for (const e of W.enemies) if (isBoss(e) || e.type === '@') e.alive = false;
+        W.castleRisen = true; if (W.door) W.door.hidden = false;
+        for (const l of W.lanterns) l.hidden = false;
+      }
+    }
     if (def.resume) {
       for (const k of def.resume.lit) if (W.lanterns[k]) W.lanterns[k].lit = true;
       W.lanternLit = true; W.checkpoint = { ...def.resume.cp };
@@ -791,6 +813,8 @@
   LF.step = function (W, input, dt, playing = true) {
     // Hit-freeze: a few frames of stillness make stomps and kills land harder.
     if (W.freeze > 0) { W.freeze -= dt; return; }
+    // A cutscene: everything waits (the clock too) but its own doings and the sparks.
+    if (W.cutscene) { stepCutscene(W, dt); return; }
     W.clock += dt;
     stepFlows(W, dt);
     stepChaseCart(W, dt);
@@ -835,6 +859,13 @@
     const p = W.player;
     // A boss level ends a moment after its boss falls.
     if (W.endTimer > 0 && !W.cleared && (W.endTimer -= dt) <= 0) { W.cleared = true; W.clearedBy = 'boss'; W.emit('clear'); }
+    // (The final castle rises a moment after the Last Dark falls; a TNT cart that went off too
+    // soon is replaced.)
+    if (W.riseIn > 0 && (W.riseIn -= dt) <= 0) { W.riseIn = 0; riseCastle(W); return; }
+    if (W.cartBack && (W.cartBack.t -= dt) <= 0) {
+      const m = spawnMinion(W, '@', W.cartBack.x, W.cartBack.y); m.vx = -36; W.cartBack = null;
+      W.floaters.push({ x: m.x + 14, y: m.y - 16, t: 'another TNT cart!', life: 1.6, c: '#FFE2A8' });
+    }
     // A timed level (def.timeLimit, in seconds) ends when the time is up.
     if (playing && !W.cleared && W.def.timeLimit && W.time >= W.def.timeLimit) { W.cleared = true; W.clearedBy = 'time'; W.emit('clear'); }
     // The clock (def.deadline, in seconds): with HURRY seconds left it's 'hurry' (once), and
@@ -1269,6 +1300,22 @@
     // A TNT cart goes up in a 10-block blast that kills everything it reaches, golems
     // included, and sets off any other carts.
     if (e.type === '@') {
+      // (At the end of the Last Dark's chase: if it's close, the blast takes it; if not, the
+      // cart's wasted, and another rolls up.)
+      const ld = W.chasing && W.enemies.find(b => b.alive && b.chase);
+      if (ld) {
+        if (Math.hypot(ld.chase.x - (e.x + e.w / 2), ld.chase.y - (e.y + e.h / 2)) < TS * 16) {
+          W.chasing = false;
+          const x = ld.chase.x, y = ld.chase.y;
+          for (let n = 0; n < 6; n++) burst(W, x + (Math.random() - .5) * ld.w * ld.k, y + (Math.random() - .5) * ld.h * ld.k, 30, ['#FFF1CF', '#FFB547', '#FF6B3D', '#463C6B'], 360, 300, 5);
+          ring(W, x, y, TS * 10, '255,181,71', .8); W.shake = 1.2; W.freeze = .2;
+          W.floaters.push({ x, y: y - 60, t: 'KABOOM!', life: 2, c: '#FFB547' });
+          ld.hp = 0; ld.alive = false; ld.phased = false; ld.chase = null; bossDown(W, ld);
+        } else {
+          W.floaters.push({ x: e.x + e.w / 2, y: e.y - 30, t: 'too soon! wait for the Last Dark', life: 1.8, c: '#FF8A8A' });
+          W.cartBack = { t: 2.5, x: e.x + e.w / 2, y: e.y + e.h - 2 };
+        }
+      }
       explode(W, e.x + e.w / 2, e.y + e.h / 2, TS * 10, true, newShot(W), true);
       W.shake = Math.max(W.shake, .6); W.freeze = Math.max(W.freeze, .1);
     }
@@ -1889,14 +1936,75 @@
   function startChase(W, e) {
     e.chase = { t: 0, x: e.x + e.w / 2, y: e.y + e.h / 2 }; e.phased = true; e.k = 1;
     e.fury = 0; e.dazed = 0; e.rest = 0; W.chasing = true;
-    for (const [x, y] of W.chaseGate || []) { W.tiles[y][x] = ' '; burst(W, x * TS + 16, y * TS + 16, 6, ['#8F81AB', '#463C6B', '#FF6B3D'], 160, 300, 3); }
-    W.floaters.push({ x: e.x + e.w / 2, y: e.y - 40, t: 'THE LAST DARK GROWS… RUN →', life: 3, c: '#FF4D3D' });
-    W.shake = Math.max(W.shake, .8); W.emit('roar'); W.emit('unlock');
+    // First a cutscene: it swells to a giant, and smashes the hall's far wall open.
+    const gx = (W.chaseGate || [[0, 0]])[0][0] * TS;
+    W.cutscene = {
+      dur: 4.2, focus: () => ({ x: Math.min(e.x + e.w / 2 + 120, gx), y: e.y + e.h / 2 }),
+      lines: [[0, 'The Last Dark staggers…'], [1.3, '…and swells, darker than the night itself'], [2.7, 'RUN!']],
+      tick: (W, c, dt) => {
+        e.k = 1 + 2 * Math.min(1, c.t / 2.6);
+        // (It staggers back as it swells, to ten tiles behind you: the chase starts with you ahead.)
+        const back = W.player.x + W.player.w / 2 - TS * 10;
+        if (e.chase.x > back) e.chase.x += (back - e.chase.x) * Math.min(1, dt * 2.5);
+        e.x = e.chase.x - e.w / 2;
+        if (Math.random() < dt * 30) burst(W, e.x + e.w / 2 + (Math.random() - .5) * e.w * e.k, e.y + e.h / 2 + (Math.random() - .5) * e.h * e.k, 2, ['#463C6B', '#0E0C22', '#FF4D3D'], 120, -60, 4);
+        if (c.t > 1.2 && c.t - dt <= 1.2) { W.shake = Math.max(W.shake, .6); W.emit('roar'); }
+        if (c.t > 2.6 && !c.broke) {
+          c.broke = true;
+          for (const [x, y] of W.chaseGate || []) { W.tiles[y][x] = ' '; burst(W, x * TS + 16, y * TS + 16, 6, ['#8F81AB', '#463C6B', '#FF6B3D'], 160, 300, 3); }
+          W.shake = Math.max(W.shake, .9); W.emit('unlock');
+        }
+      },
+      // (Then the chase: you get a moment's start.)
+      done: () => { e.k = 3; e.chase.t = .6; W.floaters.push({ x: W.player.x + W.player.w / 2, y: W.player.y - 30, t: 'RUN →', life: 1.6, c: '#FF4D3D' }); },
+    };
+    W.shake = Math.max(W.shake, .5); W.emit('roar');
+  }
+  // A cutscene (W.cutscene = { dur, focus, lines: [[at, text]], tick, done }): the game
+  // waits while it plays; the camera looks where focus() says (see render.js) and its lines
+  // come up in turn along the bottom of the screen.
+  function stepCutscene(W, dt) {
+    const c = W.cutscene;
+    c.t = (c.t || 0) + dt;
+    if (c.tick) c.tick(W, c, dt);
+    for (const q of W.particles) { q.vy += q.g * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.life -= dt; }
+    W.particles = W.particles.filter(q => q.life > 0);
+    for (const f of W.floaters) { f.y -= 28 * dt; f.life -= dt; }
+    W.floaters = W.floaters.filter(f => f.life > 0);
+    W.shake = Math.max(0, W.shake - dt);
+    if (c.t >= c.dur) { W.cutscene = null; if (c.done) c.done(W); }
+  }
+  LF.cutsceneLine = W => { const c = W.cutscene; if (!c || !c.lines) return null; let t = null; for (const [at, text] of c.lines) if (c.t >= at) t = text; return t; };
+  // The final castle rises (once the Last Dark has fallen): its blocks come up out of the
+  // lava, bottom row first, as the camera sweeps across it; then its gate goes, and its door
+  // appears.
+  function riseCastle(W) {
+    const list = W.castleHidden || [], x0 = W.def.castleFrom * TS, x1 = W.w * TS;
+    W.cutscene = {
+      dur: 6.5, focus: () => ({ x: x0 + (x1 - x0) * Math.min(1, (W.cutscene ? W.cutscene.t : 6.5) / 5.5), y: (W.h - 14) * TS }),
+      lines: [[.4, 'The ground shakes…'], [2, 'From the lava rises a castle greater than any before it'], [4.8, 'Cross it, and the night is over']],
+      tick: (W, c) => {
+        const n = Math.floor(list.length * Math.min(1, c.t / 5.2));
+        for (let k = c.shown || 0; k < n; k++) {
+          const b = list[k]; W.tiles[b.y][b.x] = b.c;
+          if (k % 7 === 0) burst(W, b.x * TS + 16, b.y * TS + 16, 3, ['#FF6B3D', '#FFB547', '#8F81AB'], 90, 200, 2.5);
+        }
+        c.shown = n; W.shake = Math.max(W.shake, .12);
+      },
+      done: () => {
+        for (const b of list) W.tiles[b.y][b.x] = b.c;
+        for (const [x, y] of W.castleGate || []) { W.tiles[y][x] = ' '; burst(W, x * TS + 16, y * TS + 16, 6, ['#8F81AB', '#463C6B'], 160, 300, 3); }
+        W.castleRisen = true; if (W.door) W.door.hidden = false; for (const l of W.lanterns) l.hidden = false; openDoorIfDone(W);
+        W.floaters.push({ x: W.player.x + W.player.w / 2, y: W.player.y - 30, t: 'onward →', life: 1.6, c: '#FFE2A8' });
+      },
+    };
+    W.emit('roar');
   }
   function stepChase(W, e, dt) {
     const c = e.chase, p = W.player, px = p.x + p.w / 2, py = p.y + p.h / 2;
     c.t += dt; e.k = Math.min(3, 1 + c.t * 1.3);
-    if (c.t > 1.6 && !p.dead) c.x += Math.max(170, Math.min(420, 170 + (px - c.x - TS * 9) * 1.2)) * dt;
+    const lo = W.def.chaseMin || 170;
+    if (c.t > 1.6 && !p.dead) c.x += Math.max(lo, Math.min(420, lo + (px - c.x - TS * 9) * 1.2)) * dt;
     c.y += (Math.min(py, (W.h - 2) * TS - e.h * e.k / 2) - c.y) * Math.min(1, dt * 2);
     e.x = c.x - e.w / 2; e.y = c.y - e.h / 2; e.face = 1;
     if (Math.random() < dt * 40) burst(W, c.x - e.w * e.k * .4, c.y + (Math.random() - .5) * e.h * e.k, 1, ['#463C6B', '#0E0C22', '#FF4D3D'], 80, -40, 4);
@@ -2103,7 +2211,8 @@
       W.horde = null;
     }
     W.emit('bossdown', { type: e.type, shelled: !!e.shelled });
-    if (W.def.bossEnds && !W.enemies.some(b => b.alive && isBoss(b))) W.endTimer = 1.6;
+    if (W.def.castleFrom != null && e.type === 'Ω+') { W.chasing = false; W.cartBack = null; W.riseIn = 1.4; }
+    else if (W.def.bossEnds && !W.enemies.some(b => b.alive && isBoss(b))) W.endTimer = 1.6;
     // With the last boss down, the boss gates (g) crumble.
     if (!W.enemies.some(b => b.alive && isBoss(b))) {
       for (let ty = 0; ty < W.h; ty++) for (let tx = 0; tx < W.w; tx++) {
@@ -2116,7 +2225,9 @@
   }
   // The door opens once every lantern is lit and no boss is left standing.
   function openDoorIfDone(W) {
-    if (!W.door || W.door.open || W.def.bonusDoor || W.lanterns.some(l => !l.lit) || W.enemies.some(e => e.alive && isBoss(e))) return;
+    // (The final castle's door opens once the castle has risen: its lanterns are only checkpoints.)
+    if (W.def.castleFrom != null) { if (W.door && W.castleRisen && !W.door.hidden && !W.door.open) { W.door.open = true; W.emit('door'); } return; }
+    if (!W.door || W.door.open || W.def.bonusDoor || W.door.hidden || W.lanterns.some(l => !l.lit) || W.enemies.some(e => e.alive && isBoss(e))) return;
     W.door.open = true; W.emit('door');
   }
   // Gravity for bosses that walk. Returns the falling speed on the frame it lands, else 0.
@@ -3600,7 +3711,7 @@
 
     const cx = p.x + p.w / 2, cy = p.y + p.h / 2;
     for (const l of W.lanterns) {
-      if (l.lit || Math.abs(cx - l.x) > 22 || Math.abs(cy - l.y) > 26) continue;
+      if (l.lit || l.hidden || Math.abs(cx - l.x) > 22 || Math.abs(cy - l.y) > 26) continue;
       l.lit = true; l.pop = 1; W.lanternLit = true;
       // (The coins you've got so far are kept now: come back after a fall and they're still
       // yours for this go. See def.resume.)

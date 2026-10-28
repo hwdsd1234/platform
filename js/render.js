@@ -50,8 +50,10 @@
     LF.followCamera = (W, cam, dt, snap) => {
       const { vw, vh } = R.viewSize(cam);
       const p = W.player, ww = W.w * TS, wh = W.h * TS;
-      let tx = ww <= vw ? -(vw - ww) / 2 : Math.max(0, Math.min(ww - vw, p.x + p.w / 2 - vw / 2 + p.face * 40));
-      let ty = wh <= vh ? wh - vh : Math.max(0, Math.min(wh - vh, p.y + p.h / 2 - vh * .55));
+      // (In a cutscene the camera looks where it says, not at you.)
+      const f = W.cutscene && W.cutscene.focus ? W.cutscene.focus() : { x: p.x + p.w / 2 + p.face * 40, y: p.y + p.h / 2 };
+      let tx = ww <= vw ? -(vw - ww) / 2 : Math.max(0, Math.min(ww - vw, f.x - vw / 2));
+      let ty = wh <= vh ? wh - vh : Math.max(0, Math.min(wh - vh, f.y - vh * .55));
       if (snap) { cam.x = tx; cam.y = ty; return; }
       cam.x += (tx - cam.x) * Math.min(1, dt * 5);
       cam.y += (ty - cam.y) * Math.min(1, dt * 4);
@@ -1908,7 +1910,7 @@
       drawFlows(W);
       drawTiles(W, cam, opts);
       drawPlats(W);
-      drawDoor(W.door); if (W.secretSeen || opts.edit) drawDoor(W.secret);
+      if (!(W.door && W.door.hidden)) drawDoor(W.door); if (W.secretSeen || opts.edit) drawDoor(W.secret);
       for (const d of W.passages) drawPassage(d);
       drawWarps(W);
       // Practice checkpoints: little blue flags.
@@ -1926,7 +1928,7 @@
         ctx.fillStyle = '#211C3F'; for (const d of [6, 22]) { ctx.beginPath(); ctx.arc(tc.x + d, tc.y + tc.h - 4, 4, 0, TAU); ctx.fill(); }
         if (W.chasing && tc.state === 'idle') { ctx.strokeStyle = `rgba(255,181,71,${.5 + .5 * Math.sin(clock * 8)})`; ctx.lineWidth = 2; ctx.strokeRect(tc.x - 3, tc.y - 3, tc.w + 6, tc.h + 2); }
       }
-      for (const l of W.lanterns) drawLantern(l);
+      for (const l of W.lanterns) if (!l.hidden) drawLantern(l);
       drawCoins(W);
       // A raging boss glows red (it can't be stomped till it calms down).
       for (const e of W.enemies) {
@@ -1964,6 +1966,20 @@
           ctx.fillStyle = '#F6FFE8'; ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height); ctx.restore();
           W.nukeFlash = Math.max(0, W.nukeFlash - .03);
         }
+      }
+      // A cutscene: black bars top and bottom, sliding in and out, and its line in the bottom one.
+      if (W.cutscene && !opts.edit) {
+        const c = W.cutscene, cw = ctx.canvas.width, ch = ctx.canvas.height, t = c.t || 0;
+        const k = Math.min(1, t / .4, Math.max(0, (c.dur - t) / .4)), bar = ch * .12 * k;
+        ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.fillStyle = '#05040C'; ctx.fillRect(0, 0, cw, bar); ctx.fillRect(0, ch - bar, cw, bar);
+        const line = LF.cutsceneLine(W);
+        if (line && k > .6) {
+          ctx.globalAlpha = k; ctx.fillStyle = '#FFE2A8'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.font = `600 ${Math.round(Math.min(26, cw / 40) * (R.dpr || 1))}px ui-monospace, monospace`;
+          ctx.fillText(line, cw / 2, ch - bar / 2);
+        }
+        ctx.restore();
       }
     };
 

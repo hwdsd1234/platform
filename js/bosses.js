@@ -1319,7 +1319,9 @@
   function tower(def, seed, castle, sky, design) {
     const R = LF.rng(seed);
     // (No hordes in boss fights: any horde marker in the arena goes.)
-    const arenaRows = reachAll(def.map.map(row => row.replace(/[&%]/g, '.'))).map(row => row.replace(/P/g, 'n').replace(/[Dg]/g, '.').split(''));
+    // (def.noReachFix: an arena with its own way across, left as it is; def.keepDoor: its door stays.)
+    const arenaRaw = def.map.map(row => row.replace(/[&%]/g, '.'));
+    const arenaRows = (def.noReachFix ? arenaRaw : reachAll(arenaRaw)).map(row => row.replace(/P/g, 'n').replace(def.keepDoor ? /g/g : /[Dg]/g, '.').split(''));
     // (The Sky Spire and the final castle have a climb and a run of their own.)
     const t = design ?? (castle || sky ? 0 : towerNo++);
     const climb = sky ? skyClimb() : castle && !def.course ? castleClimb(R) : null;
@@ -1379,6 +1381,7 @@
         ...(def.signs || []).map(s => ({ ...s, x: s.x + arena.x, y: s.y + arena.y })),
       ],
     };
+    if (def.castleFrom != null) { out.castleFrom = def.castleFrom + arena.x; out.castleTop = arena.y + 1; }
     if (look) { out.dark = look.theme.dark; out.palette = look.theme.palette; out.towerTheme = look.theme.id; out.towerLayout = look.layout.id; }
     delete out.hordeStop; delete out.course;
     if (flows.length) out.flows = flows;
@@ -1429,31 +1432,69 @@
   // The very last level, a chapter of its own: the Last Dark's castle, five times the size
   // of the others: climbs, lava tides and waves, a flooding shaft, the walls, a lake of lava
   // to wait out on falling shingles, more climbing and lava, then the Last Dark's hall. Four
-  // stomps: after the third it grows huge and chases you out through the hall's far wall
-  // and along a last run of lava and crumbling stone to a TNT cart (see startChase).
-  const finalMap = B(170, 20, ({ r, s, walls }) => {
-    walls(); r(0, 0, 169, 0); r(1, 17, 58, 18);
-    s(2, 16, 'P'); s(8, 16, 'a');
-    r(10, 13, 15, 13, '='); r(44, 13, 49, 13, '='); s(46, 12, 'a');
-    r(20, 10, 26, 10, '='); r(33, 10, 39, 10, '=');
-    r(27, 7, 32, 7, '=');
-    s(30, 9, '0');
-    // A pear by the wall that breaks open, for the run: glide over the worst of it.
-    s(55, 16, 'p');
-    r(59, 1, 59, 16, 'Ħ');
-    // The run.
-    r(59, 17, 69, 18);
-    for (const x of [71, 76, 81]) r(x, 16, x + 2, 16);
-    r(85, 17, 96, 18); s(88, 17, '^'); s(93, 17, '^');
-    r(97, 18, 110, 18, '!'); for (let x = 98; x <= 108; x += 2) s(x, 15, 'd');
-    r(111, 17, 124, 18); r(118, 15, 119, 16);
-    r(125, 18, 150, 18, '!'); r(125, 17, 150, 17, 'C');
-    r(151, 17, 168, 18); s(163, 16, 'Ŧ');
+  // stomps: after the third, a cutscene: it swells to a giant and breaks the hall's far wall,
+  // and chases you out across a lake of lava with nothing over it but lifts (see startChase)
+  // to a landing where a TNT cart waits: you blow it up yourself (five hits), and if the Last
+  // Dark is close behind, the blast takes it. Then a second cutscene: an even greater castle
+  // rises out of the lava beyond (def.castleFrom: everything from that column on is hidden
+  // till then), and the last of it all is getting across that castle to its door.
+  const FH = 44, FY = FH - 20, FG = FH - 3;   // (the map's height; the hall's top row; the ground)
+  const CASTLE_X = 172;
+  const finalMap = B(300, FH, ({ r, s, walls }) => {
+    walls(); r(0, 0, 299, 0); r(0, FH - 1, 299, FH - 1);
+    // Rock over the hall and the lake (the castle beyond has the sky).
+    r(0, 0, CASTLE_X - 1, FY);
+    // The Last Dark's hall.
+    r(1, FY + 17, 58, FY + 18);
+    s(2, FY + 16, 'P'); s(8, FY + 16, 'a');
+    r(10, FY + 13, 15, FY + 13, '='); r(44, FY + 13, 49, FY + 13, '='); s(46, FY + 12, 'a');
+    r(20, FY + 10, 26, FY + 10, '='); r(33, FY + 10, 39, FY + 10, '=');
+    r(27, FY + 7, 32, FY + 7, '=');
+    s(30, FY + 9, '0');
+    s(55, FY + 16, 'p');
+    // The wall the Last Dark breaks open.
+    r(59, FY + 1, 59, FY + 16, 'Ħ');
+    r(59, FY + 17, 59, FY + 18);
+    // The lake: lava, and lifts, rising and falling over it (between their markers, |).
+    r(60, FY + 17, 156, FY + 18, '!');
+    const lift = (x, top, bot, startTop) => { s(x, startTop ? top : bot, 'V'); for (const c of [x, x + 1]) { s(c, top - 1, '|'); s(c, bot + 1, '|'); } };
+    // First, a row of lifts all moving together: always level, a hop apart.
+    for (let x = 61; x <= 94; x += 3) lift(x, FY + 13, FY + 16, false);
+    // Then lifts moving against each other: hop as they pass.
+    for (let x = 98, k = 0; x <= 125; x += 3, k++) lift(x, FY + 13, FY + 16, k % 2 === 1);
+    // Then lifts further apart, together again, ending at the landing.
+    for (let x = 129; x <= 153; x += 4) lift(x, FY + 12, FY + 16, false);
+    // The landing, and the TNT cart.
+    r(157, FY + 17, CASTLE_X - 1, FY + 18); s(164, FY + 16, '@');
+    // The castle's gate: the wall that goes when the castle has risen.
+    r(CASTLE_X - 1, FY + 1, CASTLE_X - 1, FY + 16, 'Ȟ');
+    // ---- The castle that rises (all hidden till then) ----
+    r(CASTLE_X, FG, 298, FG + 1, '!');
+    r(CASTLE_X, FG, CASTLE_X + 4, FG + 1);
+    // Towers: up to the keep and down again to the gatehouse, steps between (crumbling, now
+    // and then) where the next tower stands higher than a jump.
+    const towers = [[179, 6, FG - 6], [189, 5, FG - 10], [198, 6, FG - 14], [208, 5, FG - 18], [217, 9, FG - 23], [230, 5, FG - 19], [239, 6, FG - 15], [249, 5, FG - 12], [258, 6, FG - 9], [268, 31, FG - 6]];
+    let prevTop = FG, prevEnd = CASTLE_X + 4;
+    towers.forEach(([x0, w, top], k) => {
+      r(x0, top, x0 + w - 1, FH - 2);
+      // (Steps up the gap from the last top to this one, three rows at a time.)
+      for (let y = prevTop - 3, n = 0; y > top; y -= 3, n++) {
+        const sx = n % 2 ? x0 - 2 : prevEnd + 1;
+        r(sx, y, sx + 1, y, k % 3 === 2 ? 'C' : '=');
+      }
+      prevTop = top; prevEnd = x0 + w - 1;
+    });
+    // Spikes to hop on two of the tops, a lantern on the keep, and the door on the gatehouse.
+    s(201, FG - 15, '^'); s(242, FG - 16, '^');
+    s(221, FG - 24, 'L');
+    s(292, FG - 7, 'D');
   });
-  finalMap.flows = [{ mode: 'wave', x0: 70, x1: 84, lo: 18, amp: 3, len: 9, period: 3.2, bottom: 18 }];
   const climbIn = R => castleClimb(R).map(row => row.map(c => (c === 'P' ? 'n' : c)));
   const finalDef = {
-    name: 'Castle of the Last Dark', dark: .82, map: finalMap, giant: 'Ω', bossHits: 4, finalChase: true, clock: 280, hurry: 100,
+    name: 'Castle of the Last Dark', dark: .82, map: finalMap, giant: 'Ω', bossHits: 4, finalChase: true, clock: 340, hurry: 100,
+    // (The door stays, the arena isn't patched with planks (its lifts are the way), the chase
+    // is a touch slower over the lifts, and the castle beyond is hidden till it rises.)
+    keepDoor: true, noReachFix: true, chaseMin: 115, castleFrom: CASTLE_X,
     // A hall of lava (tides, crumbling bridges, hops, bubbles, blinks, pendulums, ice) ending
     // in the drain room, a door, and a climb of stages with the lava flooding up, to the Last
     // Dark's door.
@@ -1461,7 +1502,7 @@
       joinRuns(['lavaTide', 'crumbleLava', 'lavaHops', 'bubblePits', 'blinkLava', 'pendulums', 'icePits'].map((m, n) => COURSES[m](R, n === 0)), R, true),
       drainClimb(R, ['flood', 'springs', 'lifts', 'chimney', 'pillars', 'wheel', 'turns', 'shingles', 'ice']),
     ],
-    signs: [{ x: 2, y: 14.4, t: 'THE LAST DARK · 4 stomps · stomp it when it dives to the floor · after the third: RUN →' }],
+    signs: [{ x: 2, y: FY + 14.4, t: 'THE LAST DARK · 4 stomps · stomp it when it dives to the floor · after the third: RUN →' }, { x: 158, y: FY + 13.4, t: 'TNT CART · hit it five times (stomp or shoot) with the Last Dark close behind' }],
   };
   out.push({ ...tower(finalDef, 999, true), chapter: 'The Last Night', boss: true, finalFight: true });
   // Fruit across the map. Each fruit with a power (all but the apple) has PURE levels where
