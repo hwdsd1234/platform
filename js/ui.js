@@ -943,11 +943,21 @@
   }
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // A story level's lit lanterns, remembered when you leave it uncleared (by dying, or from
-  // the pause menu) so you start at the last one next time, unless you play another first.
-  function saveMidway() {
-    if (playCtx.kind !== 'story' || !W || W.cleared || !W.lanternLit) return;
-    store.set('midway', { index: playCtx.index, lit: W.lanterns.map((l, k) => (l.lit ? k : -1)).filter(k => k >= 0), cp: W.checkpoint, boss: W.cpBoss, coins: W.coinsAtLamp || [] });
+  // A story level's lit lanterns, remembered when you leave it uncleared so you carry on next
+  // time (unless you play another level first). Dying (or giving up) sends you back to your
+  // last lantern, with the coins you had there. Leaving (the pause menu, or closing or
+  // refreshing the page) is only a pause: you pick up right where you were (the last firm
+  // ground you stood on), with every coin you'd got, and your powers and ammo.
+  // (Not from the middle of the Last Dark's chase, or between it and its castle: from there,
+  // the last lantern.)
+  function saveMidway(here = false) {
+    if (playCtx.kind !== 'story' || !W || W.cleared) return;
+    const g = W.lastGround, d = W.def, gate = (W.chaseGate || [])[0];
+    const midChase = W.chasing || (d.castleFrom != null && g && gate && g.tx > gate[0] && g.tx < d.castleFrom && !W.castleRisen);
+    const spot = here && g && !midChase;
+    if (!spot && !W.lanternLit) return;
+    store.set('midway', { index: playCtx.index, lit: W.lanterns.map((l, k) => (l.lit ? k : -1)).filter(k => k >= 0), cp: spot ? g : W.checkpoint, boss: spot ? !!W.bossClock : W.cpBoss, coins: spot ? W.coins.map(c => !!(c.taken || c.had)) : W.coinsAtLamp || [], here: spot });
+    if (spot && !hardcore) { saveCarry({ ...W.player, ...(W.player.held || {}) }); if (!W.def.noAmmo) store.set('ammo', W.player.ammo); }
   }
 
   function giveUp() {
@@ -1166,12 +1176,12 @@
       ${keyFor(playCtx) ? `<p class="lede">Level key <b class="lvl-key">${keyFor(playCtx)}</b> · <span class="key-link">${esc(keyLink(keyFor(playCtx)))}</span>${playCtx.kind === 'custom' ? '<br><small>Your own levels’ keys only work in this browser. To share one, use Copy play link in the editor’s Share code.</small>' : ''}</p>` : ''}
       <div class="menu">
         <button class="go" data-act="resume">Resume</button>
-        ${playCtx.kind === 'house' ? '' : '<button class="alt" data-act="giveUp">Give up · R</button><button class="alt" data-act="hardRestart">Back to the map · Shift+R</button>'}
+        ${playCtx.kind === 'house' ? '' : `${playCtx.kind === 'story' ? '<button class="alt" data-act="menu">Back to the map</button>' : ''}<button class="alt" data-act="giveUp">Give up · R</button><button class="alt" data-act="hardRestart">${playCtx.kind === 'story' ? 'Start over' : 'Back to the map'} · Shift+R</button>`}
         ${playCtx.kind === 'test' ? '<button class="alt" data-act="backToEditor">Back to editor</button>' : ''}
         ${playCtx.kind === 'random' ? '<button class="alt" data-act="editRandom">Open in editor</button>' : ''}
         ${playCtx.kind !== 'test' && playCtx.kind !== 'story' ? '<button class="alt" data-act="copyToEditor">Copy to editor</button>' : ''}
       </div>
-      ${playCtx.kind === 'story' ? '<p class="lede"><small>Leaving a story level unfinished counts as giving up: your powers and ammo are gone.</small></p>' : playCtx.kind === 'house' ? '<p class="lede"><small>No giving up in a Fruit Grove: the clock’s running till it’s over.</small></p>' : ''}`);
+      ${playCtx.kind === 'story' ? '<p class="lede"><small>Back to the map is a pause: next time you play this level you pick up right here, with your coins, powers and ammo. (Give up and dying send you back to your last lantern; Start over puts every lantern out.)</small></p>' : playCtx.kind === 'house' ? '<p class="lede"><small>No giving up in a Fruit Grove: the clock’s running till it’s over.</small></p>' : ''}`);
   }
 
   function cleared() {
@@ -1448,7 +1458,7 @@
     cannon: how => { if (how && cannonOpen(how)) play(cannonLevel(how), { kind: 'cannon', how: { world: how.world, secret: how.secret } }); },
     random: () => app.openGenerator('menu'),
     editor: () => openEditor(),
-    menu: () => { if (screen === 'paused') saveMidway(); showMap(); },
+    menu: () => { if (screen === 'paused') saveMidway(true); showMap(); },
     awards: showAwards,
     updates: showUpdates,
     toggleHardcore: () => { hardcore = !hardcore; store.set('hardcore', hardcore); renderMap(false); flash(hardcore ? 'Hardcore on' : 'Hardcore off'); },
@@ -1645,14 +1655,13 @@
     requestAnimationFrame(frame);
   }
 
-  // Refreshing (or closing the page) in the middle of a story level counts as dying there:
-  // your fruit powers and ammo are gone, and you're back on the map (lanterns you'd lit are
-  // kept, as with any death).
-  addEventListener('pagehide', () => { if (W && (screen === 'play' || screen === 'paused' || screen === 'inv')) saveMidway(); });
+  // Refreshing (or closing the page) in the middle of a story level is a pause, like leaving
+  // from the pause menu: you pick up where you were next time (see saveMidway).
+  addEventListener('pagehide', () => { if (W && (screen === 'play' || screen === 'paused' || screen === 'inv')) saveMidway(true); });
   function leftMidLevel() {
     if (!store.get('inLevel', null)) return false;
-    carry = null; store.set('powers', null); store.set('ammo', 0); store.set('inLevel', null);
-    showMap(); flash('You left in the middle of a level: that counts as a death (powers and ammo gone)');
+    store.set('inLevel', null);
+    showMap(); flash('You left in the middle of a level: play it again to pick up where you left off');
     return true;
   }
   function start(data) {

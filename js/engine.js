@@ -892,6 +892,12 @@
       if (p.dead) { if (!W.lost) { W.deadTimer -= dt; if (W.deadTimer <= 0) respawn(W); } }
       else if (p.inCannon) stepCannon(W, p, dt);
       else stepPlayer(W, p, input, dt);
+      // The last firm ground you stood on (not a lift, nor a block that can crumble, blink or
+      // switch away): where you pick up again if you leave the level (see ui.js, saveMidway).
+      if (p.onGround && !p.onPlat && !p.dead && !p.inCannon) {
+        const tx = Math.floor((p.x + p.w / 2) / TS), ty = Math.floor((p.y + p.h - 1) / TS), under = tile(W, tx, ty + 1);
+        if ('#=i<>'.includes(under) && !inFlow(W, p)) W.lastGround = { tx, ty };
+      }
     }
     for (const q of W.particles) { q.vy += q.g * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.life -= dt; }
     W.particles = W.particles.filter(q => q.life > 0);
