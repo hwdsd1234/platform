@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'On a daily challenge with a clock to beat, the timer now counts down from exactly the seconds allowed (the hurry-up comes at 15 seconds left); run out and that’s your one life.',
       'Daily challenges are very, very hard now: always the hardest and biggest level the generator makes, dark and crowded with Shellbacks, one life (a death ends the try), and two goals at once on top of reaching the door (a tight clock, no kills, all three star coins, no shots: a different pair each day).',
       'Daily challenges: a new level every day (the same for everyone), with a goal of the day: reach the door, do it in under 60 seconds, without falling, without killing, with all three star coins, or without firing a shot. Complete it for +1 daily completion and +100 ammo straight into your ammo bank (once a day). Find it under Daily on the map.',
       'Leaving a level is a pause now: go back to the map from the pause menu (or close or refresh the page) and next time you play it you pick up right where you were, with your coins, powers and ammo. Dying and Give up still send you back to your last lantern, and Start over (Shift+R) puts every lantern out.',

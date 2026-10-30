@@ -889,7 +889,7 @@
   const dailySecs = def => { const m = LF.normalize(def.map); return Math.ceil(m[0].length / 5 + m.length / 3) + 8; };
   const dailyGoal = (d = dayNum(), def = dailyDef(d)) => {
     const gs = PAIRS[d % PAIRS.length].map(k => DAILY_GOALS[k]), secs = dailySecs(def);
-    return { text: `One life · reach the door ${gs.map(g => g.text(secs)).join(' and ')}`, ok: r => !r.died && gs.every(g => g.ok(r, secs)) };
+    return { text: `One life · reach the door ${gs.map(g => g.text(secs)).join(' and ')}`, ok: r => !r.died && gs.every(g => g.ok(r, secs)), secs: gs.some(g => g.id === 'fast') ? secs : null };
   };
   let dailyDone = store.get('dailyDone', {});
   const dailyCount = () => store.get('dailyCount', 0);
@@ -1196,6 +1196,8 @@
     // clockFor), and a tower's boss arena adds 100 seconds more (a castle's, 200); not in
     // practice or when testing in the editor.
     if (!def.timeLimit && ctx.kind !== 'practice' && ctx.kind !== 'test') withPowers = { ...withPowers, deadline: clockFor(def), bossTime: def.arenaX ? (def.castle ? 200 : 100) : 0 };
+    // (A daily challenge with a clock to beat: the level's clock is that, the hurry-up at 15 seconds.)
+    if (ctx.kind === 'daily') { const g = dailyGoal(ctx.day); if (g.secs) withPowers = { ...withPowers, deadline: g.secs, hurry: 15 }; }
     if (LF.music) LF.music.hurry(false);
     W = LF.createWorld(hardcore && ctx.kind !== 'test' ? hardcoreDef(withPowers) : withPowers);
     for (const k in input) input[k] = false;
