@@ -586,6 +586,7 @@
     $('map-stats').textContent = `World ${L[mapAt].world + 1} of ${LF.WORLDS.length} · ${lit} of ${n} lit · coins here ${wc.have} of ${wc.all} · secret exits ${found} of ${total}${hardcore ? ` · hardcore ${Object.keys(progressHC).length} lit` : ''}`;
     renderEvent();
     $('map-awards').textContent = `Awards · ${LF.awards.count().earned}/${LF.awards.count().total}`;
+    renderDailyButton();
     markUpdates();
     $('map-hc').textContent = `Hardcore: ${hardcore ? 'on' : 'off'}`; $('map-hc').classList.toggle('hc-on', hardcore);
     $('map-practice').textContent = `Practice: ${practice ? 'on' : 'off'}`; $('map-practice').classList.toggle('pr-on', practice);
@@ -866,6 +867,41 @@
     };
   }
 
+  // ---------- daily challenges ----------
+  // One a day, the same for everyone (by the UTC date): a level generated from the date
+  // (its shape, size and difficulty turning with the days), and a goal for it, one of
+  // DAILY_GOALS in turn. Done the first time on a day (not in practice): +1 to your daily
+  // completions, and 100 ammo straight into your ammo bank.
+  const DAY = 86400000;
+  const dayNum = (t = Date.now()) => Math.floor(t / DAY);
+  const dayKey = (d = dayNum()) => new Date(d * DAY).toISOString().slice(0, 10);
+  const DAILY_GOALS = [
+    { id: 'reach', text: 'Reach the door', ok: () => true },
+    { id: 'fast', text: 'Reach the door in under 60 seconds', ok: r => r.time < 60 },
+    { id: 'flawless', text: 'Reach the door without falling once', ok: r => r.falls === 0 },
+    { id: 'pacifist', text: 'Reach the door without killing an enemy', ok: r => r.pacifist },
+    { id: 'coins', text: 'Collect all three star coins, then reach the door', ok: r => r.coins >= 3 },
+    { id: 'noshoot', text: 'Reach the door without firing a shot', ok: r => r.shots === 0 },
+  ];
+  const dailyGoal = (d = dayNum()) => DAILY_GOALS[d % DAILY_GOALS.length];
+  let dailyDone = store.get('dailyDone', {});
+  const dailyCount = () => store.get('dailyCount', 0);
+  function dailyDef(d = dayNum()) {
+    const opts = { shape: ['right', 'up', 'mixed'][d % 3], size: ['m', 'l', 'm', 'l', 'l'][d % 5], difficulty: 3 + (d % 3), seed: (d * 7919 + 17) % 1e6 };
+    const def = { ...LF.generate(opts), name: `Daily Challenge ${dayKey(d)}` };
+    return LF.addCoins ? LF.addCoins(def) : def;
+  }
+  function showDaily() {
+    if (screen !== 'map') return;
+    screen = 'daily'; setVisible({ overlay: true });
+    const g = dailyGoal(), done = !!dailyDone[dayKey()], left = DAY - (Date.now() % DAY), h = Math.floor(left / 3600000), m = Math.ceil((left % 3600000) / 60000);
+    card(`<p class="eyebrow">Daily challenge · ${dayKey()}</p><h2>${esc(g.text)}</h2>
+      <p class="lede">A new level every day, the same for everyone. ${done ? '✔ Done today: well played.' : 'Complete it for <b>+1 daily completion</b> and <b>+100 ammo</b> in your ammo bank.'}${practice ? ' (Practice is on: it won’t count.)' : ''}</p>
+      <dl class="tally"><div><dt>Daily completions</dt><dd>${dailyCount()}</dd></div><div><dt>Next challenge in</dt><dd>${h} h ${m} min</dd></div></dl>
+      <div class="menu"><button class="go" data-act="playDaily">Play</button><button class="alt" data-act="menu">Back</button></div>`);
+  }
+  function renderDailyButton() { const b = $('map-daily'); if (b) b.textContent = dailyDone[dayKey()] ? 'Daily ✔' : 'Daily ●'; }
+
   // The Cannon Yard: a short walk to a cannon. Climb in with ↓ and it fires you off to the
   // next world (or, for a secret cannon, a faraway one): the map takes up the flight.
   function cannonLevel(how) {
@@ -1099,6 +1135,7 @@
   }
   function hudLabelBase() {
     if (playCtx.kind === 'story') return `Chapter ${roman(chapterIndex(playCtx.index))} · Level ${playCtx.index + 1} of ${LF.LEVELS.length} · key ${levelKey(LF.LEVELS[playCtx.index].name)}`;
+    if (playCtx.kind === 'daily') return `Daily challenge · ${dayKey(playCtx.day)} · ${dailyGoal(playCtx.day).text}`;
     if (playCtx.kind === 'random') return `Random · ${playCtx.opts.shape === 'mixed' ? 'up & across' : playCtx.opts.shape === 'up' ? 'upward' : 'across'} · seed ${playCtx.opts.seed}`;
     if (playCtx.kind === 'test') return 'Test play · Esc to edit';
     if (playCtx.kind === 'cannon') return `Cannon Yard · to World ${cannonDest(playCtx.how) + 1}`;
@@ -1303,6 +1340,17 @@
         stats += `<p class="lede">Next: ${esc(nx.name)} · ${nx.map[0].length}×${nx.map.length}, ${shapeOf(nx)}.</p>`;
         buttons = `<button class="go" data-act="story" data-i="${i + 1}">Next level</button><button class="alt" data-act="menu">Back to the map</button><button class="alt" data-act="restart">Replay</button><button class="alt" data-act="copyToEditor">Copy to editor</button>`;
       }
+    } else if (playCtx.kind === 'daily') {
+      const g = dailyGoal(playCtx.day), key = dayKey(playCtx.day);
+      const met = g.ok({ time: t, falls, pacifist: W.foes0.length === 0 || W.foes0.every(e => e.alive), coins: W.coins.filter(c => c.taken || c.had).length, shots: playCtx.shots || 0 });
+      const first = met && !dailyDone[key] && !practice && key === dayKey();
+      if (first) {
+        dailyDone[key] = true; store.set('dailyDone', dailyDone);
+        store.set('dailyCount', dailyCount() + 1); store.set('ammoBank', store.get('ammoBank', 0) + 100);
+      }
+      eyebrow = `Daily challenge · ${key}`; title = met ? 'Challenge complete!' : 'Not quite';
+      stats = tally() + `<p class="lede">${esc(g.text)}: ${met ? '✔' : '✘'}${first ? ` · <b>+1 daily completion</b> (${dailyCount()} in all) · <b>+100 ammo</b> in your ammo bank (${store.get('ammoBank', 0)} there now)` : met ? (practice ? ' (practice: it doesn’t count)' : ' (already done today)') : ''}</p>`;
+      buttons = `${met ? '' : '<button class="go" data-act="playDaily">Try again</button>'}<button class="${met ? 'go' : 'alt'}" data-act="menu">Back to the map</button>`;
     } else if (playCtx.kind === 'random') {
       LF.awards.clear({ kind: 'random', time: t, falls, hardcore, horde: !!W.horde });
       eyebrow = `Random map · seed ${playCtx.opts.seed}`; stats = tally();
@@ -1457,6 +1505,8 @@
     // Play the Cannon Yard for a cannon.
     cannon: how => { if (how && cannonOpen(how)) play(cannonLevel(how), { kind: 'cannon', how: { world: how.world, secret: how.secret } }); },
     random: () => app.openGenerator('menu'),
+    daily: () => showDaily(),
+    playDaily: () => { const d = dayNum(); play(dailyDef(d), { kind: 'daily', day: d }); },
     editor: () => openEditor(),
     menu: () => { if (screen === 'paused') saveMidway(true); showMap(); },
     awards: showAwards,
@@ -1626,6 +1676,7 @@
         if (SFX[ev.type]) SFX[ev.type]();
         // Awards only count in story levels (random maps have their own award; the editor only Architect).
         if (playCtx.kind === 'story') LF.awards.event(ev);
+        if (playCtx.kind === 'daily' && ['shoot', 'rocket', 'lob'].includes(ev.type)) playCtx.shots = (playCtx.shots || 0) + 1;
         if (ev.type === 'door') flash('The door is open');
         if (ev.type === 'clear') clearTimer = .7;
         if (ev.type === 'warp') LF.followCamera(W, cam, 0, true);

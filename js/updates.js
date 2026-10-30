@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Daily challenges: a new level every day (the same for everyone), with a goal of the day: reach the door, do it in under 60 seconds, without falling, without killing, with all three star coins, or without firing a shot. Complete it for +1 daily completion and +100 ammo straight into your ammo bank (once a day). Find it under Daily on the map.',
       'Leaving a level is a pause now: go back to the map from the pause menu (or close or refresh the page) and next time you play it you pick up right where you were, with your coins, powers and ammo. Dying and Give up still send you back to your last lantern, and Start over (Shift+R) puts every lantern out.',
       'A new finale: when the Last Dark is down to its last stomp, a cutscene shows it swelling to a giant and smashing the wall, and the chase is now over a lake of lava with nothing but lifts to ride. At the end you blow up the TNT cart yourself (five hits, stomp or shoot) with the Last Dark close behind; too soon, and another cart rolls up. Then a second cutscene: an even greater castle rises out of the lava, and the very last thing is crossing it, tower by tower, to its door.',
       'Fixed: in Fruit Rain and Crate Rain the high plank in the middle couldn’t be reached; the planks are now a chain you can hop along.',
