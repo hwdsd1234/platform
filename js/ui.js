@@ -875,28 +875,38 @@
   const DAY = 86400000;
   const dayNum = (t = Date.now()) => Math.floor(t / DAY);
   const dayKey = (d = dayNum()) => new Date(d * DAY).toISOString().slice(0, 10);
+  // Very, very hard: the hardest, biggest levels the generator makes, dark, crowded with
+  // Shellbacks, one life (a death ends the try), and two goals on top of reaching the door,
+  // a different pair each day: beat the clock (tight for the level's length), kill nothing,
+  // get all three star coins, fire no shot.
   const DAILY_GOALS = [
-    { id: 'reach', text: 'Reach the door', ok: () => true },
-    { id: 'fast', text: 'Reach the door in under 60 seconds', ok: r => r.time < 60 },
-    { id: 'flawless', text: 'Reach the door without falling once', ok: r => r.falls === 0 },
-    { id: 'pacifist', text: 'Reach the door without killing an enemy', ok: r => r.pacifist },
-    { id: 'coins', text: 'Collect all three star coins, then reach the door', ok: r => r.coins >= 3 },
-    { id: 'noshoot', text: 'Reach the door without firing a shot', ok: r => r.shots === 0 },
+    { id: 'fast', text: s => `under ${s} seconds`, ok: (r, s) => r.time < s },
+    { id: 'pacifist', text: () => 'without killing an enemy', ok: r => r.pacifist },
+    { id: 'coins', text: () => 'with all three star coins', ok: r => r.coins >= 3 },
+    { id: 'noshoot', text: () => 'without firing a shot', ok: r => r.shots === 0 },
   ];
-  const dailyGoal = (d = dayNum()) => DAILY_GOALS[d % DAILY_GOALS.length];
+  const PAIRS = [[0, 1], [2, 3], [0, 2], [1, 3], [0, 3], [1, 2]];
+  const dailySecs = def => { const m = LF.normalize(def.map); return Math.ceil(m[0].length / 5 + m.length / 3) + 8; };
+  const dailyGoal = (d = dayNum(), def = dailyDef(d)) => {
+    const gs = PAIRS[d % PAIRS.length].map(k => DAILY_GOALS[k]), secs = dailySecs(def);
+    return { text: `One life · reach the door ${gs.map(g => g.text(secs)).join(' and ')}`, ok: r => !r.died && gs.every(g => g.ok(r, secs)) };
+  };
   let dailyDone = store.get('dailyDone', {});
   const dailyCount = () => store.get('dailyCount', 0);
+  const dailyCache = {};
   function dailyDef(d = dayNum()) {
-    const opts = { shape: ['right', 'up', 'mixed'][d % 3], size: ['m', 'l', 'm', 'l', 'l'][d % 5], difficulty: 3 + (d % 3), seed: (d * 7919 + 17) % 1e6 };
-    const def = { ...LF.generate(opts), name: `Daily Challenge ${dayKey(d)}` };
-    return LF.addCoins ? LF.addCoins(def) : def;
+    if (dailyCache[d]) return dailyCache[d];
+    const opts = { shape: ['right', 'up', 'mixed'][d % 3], size: 'l', difficulty: 5, seed: (d * 7919 + 17) % 1e6 };
+    let def = { ...LF.generate(opts), name: `Daily Challenge ${dayKey(d)}`, dark: .85, toMapOnDeath: true };
+    if (LF.addCrowd) def = LF.addCrowd(def);
+    return (dailyCache[d] = LF.addCoins ? LF.addCoins(def) : def);
   }
   function showDaily() {
     if (screen !== 'map') return;
     screen = 'daily'; setVisible({ overlay: true });
     const g = dailyGoal(), done = !!dailyDone[dayKey()], left = DAY - (Date.now() % DAY), h = Math.floor(left / 3600000), m = Math.ceil((left % 3600000) / 60000);
     card(`<p class="eyebrow">Daily challenge · ${dayKey()}</p><h2>${esc(g.text)}</h2>
-      <p class="lede">A new level every day, the same for everyone. ${done ? '✔ Done today: well played.' : 'Complete it for <b>+1 daily completion</b> and <b>+100 ammo</b> in your ammo bank.'}${practice ? ' (Practice is on: it won’t count.)' : ''}</p>
+      <p class="lede">A new level every day, the same for everyone, and very, very hard. ${done ? '✔ Done today: well played.' : 'Complete it for <b>+1 daily completion</b> and <b>+100 ammo</b> in your ammo bank.'}${practice ? ' (Practice is on: it won’t count.)' : ''}</p>
       <dl class="tally"><div><dt>Daily completions</dt><dd>${dailyCount()}</dd></div><div><dt>Next challenge in</dt><dd>${h} h ${m} min</dd></div></dl>
       <div class="menu"><button class="go" data-act="playDaily">Play</button><button class="alt" data-act="menu">Back</button></div>`);
   }
@@ -1342,7 +1352,7 @@
       }
     } else if (playCtx.kind === 'daily') {
       const g = dailyGoal(playCtx.day), key = dayKey(playCtx.day);
-      const met = g.ok({ time: t, falls, pacifist: W.foes0.length === 0 || W.foes0.every(e => e.alive), coins: W.coins.filter(c => c.taken || c.had).length, shots: playCtx.shots || 0 });
+      const met = g.ok({ died: !!playCtx.died, time: t, falls, pacifist: W.foes0.length === 0 || W.foes0.every(e => e.alive), coins: W.coins.filter(c => c.taken || c.had).length, shots: playCtx.shots || 0 });
       const first = met && !dailyDone[key] && !practice && key === dayKey();
       if (first) {
         dailyDone[key] = true; store.set('dailyDone', dailyDone);
@@ -1680,7 +1690,7 @@
         if (ev.type === 'door') flash('The door is open');
         if (ev.type === 'clear') clearTimer = .7;
         if (ev.type === 'warp') LF.followCamera(W, cam, 0, true);
-        if (ev.type === 'lost') { lostTimer = .9; saveMidway(); }
+        if (ev.type === 'lost') { lostTimer = .9; saveMidway(); if (playCtx.kind === 'daily') playCtx.died = true; }
         // Dying in the story loses your fruit powers and all the ammo you were carrying.
         if (ev.type === 'hurry') { flash(`Hurry up! ${W.def.hurry || LF.HURRY} seconds left`); if (LF.music) LF.music.hurry(true); }
         if (ev.type === 'calm' && LF.music) LF.music.hurry(false);
@@ -1692,7 +1702,11 @@
       // Died with no lantern lit: back to the map; the level starts over next time.
       // In a tower, the music changes as you step into the boss's arena (and back, in practice).
       if (screen === 'play' && W.def.arenaX && LF.music) LF.music.play(trackFor(playDef, playCtx, W.player.x >= W.def.arenaX * LF.TS));
-      if (lostTimer > 0 && screen === 'play') { lostTimer -= dt; if (lostTimer <= 0) { showMap(); flash(W.lanternLit ? 'Back to the map: go in again to start at your lantern' : 'Back to the map: the level starts over'); } }
+      if (lostTimer > 0 && screen === 'play') { lostTimer -= dt; if (lostTimer <= 0) {
+        // (One life in the daily challenge: a death ends the try.)
+        if (playCtx.kind === 'daily') { screen = 'clear'; setVisible({ hud: true, overlay: true }); card(`<p class="eyebrow">Daily challenge · ${dayKey(playCtx.day)}</p><h2>One life, and it’s gone</h2><p class="lede">${esc(dailyGoal(playCtx.day).text)}</p><div class="menu"><button class="go" data-act="playDaily">Try again</button><button class="alt" data-act="menu">Back to the map</button></div>`); }
+        else { showMap(); flash(W.lanternLit ? 'Back to the map: go in again to start at your lantern' : 'Back to the map: the level starts over'); }
+      } }
       LF.followCamera(W, cam, dt);
       R.render(W, cam, {}, dt);
       hud();
