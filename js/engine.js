@@ -745,7 +745,8 @@
     for (const pl of W.plats) if (pl.once && pl.state === 'gone') Object.assign(pl, { state: 'idle', t: 0, y: pl.oy, prevY: pl.oy });
     for (const e of W.enemies) if (e.alive && e.chase) { e.chase.x = W.player.x - TS * 14; e.chase.t = 1; }
     // The clock goes back to what your checkpoint gives you (see cpClock).
-    if (W.def.deadline) { W.bossClock = !!W.cpBoss; setClock(W, LF.cpClock(W)); }
+    // (def.fixedClock, a daily challenge: the clock runs on through deaths, so they cost time.)
+    if (W.def.deadline && !W.def.fixedClock) { W.bossClock = !!W.cpBoss; setClock(W, LF.cpClock(W)); }
     for (const a of W.ammo) a.taken = false;
     // Practice: back at the latest checkpoint you set, if any.
     const mark = W.marks[W.marks.length - 1];

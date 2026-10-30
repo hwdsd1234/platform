@@ -876,7 +876,7 @@
   const dayNum = (t = Date.now()) => Math.floor(t / DAY);
   const dayKey = (d = dayNum()) => new Date(d * DAY).toISOString().slice(0, 10);
   // Very, very hard: the hardest, biggest levels the generator makes, dark, crowded with
-  // Shellbacks, one life (a death ends the try), and two goals on top of reaching the door,
+  // Shellbacks, and two goals on top of reaching the door (deaths cost time: the clock runs on),
   // a different pair each day: beat the clock (tight for the level's length), kill nothing,
   // get all three star coins, fire no shot.
   const DAILY_GOALS = [
@@ -889,7 +889,7 @@
   const dailySecs = def => { const m = LF.normalize(def.map); return Math.ceil(m[0].length / 5 + m.length / 3) + 8; };
   const dailyGoal = (d = dayNum(), def = dailyDef(d)) => {
     const gs = PAIRS[d % PAIRS.length].map(k => DAILY_GOALS[k]), secs = dailySecs(def);
-    return { text: `One life · reach the door ${gs.map(g => g.text(secs)).join(' and ')}`, ok: r => !r.died && gs.every(g => g.ok(r, secs)), secs: gs.some(g => g.id === 'fast') ? secs : null };
+    return { text: `Reach the door ${gs.map(g => g.text(secs)).join(' and ')}`, ok: r => gs.every(g => g.ok(r, secs)), secs: gs.some(g => g.id === 'fast') ? secs : null };
   };
   let dailyDone = store.get('dailyDone', {});
   const dailyCount = () => store.get('dailyCount', 0);
@@ -897,7 +897,7 @@
   function dailyDef(d = dayNum()) {
     if (dailyCache[d]) return dailyCache[d];
     const opts = { shape: ['right', 'up', 'mixed'][d % 3], size: 'l', difficulty: 5, seed: (d * 7919 + 17) % 1e6 };
-    let def = { ...LF.generate(opts), name: `Daily Challenge ${dayKey(d)}`, dark: .85, toMapOnDeath: true };
+    let def = { ...LF.generate(opts), name: `Daily Challenge ${dayKey(d)}`, dark: .85, fixedClock: true };
     if (LF.addCrowd) def = LF.addCrowd(def);
     return (dailyCache[d] = LF.addCoins ? LF.addCoins(def) : def);
   }
@@ -1354,7 +1354,7 @@
       }
     } else if (playCtx.kind === 'daily') {
       const g = dailyGoal(playCtx.day), key = dayKey(playCtx.day);
-      const met = g.ok({ died: !!playCtx.died, time: t, falls, pacifist: W.foes0.length === 0 || W.foes0.every(e => e.alive), coins: W.coins.filter(c => c.taken || c.had).length, shots: playCtx.shots || 0 });
+      const met = g.ok({ time: t, falls, pacifist: W.foes0.length === 0 || W.foes0.every(e => e.alive), coins: W.coins.filter(c => c.taken || c.had).length, shots: playCtx.shots || 0 });
       const first = met && !dailyDone[key] && !practice && key === dayKey();
       if (first) {
         dailyDone[key] = true; store.set('dailyDone', dailyDone);
@@ -1692,7 +1692,7 @@
         if (ev.type === 'door') flash('The door is open');
         if (ev.type === 'clear') clearTimer = .7;
         if (ev.type === 'warp') LF.followCamera(W, cam, 0, true);
-        if (ev.type === 'lost') { lostTimer = .9; saveMidway(); if (playCtx.kind === 'daily') playCtx.died = true; }
+        if (ev.type === 'lost') { lostTimer = .9; saveMidway(); }
         // Dying in the story loses your fruit powers and all the ammo you were carrying.
         if (ev.type === 'hurry') { flash(`Hurry up! ${W.def.hurry || LF.HURRY} seconds left`); if (LF.music) LF.music.hurry(true); }
         if (ev.type === 'calm' && LF.music) LF.music.hurry(false);
@@ -1705,9 +1705,7 @@
       // In a tower, the music changes as you step into the boss's arena (and back, in practice).
       if (screen === 'play' && W.def.arenaX && LF.music) LF.music.play(trackFor(playDef, playCtx, W.player.x >= W.def.arenaX * LF.TS));
       if (lostTimer > 0 && screen === 'play') { lostTimer -= dt; if (lostTimer <= 0) {
-        // (One life in the daily challenge: a death ends the try.)
-        if (playCtx.kind === 'daily') { screen = 'clear'; setVisible({ hud: true, overlay: true }); card(`<p class="eyebrow">Daily challenge · ${dayKey(playCtx.day)}</p><h2>One life, and it’s gone</h2><p class="lede">${esc(dailyGoal(playCtx.day).text)}</p><div class="menu"><button class="go" data-act="playDaily">Try again</button><button class="alt" data-act="menu">Back to the map</button></div>`); }
-        else { showMap(); flash(W.lanternLit ? 'Back to the map: go in again to start at your lantern' : 'Back to the map: the level starts over'); }
+        showMap(); flash(W.lanternLit ? 'Back to the map: go in again to start at your lantern' : 'Back to the map: the level starts over');
       } }
       LF.followCamera(W, cam, dt);
       R.render(W, cam, {}, dt);
