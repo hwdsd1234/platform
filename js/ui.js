@@ -587,6 +587,7 @@
     renderEvent();
     $('map-awards').textContent = `Awards · ${LF.awards.count().earned}/${LF.awards.count().total}`;
     renderDailyButton();
+    renderGardenButton();
     markUpdates();
     $('map-hc').textContent = `Hardcore: ${hardcore ? 'on' : 'off'}`; $('map-hc').classList.toggle('hc-on', hardcore);
     $('map-practice').textContent = `Practice: ${practice ? 'on' : 'off'}`; $('map-practice').classList.toggle('pr-on', practice);
@@ -865,6 +866,43 @@
         s(20, 11, 'B'); s(34, 11, 'B');
       }),
     };
+  }
+
+  // ---------- the garden ----------
+  // Grow your own fruit: six plots; plant a seed of any fruit and it grows by the clock (even
+  // while you're away), then harvest it straight into your inventory: three of it (five
+  // apples). The simple fruit grow fastest, the strongest slowest; water a plant once to take
+  // 30 seconds off. Faster than waiting on the groves. (Not in practice or Hardcore.)
+  const PLOTS = 6, GARDEN_YIELD = t => (t === 'a' ? 5 : 3);
+  const GROW = { a: 60, o: 120, b: 150, m: 150, s: 150, 'ç': 150, 'ƀ': 180, 'ƥ': 180, 'ǥ': 180, 'ƫ': 180, 'ɯ': 240, p: 300, 'ǫ': 300, 'ǵ': 300, 'ŧ': 300 };
+  let garden = store.get('garden', []); while (garden.length < PLOTS) garden.push(null);
+  let plantingAt = null;
+  const plotLeft = g => Math.max(0, g.at + (GROW[g.type] || 180) * 1000 - (g.watered ? 30000 : 0) - Date.now());
+  const fmtLeft = ms => { const s = Math.ceil(ms / 1000); return s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : `${s}s`; };
+  const gardenReady = () => garden.filter(g => g && plotLeft(g) === 0).length;
+  function renderGardenButton() { const b = $('map-garden'); if (b) { const n = gardenReady(); b.textContent = n ? `Garden · ${n} ripe` : 'Garden'; } }
+  function showGarden() {
+    if (screen !== 'map' && screen !== 'garden') return;
+    screen = 'garden'; setVisible({ overlay: true });
+    const off = practice || hardcore;
+    const plots = garden.map((g, k) => {
+      if (!g) return `<div class="plot"><div class="crop">🟫</div><small>empty soil</small>${off ? '' : `<button class="mini go-mini" data-act="gardenPlant" data-k="${k}">Plant</button>`}</div>`;
+      const left = plotLeft(g), total = (GROW[g.type] || 180) * 1000 - (g.watered ? 30000 : 0), f = LF.FRUITS[g.type];
+      if (!left) return `<div class="plot ready"><div class="crop">${FRUIT_ICON[g.type]}</div><small>${esc(f.name)} · ripe!</small><button class="mini go-mini" data-act="gardenHarvest" data-k="${k}">Harvest ×${GARDEN_YIELD(g.type)}</button></div>`;
+      return `<div class="plot"><div class="crop">🌱</div><small>${esc(f.name)} · ${fmtLeft(left)}</small><div class="bar"><i style="width:${Math.round((1 - left / total) * 100)}%"></i></div>${g.watered ? '<small>watered</small>' : `<button class="mini" data-act="gardenWater" data-k="${k}">Water · −30s</button>`}</div>`;
+    }).join('');
+    const seeds = plantingAt == null ? '' : `<p class="lede">Plant what in plot ${plantingAt + 1}?</p><div class="seed-list">${Object.keys(LF.FRUITS).map(t => `<button class="mini" data-act="gardenSeed" data-t="${t}">${FRUIT_ICON[t]} ${esc(LF.FRUITS[t].name)} · ${fmtLeft(GROW[t] * 1000)}</button>`).join('')}</div>`;
+    card(`<p class="eyebrow">Your garden</p><h2>Grow a garden</h2>
+      <p class="lede">${off ? 'The garden rests while practice or Hardcore is on.' : 'Plant a seed, wait, and harvest: the fruit goes straight into your items. It grows while you play, and while you’re away.'}</p>
+      <div class="garden-plots">${plots}</div>${seeds}
+      <div class="menu">${gardenReady() && !off ? '<button class="go" data-act="gardenHarvestAll">Harvest all</button>' : ''}<button class="alt" data-act="menu">Back to the map</button></div>`);
+  }
+  setInterval(() => { if (screen === 'garden') showGarden(); else if (screen === 'map') renderGardenButton(); }, 1000);
+  const saveGarden = () => store.set('garden', garden);
+  function harvest(k) {
+    const g = garden[k]; if (!g || plotLeft(g)) return 0;
+    const n = GARDEN_YIELD(g.type); inventory[g.type] = Math.min(INV_MAX, (inventory[g.type] || 0) + n); store.set('inventory', inventory);
+    garden[k] = null; saveGarden(); return n;
   }
 
   // ---------- daily challenges ----------
@@ -1520,6 +1558,12 @@
     cannon: how => { if (how && cannonOpen(how)) play(cannonLevel(how), { kind: 'cannon', how: { world: how.world, secret: how.secret } }); },
     random: () => app.openGenerator('menu'),
     daily: () => showDaily(),
+    garden: () => { plantingAt = null; showGarden(); },
+    gardenPlant: d => { plantingAt = +d.k; showGarden(); },
+    gardenSeed: d => { if (plantingAt == null || garden[plantingAt]) return; garden[plantingAt] = { type: d.t, at: Date.now(), watered: false }; saveGarden(); flash(`${FRUIT_ICON[d.t]} planted`); plantingAt = null; showGarden(); },
+    gardenWater: d => { const g = garden[+d.k]; if (g && !g.watered) { g.watered = true; saveGarden(); flash('💧 watered: 30 seconds sooner'); } showGarden(); },
+    gardenHarvest: d => { const g = garden[+d.k], n = g ? harvest(+d.k) : 0; if (n) { flash(`${FRUIT_ICON[g.type]} ×${n} into your items`); SFX.fruit && SFX.fruit(); } showGarden(); },
+    gardenHarvestAll: () => { let total = 0; garden.forEach((g, k) => { total += harvest(k); }); if (total) { flash(`Harvested ${total} fruit into your items`); SFX.fruit && SFX.fruit(); } showGarden(); },
     playDaily: () => { const d = dayNum(); play(dailyDef(d), { kind: 'daily', day: d }); },
     editor: () => openEditor(),
     menu: () => { if (screen === 'paused') saveMidway(true); showMap(); },

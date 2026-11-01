@@ -303,6 +303,14 @@
   .inv-card { width: min(28rem, 100%); display: grid; gap: 14px; padding: 20px 22px; border-radius: 10px; background: #1B1736; border: 1px solid rgba(255,181,71,.4); box-shadow: 0 0 40px rgba(255,181,71,.15); }
   .inv-card header { display: flex; justify-content: space-between; align-items: center; }
   .inv-card h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 32px; color: var(--wick); }
+  .garden-plots { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 12px 0; }
+  .plot { border: 1px solid rgba(143,129,171,.45); border-radius: 8px; padding: 10px; background: rgba(42,35,72,.45); display: grid; gap: 6px; justify-items: center; text-align: center; min-height: 128px; align-content: start; }
+  .plot.ready { border-color: rgba(255,210,74,.8); background: rgba(255,210,74,.08); }
+  .plot .crop { font-size: 34px; line-height: 1; }
+  .plot small { color: var(--mist-dim); font-size: 11px; }
+  .plot .bar { width: 100%; height: 6px; border-radius: 3px; background: rgba(143,129,171,.3); overflow: hidden; }
+  .plot .bar i { display: block; height: 100%; background: #7BC043; }
+  .seed-list { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
   .inv-bank { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; margin: 10px 0; padding: 8px 10px; border: 1px solid rgba(255,210,74,.35); border-radius: 6px; }
   .inv-bank small { display: block; color: var(--mist-dim); font-size: 11px; }
   .inv-bank .bank-btns { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; }
@@ -494,6 +502,7 @@
     <div class="map-brand"><b>Lanternfall</b><span id="map-stats"></span></div>
     <nav class="map-nav">
       <button class="mini" data-act="daily" id="map-daily">Daily</button>
+      <button class="mini" data-act="garden" id="map-garden">Garden</button>
       <button class="mini" data-act="random">Random map</button>
       <button class="mini" data-act="editor">Level editor</button>
       <button class="mini" data-act="items">Items · Tab</button>
@@ -629,41 +638,41 @@
   </div>
 </div>
 
-<script src="js/engine.js?v=277"></script>
-<script src="js/events.js?v=277"></script>
-<script src="js/render.js?v=277"></script>
-<script src="js/gen.js?v=277"></script>
-<script src="js/levels-1.js?v=277"></script>
-<script src="js/levels-2.js?v=277"></script>
-<script src="js/levels-3.js?v=277"></script>
-<script src="js/levels-4.js?v=277"></script>
-<script src="js/levels-5.js?v=277"></script>
-<script src="js/levels-6.js?v=277"></script>
-<script src="js/levels-7.js?v=277"></script>
-<script src="js/levels-8.js?v=277"></script>
-<script src="js/levels-9.js?v=277"></script>
-<script src="js/levels-10.js?v=277"></script>
-<script src="js/levels-11.js?v=277"></script>
-<script src="js/levels-12.js?v=277"></script>
-<script src="js/levels-13.js?v=277"></script>
-<script src="js/levels-14.js?v=277"></script>
-<script src="js/levels-15.js?v=277"></script>
-<script src="js/levels-16.js?v=277"></script>
-<script src="js/levels-17.js?v=277"></script>
-<script src="js/levels-18.js?v=277"></script>
-<script src="js/levels-19.js?v=277"></script>
-<script src="js/checkpoints.js?v=277"></script>
-<script src="js/bosses.js?v=277"></script>
-<script src="js/worlds.js?v=277"></script>
-<script src="js/lengthen.js?v=277"></script>
-<script src="js/slopes.js?v=277"></script>
-<script src="js/crowd.js?v=277"></script>
-<script src="js/coins.js?v=277"></script>
-<script src="js/special.js?v=277"></script>
-<script src="js/secrets.js?v=277"></script>
-<script src="js/awards.js?v=277"></script>
-<script src="js/editor.js?v=277"></script>
-<script src="js/music.js?v=277"></script>
-<script src="js/mapart.js?v=277"></script>
-<script src="js/updates.js?v=277"></script>
-<script src="js/ui.js?v=277"></script>
+<script src="js/engine.js?v=278"></script>
+<script src="js/events.js?v=278"></script>
+<script src="js/render.js?v=278"></script>
+<script src="js/gen.js?v=278"></script>
+<script src="js/levels-1.js?v=278"></script>
+<script src="js/levels-2.js?v=278"></script>
+<script src="js/levels-3.js?v=278"></script>
+<script src="js/levels-4.js?v=278"></script>
+<script src="js/levels-5.js?v=278"></script>
+<script src="js/levels-6.js?v=278"></script>
+<script src="js/levels-7.js?v=278"></script>
+<script src="js/levels-8.js?v=278"></script>
+<script src="js/levels-9.js?v=278"></script>
+<script src="js/levels-10.js?v=278"></script>
+<script src="js/levels-11.js?v=278"></script>
+<script src="js/levels-12.js?v=278"></script>
+<script src="js/levels-13.js?v=278"></script>
+<script src="js/levels-14.js?v=278"></script>
+<script src="js/levels-15.js?v=278"></script>
+<script src="js/levels-16.js?v=278"></script>
+<script src="js/levels-17.js?v=278"></script>
+<script src="js/levels-18.js?v=278"></script>
+<script src="js/levels-19.js?v=278"></script>
+<script src="js/checkpoints.js?v=278"></script>
+<script src="js/bosses.js?v=278"></script>
+<script src="js/worlds.js?v=278"></script>
+<script src="js/lengthen.js?v=278"></script>
+<script src="js/slopes.js?v=278"></script>
+<script src="js/crowd.js?v=278"></script>
+<script src="js/coins.js?v=278"></script>
+<script src="js/special.js?v=278"></script>
+<script src="js/secrets.js?v=278"></script>
+<script src="js/awards.js?v=278"></script>
+<script src="js/editor.js?v=278"></script>
+<script src="js/music.js?v=278"></script>
+<script src="js/mapart.js?v=278"></script>
+<script src="js/updates.js?v=278"></script>
+<script src="js/ui.js?v=278"></script>
