@@ -668,6 +668,7 @@
       : `<span>Next event: ${nx.ev.icon} ${nx.ev.name} in ${LF.eventLeft(nx.starts - Date.now())}</span>`;
   }
   setInterval(() => { if (screen === 'map') renderEvent(); }, 30000);
+  setInterval(() => { if (screen === 'map') renderGardenButton(); }, 5000);
 
   function mapInfo() {
     const L = LF.LEVELS, lv = L[mapAt], p = progress[mapAt], hc = progressHC[mapAt];
@@ -869,40 +870,93 @@
   }
 
   // ---------- the garden ----------
-  // Grow your own fruit: six plots; plant a seed of any fruit and it grows by the clock (even
-  // while you're away), then harvest it straight into your inventory: three of it (five
-  // apples). The simple fruit grow fastest, the strongest slowest; water a plant once to take
-  // 30 seconds off. Faster than waiting on the groves. (Not in practice or Hardcore.)
-  const PLOTS = 6, GARDEN_YIELD = t => (t === 'a' ? 5 : 3);
-  const GROW = { a: 60, o: 120, b: 150, m: 150, s: 150, 'ç': 150, 'ƀ': 180, 'ƥ': 180, 'ǥ': 180, 'ƫ': 180, 'ɯ': 240, p: 300, 'ǫ': 300, 'ǵ': 300, 'ŧ': 300 };
-  let garden = store.get('garden', []); while (garden.length < PLOTS) garden.push(null);
-  let plantingAt = null;
-  const plotLeft = g => Math.max(0, g.at + (GROW[g.type] || 180) * 1000 - (g.watered ? 30000 : 0) - Date.now());
-  const fmtLeft = ms => { const s = Math.ceil(ms / 1000); return s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : `${s}s`; };
-  const gardenReady = () => garden.filter(g => g && plotLeft(g) === 0).length;
-  function renderGardenButton() { const b = $('map-garden'); if (b) { const n = gardenReady(); b.textContent = n ? `Garden · ${n} ripe` : 'Garden'; } }
-  function showGarden() {
-    if (screen !== 'map' && screen !== 'garden') return;
-    screen = 'garden'; setVisible({ overlay: true });
-    const off = practice || hardcore;
-    const plots = garden.map((g, k) => {
-      if (!g) return `<div class="plot"><div class="crop">🟫</div><small>empty soil</small>${off ? '' : `<button class="mini go-mini" data-act="gardenPlant" data-k="${k}">Plant</button>`}</div>`;
-      const left = plotLeft(g), total = (GROW[g.type] || 180) * 1000 - (g.watered ? 30000 : 0), f = LF.FRUITS[g.type];
-      if (!left) return `<div class="plot ready"><div class="crop">${FRUIT_ICON[g.type]}</div><small>${esc(f.name)} · ripe!</small><button class="mini go-mini" data-act="gardenHarvest" data-k="${k}">Harvest ×${GARDEN_YIELD(g.type)}</button></div>`;
-      return `<div class="plot"><div class="crop">🌱</div><small>${esc(f.name)} · ${fmtLeft(left)}</small><div class="bar"><i style="width:${Math.round((1 - left / total) * 100)}%"></i></div>${g.watered ? '<small>watered</small>' : `<button class="mini" data-act="gardenWater" data-k="${k}">Water · −30s</button>`}</div>`;
-    }).join('');
-    const seeds = plantingAt == null ? '' : `<p class="lede">Plant what in plot ${plantingAt + 1}?</p><div class="seed-list">${Object.keys(LF.FRUITS).map(t => `<button class="mini" data-act="gardenSeed" data-t="${t}">${FRUIT_ICON[t]} ${esc(LF.FRUITS[t].name)} · ${fmtLeft(GROW[t] * 1000)}</button>`).join('')}</div>`;
-    card(`<p class="eyebrow">Your garden</p><h2>Grow a garden</h2>
-      <p class="lede">${off ? 'The garden rests while practice or Hardcore is on.' : 'Plant a seed, wait, and harvest: the fruit goes straight into your items. It grows while you play, and while you’re away.'}</p>
-      <div class="garden-plots">${plots}</div>${seeds}
-      <div class="menu">${gardenReady() && !off ? '<button class="go" data-act="gardenHarvestAll">Harvest all</button>' : ''}<button class="alt" data-act="menu">Back to the map</button></div>`);
+  // A garden to walk round (the Garden button on the map): a moonlit plot of twelve beds.
+  // Stand on an empty bed and press ↓ to buy a seed with ammo (from your ammo bank first, then
+  // what you carry) and plant it. It grows on its own, by the clock, even while you're away.
+  // Multi-harvest plants grow once and then fruit by themselves for good (up to three hanging
+  // at a time, a new one every so often); single-harvest plants grow once into a bigger crop
+  // and the bed's empty again. Walk onto a bed with fruit to pick it all: it goes straight
+  // into your items. Any fruit can come up mutated, worth more fruit when picked: Moonlit ×2,
+  // Golden ×3, Rainbow ×5. (Not in practice or Hardcore.)
+  const BEDS = 12;
+  // cost (ammo), grow (seconds to grow), then either every (seconds a fruit) for a
+  // multi-harvest plant, or yield (fruit) for a single-harvest one.
+  const SEEDS = {
+    a: { cost: 5, grow: 40, every: 30 }, o: { cost: 10, grow: 60, every: 40 }, b: { cost: 15, grow: 80, every: 50 },
+    s: { cost: 15, grow: 80, every: 50 }, 'ç': { cost: 15, grow: 80, every: 50 }, 'ƀ': { cost: 20, grow: 100, every: 60 },
+    'ǥ': { cost: 20, grow: 100, every: 60 }, 'ƫ': { cost: 20, grow: 100, every: 60 }, p: { cost: 40, grow: 150, every: 90 },
+    'ǫ': { cost: 40, grow: 150, every: 90 },
+    m: { cost: 15, grow: 90, yield: 5 }, 'ƥ': { cost: 20, grow: 120, yield: 5 }, 'ɯ': { cost: 30, grow: 150, yield: 5 },
+    'ǵ': { cost: 50, grow: 240, yield: 4 }, 'ŧ': { cost: 50, grow: 240, yield: 4 },
+  };
+  const HANG = 3;
+  const MUTS = [{ id: 'rainbow', name: 'Rainbow', p: .01, x: 5, c: '#FF6BD6' }, { id: 'gold', name: 'Golden', p: .04, x: 3, c: '#FFD24A' }, { id: 'moon', name: 'Moonlit', p: .10, x: 2, c: '#9FD8FF' }];
+  // (Whether a fruit's mutated is settled when it grows, so you can see it before you pick it.)
+  const mutOf = (bed, n) => { let h = 2166136261 ^ (bed * 7919 + n * 104729); h = Math.imul(h ^ (h >>> 13), 1274126177); const r = ((h ^ (h >>> 16)) >>> 0) / 4294967296; let acc = 0; for (const m of MUTS) { acc += m.p; if (r < acc) return m; } return null; };
+  let beds = store.get('beds', []); while (beds.length < BEDS) beds.push(null);
+  const saveBeds = () => store.set('beds', beds);
+  // A bed's state now: how grown (0 to 1), and the fruit hanging on it (each its mutation or null).
+  function bedNow(k, now = Date.now()) {
+    const b = beds[k]; if (!b) return null;
+    const sd = SEEDS[b.t], ripeAt = b.at + sd.grow * 1000;
+    if (now < ripeAt) return { grown: (now - b.at) / (sd.grow * 1000), fruit: [] };
+    let n;
+    if (sd.yield) n = sd.yield;
+    else { const from = b.last || ripeAt; n = Math.min(HANG, (b.last ? 0 : 1) + Math.floor((now - from) / (sd.every * 1000))); }
+    return { grown: 1, fruit: Array.from({ length: n }, (_, i) => mutOf(k, (b.seq || 0) + i)) };
   }
-  setInterval(() => { if (screen === 'garden') showGarden(); else if (screen === 'map') renderGardenButton(); }, 1000);
-  const saveGarden = () => store.set('garden', garden);
-  function harvest(k) {
-    const g = garden[k]; if (!g || plotLeft(g)) return 0;
-    const n = GARDEN_YIELD(g.type); inventory[g.type] = Math.min(INV_MAX, (inventory[g.type] || 0) + n); store.set('inventory', inventory);
-    garden[k] = null; saveGarden(); return n;
+  const ripeBeds = () => beds.reduce((n, b, k) => n + (b && bedNow(k).fruit.length ? 1 : 0), 0);
+  function renderGardenButton() { const b = $('map-garden'); if (b) { const n = ripeBeds(); b.textContent = n ? `Garden · ${n} ready` : 'Garden'; } }
+  const ammoHave = () => store.get('ammoBank', 0) + store.get('ammo', 0);
+  function payAmmo(n) {
+    const bank = store.get('ammoBank', 0), fromBank = Math.min(bank, n);
+    store.set('ammoBank', bank - fromBank); store.set('ammo', store.get('ammo', 0) - (n - fromBank));
+  }
+  function pickBed(k) {
+    const st = bedNow(k); if (!st || !st.fruit.length) return null;
+    const b = beds[k], sd = SEEDS[b.t];
+    let total = 0; const muts = [];
+    for (const m of st.fruit) { total += m ? m.x : 1; if (m) muts.push(m.name); }
+    inventory[b.t] = Math.min(INV_MAX, (inventory[b.t] || 0) + total); store.set('inventory', inventory);
+    if (sd.yield) beds[k] = null; else { b.last = Date.now(); b.seq = (b.seq || 0) + st.fruit.length; }
+    saveBeds();
+    return { t: b.t, total, muts };
+  }
+  // The garden itself: a lane of beds (two tiles each), a seed sign at the start, a gate home.
+  const BED_X = k => 9 + k * 4, BED_Y = 12;
+  function gardenLevel() {
+    return {
+      name: 'Your Garden', dark: .35, noRegrow: true, garden: true,
+      signs: [{ x: 2, y: 8.4, t: 'YOUR GARDEN · stand on a bed and press ↓ to plant (seeds cost ammo) · walk onto fruit to pick it' }, { x: 53, y: 8.4, t: 'back to the map →' }],
+      map: LF.build(62, 15, ({ r, s }) => { r(0, BED_Y, 61, 14); s(3, BED_Y - 1, 'P'); s(59, BED_Y - 1, 'D'); }),
+    };
+  }
+  // In the garden: the beds drawn (see render.js), picking what you stand on, ↓ to plant.
+  let gardenDown = false, gardenHint = 0;
+  function stepGarden() {
+    if (!W || !W.def.garden) return;
+    const now = Date.now(), p = W.player;
+    W.gardenView = beds.map((b, k) => ({ x: BED_X(k), y: BED_Y, t: b && b.t, ...(bedNow(k, now) || { grown: 0, fruit: [] }) }));
+    if (screen !== 'play' || p.dead) return;
+    const cx = (p.x + p.w / 2) / LF.TS, k = beds.findIndex((_, i) => cx >= BED_X(i) && cx < BED_X(i) + 2);
+    const on = k >= 0 && p.onGround;
+    if (on && beds[k]) {
+      const got = pickBed(k);
+      if (got) { flash(`${FRUIT_ICON[got.t]} ×${got.total} into your items${got.muts.length ? ` (${got.muts.join(', ')}!)` : ''}`); SFX.fruit && SFX.fruit(); }
+    }
+    if (on && !beds[k] && (gardenHint -= 1) <= 0) { gardenHint = 90; W.floaters.push({ x: (BED_X(k) + 1) * LF.TS, y: (BED_Y - 2) * LF.TS, t: '↓ to plant', life: 1.2, c: '#C8F08A' }); }
+    if (input.down && !gardenDown && on && !beds[k]) { gardenDown = true; showSeedShop(k); return; }
+    gardenDown = !!input.down;
+  }
+  function showSeedShop(k) {
+    screen = 'paused'; setVisible({ hud: true, overlay: true });
+    const off = practice || hardcore, have = ammoHave();
+    const row = t => { const sd = SEEDS[t], f = LF.FRUITS[t]; return `<button class="mini" data-act="gardenSeed" data-k="${k}" data-t="${t}" ${off || have < sd.cost ? 'disabled' : ''}>${FRUIT_ICON[t]} ${esc(f.name)} · ${sd.cost} ammo · ${sd.yield ? `${sd.yield} once` : `1 every ${sd.every}s`} · ready in ${Math.round(sd.grow / 60 * 10) / 10} min</button>`; };
+    card(`<p class="eyebrow">Seed shop · bed ${k + 1}</p><h2>Plant a seed</h2>
+      <p class="lede">${off ? 'The garden rests while practice or Hardcore is on.' : `You have ${have} ammo (bank and carried). Multi-harvest plants fruit again and again for good; single-harvest ones give one big crop.`} Any fruit can come up mutated: 🌙 Moonlit ×2, ✨ Golden ×3, 🌈 Rainbow ×5.</p>
+      <p class="eyebrow">Multi-harvest</p><div class="seed-list">${Object.keys(SEEDS).filter(t => !SEEDS[t].yield).map(row).join('')}</div>
+      <p class="eyebrow">Single-harvest</p><div class="seed-list">${Object.keys(SEEDS).filter(t => SEEDS[t].yield).map(row).join('')}</div>
+      <div class="menu"><button class="alt" data-act="resume">Not now</button></div>`);
   }
 
   // ---------- daily challenges ----------
@@ -1185,6 +1239,7 @@
   }
   function hudLabelBase() {
     if (playCtx.kind === 'story') return `Chapter ${roman(chapterIndex(playCtx.index))} · Level ${playCtx.index + 1} of ${LF.LEVELS.length} · key ${levelKey(LF.LEVELS[playCtx.index].name)}`;
+    if (playCtx.kind === 'garden') return `Your garden · ${ammoHave()} ammo for seeds`;
     if (playCtx.kind === 'daily') return `Daily challenge · ${dayKey(playCtx.day)} · ${dailyGoal(playCtx.day).text}`;
     if (playCtx.kind === 'random') return `Random · ${playCtx.opts.shape === 'mixed' ? 'up & across' : playCtx.opts.shape === 'up' ? 'upward' : 'across'} · seed ${playCtx.opts.seed}`;
     if (playCtx.kind === 'test') return 'Test play · Esc to edit';
@@ -1235,7 +1290,7 @@
     // Every level but a timed one (a Fruit Grove) has a clock set by how long it is (see
     // clockFor), and a tower's boss arena adds 100 seconds more (a castle's, 200); not in
     // practice or when testing in the editor.
-    if (!def.timeLimit && ctx.kind !== 'practice' && ctx.kind !== 'test') withPowers = { ...withPowers, deadline: clockFor(def), bossTime: def.arenaX ? (def.castle ? 200 : 100) : 0 };
+    if (!def.timeLimit && ctx.kind !== 'practice' && ctx.kind !== 'test' && ctx.kind !== 'garden') withPowers = { ...withPowers, deadline: clockFor(def), bossTime: def.arenaX ? (def.castle ? 200 : 100) : 0 };
     // (A daily challenge with a clock to beat: the level's clock is that, the hurry-up at 15 seconds.)
     if (ctx.kind === 'daily') { const g = dailyGoal(ctx.day); if (g.secs) withPowers = { ...withPowers, deadline: g.secs, hurry: 15 }; }
     if (LF.music) LF.music.hurry(false);
@@ -1274,6 +1329,7 @@
   }
 
   function cleared() {
+    if (playCtx.kind === 'garden') { showMap(); renderGardenButton(); return; }
     track('level_clear', { level_name: W.def.name, play_kind: playCtx.kind, level_index: playCtx.index ?? playCtx.i ?? null, time: Math.round(W.time) });
     // Clearing a story level carries your fruit powers and leftover ammo on to the next
     // (and its lanterns are done with).
@@ -1558,12 +1614,13 @@
     cannon: how => { if (how && cannonOpen(how)) play(cannonLevel(how), { kind: 'cannon', how: { world: how.world, secret: how.secret } }); },
     random: () => app.openGenerator('menu'),
     daily: () => showDaily(),
-    garden: () => { plantingAt = null; showGarden(); },
-    gardenPlant: d => { plantingAt = +d.k; showGarden(); },
-    gardenSeed: d => { if (plantingAt == null || garden[plantingAt]) return; garden[plantingAt] = { type: d.t, at: Date.now(), watered: false }; saveGarden(); flash(`${FRUIT_ICON[d.t]} planted`); plantingAt = null; showGarden(); },
-    gardenWater: d => { const g = garden[+d.k]; if (g && !g.watered) { g.watered = true; saveGarden(); flash('💧 watered: 30 seconds sooner'); } showGarden(); },
-    gardenHarvest: d => { const g = garden[+d.k], n = g ? harvest(+d.k) : 0; if (n) { flash(`${FRUIT_ICON[g.type]} ×${n} into your items`); SFX.fruit && SFX.fruit(); } showGarden(); },
-    gardenHarvestAll: () => { let total = 0; garden.forEach((g, k) => { total += harvest(k); }); if (total) { flash(`Harvested ${total} fruit into your items`); SFX.fruit && SFX.fruit(); } showGarden(); },
+    garden: () => { initAudio(); play(gardenLevel(), { kind: 'garden' }); },
+    gardenSeed: d => {
+      const k = +d.k, t = d.t, sd = SEEDS[t];
+      if (practice || hardcore || beds[k] || ammoHave() < sd.cost) return;
+      payAmmo(sd.cost); beds[k] = { t, at: Date.now(), seq: 0 }; saveBeds();
+      ACTIONS.resume(); flash(`${FRUIT_ICON[t]} planted (−${sd.cost} ammo)`);
+    },
     playDaily: () => { const d = dayNum(); play(dailyDef(d), { kind: 'daily', day: d }); },
     editor: () => openEditor(),
     menu: () => { if (screen === 'paused') saveMidway(true); showMap(); },
@@ -1634,7 +1691,7 @@
       }
       // R gives up: it's a death like any other (back to the map, your lit lanterns kept), and
       // in the story you lose everything you were carrying too: fruit powers and ammo.
-      if (e.code === 'KeyR' && !e.repeat && !W.cleared && playCtx.kind !== 'house') { if (e.shiftKey) hardRestart(); else if (!W.player.dead) giveUp(); }
+      if (e.code === 'KeyR' && !e.repeat && !W.cleared && playCtx.kind !== 'house' && playCtx.kind !== 'garden') { if (e.shiftKey) hardRestart(); else if (!W.player.dead) giveUp(); }
       if (e.code === 'Escape' && playCtx.kind === 'test') ACTIONS.backToEditor();
       else if (e.code === 'Escape' || e.code === 'KeyP') pause();
       if (e.code === 'KeyM') { muted = !muted; store.set('muted', muted); if (LF.music) LF.music.setMuted(muted); flash(muted ? 'Sound off' : 'Sound on'); }
@@ -1730,12 +1787,13 @@
         acc += dt;
         while (acc >= STEP) { LF.step(W, input, STEP, true); acc -= STEP; }
       }
+      if (playCtx.kind === 'garden') stepGarden();
       for (const ev of W.events) {
         if (SFX[ev.type]) SFX[ev.type]();
         // Awards only count in story levels (random maps have their own award; the editor only Architect).
         if (playCtx.kind === 'story') LF.awards.event(ev);
         if (playCtx.kind === 'daily' && ['shoot', 'rocket', 'lob'].includes(ev.type)) playCtx.shots = (playCtx.shots || 0) + 1;
-        if (ev.type === 'door') flash('The door is open');
+        if (ev.type === 'door' && playCtx.kind !== 'garden') flash('The door is open');
         if (ev.type === 'clear') clearTimer = .7;
         if (ev.type === 'warp') LF.followCamera(W, cam, 0, true);
         if (ev.type === 'lost') { lostTimer = .9; saveMidway(); }

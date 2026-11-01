@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'The garden is a place now: walk round twelve beds, stand on one and press ↓ to buy a seed with ammo (bank first, then what you carry) and plant it. Plants grow on their own, even while you’re away; multi-harvest ones (apple, orange, banana, berries, grapes, peach, pear, kiwi) fruit again and again for good, single-harvest ones (watermelon, pineapple, mango, green apple, tomato) give one big crop. Walk onto a plant to pick its fruit. Mutations: 🌙 Moonlit ×2, ✨ Golden ×3, 🌈 Rainbow ×5.',
       'Grow a garden: a garden on the map with six plots. Plant a seed of any fruit, and it grows by the clock, even while you’re away (an apple in a minute, the strongest fruit in five); water it once for 30 seconds off, then harvest three (five apples) straight into your items.',
       'Daily challenges have no lanterns: the door is open from the start, and a death sends you right back to the beginning (with the clock still running).',
       'Daily challenges no longer have one life: die and you carry on from your last lantern, but the clock keeps running, so deaths cost you time.',

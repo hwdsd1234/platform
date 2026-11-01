@@ -1128,6 +1128,28 @@
       }
     }
 
+    // The garden's beds (W.gardenView, from ui.js): dark tilled soil, and on it the plant,
+    // growing from a sprout to full height; then its fruit hanging off it, a mutated one in a
+    // glow of its colour (Moonlit blue, Golden, Rainbow pink).
+    function drawGarden(W) {
+      const icons = LF.FRUIT_ICON || {};
+      for (const b of W.gardenView) {
+        const x = b.x * TS, y = b.y * TS;
+        ctx.fillStyle = '#3A2516'; ctx.fillRect(x, y, TS * 2, 10);
+        ctx.fillStyle = '#5C3B24'; for (let k = 0; k < 4; k++) ctx.fillRect(x + 3 + k * 15, y + 2, 9, 3);
+        if (!b.t) { ctx.fillStyle = 'rgba(200,240,138,.35)'; ctx.fillRect(x + TS - 1, y - 9, 2, 8); ctx.fillRect(x + TS - 4, y - 6, 8, 2); continue; }
+        const g = Math.max(.08, b.grown), h = 6 + g * 40, cx = x + TS, sway = reduced ? 0 : Math.sin(clock * 1.5 + b.x) * 2 * g;
+        ctx.strokeStyle = '#4E9A3A'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx, y); ctx.quadraticCurveTo(cx + sway, y - h / 2, cx + sway, y - h); ctx.stroke();
+        ctx.fillStyle = '#5FBF5A';
+        for (let k = 1; k <= Math.ceil(g * 3); k++) { const ly = y - h * k / 4; ctx.beginPath(); ctx.ellipse(cx + sway * k / 4 + (k % 2 ? 7 : -7), ly, 7, 3, k % 2 ? -.5 : .5, 0, TAU); ctx.fill(); }
+        if (b.grown < 1) { ctx.fillStyle = 'rgba(255,241,207,.7)'; ctx.fillRect(x + 4, y - 4, (TS * 2 - 8) * b.grown, 2); continue; }
+        b.fruit.forEach((m, k) => {
+          const fx = cx + sway + (k - (b.fruit.length - 1) / 2) * 14, fy = y - h + 4 + (k % 2) * 8;
+          if (m) { const gl = ctx.createRadialGradient(fx, fy, 0, fx, fy, 14); gl.addColorStop(0, m.c + 'CC'); gl.addColorStop(1, m.c + '00'); ctx.fillStyle = gl; ctx.fillRect(fx - 14, fy - 14, 28, 28); }
+          ctx.font = '14px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(icons[b.t] || '●', fx, fy);
+        });
+      }
+    }
     function drawFruit(f) {
       const bob = reduced ? 0 : Math.sin(clock * 3 + f.tx * 1.7) * 2.5;
       const regrow = f.taken ? Math.max(0, 1 - f.regrow / 12) : 1;
@@ -1757,6 +1779,7 @@
         ctx.globalAlpha = 1;
       }
       for (const fr of W.fruits) drawFruit(fr);
+      if (W.gardenView) drawGarden(W);
       for (const a of W.ammo) drawAmmo(a);
       // Ammo dropped by enemies: a row of little bullets streaking toward the player, nose
       // first, side by side and spaced so you can count them.
