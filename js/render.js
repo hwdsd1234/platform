@@ -1924,7 +1924,8 @@
       clock += dt;
       drawSky(W, cam);
       worldTransform(W, cam, opts);
-      if (W.def.signs) {
+      // (Signs only show in the editor: in play there's no writing on the levels; you work them out.)
+      if (W.def.signs && opts.edit) {
         ctx.font = '600 9px "Martian Mono", ui-monospace, Menlo, monospace';
         ctx.textBaseline = 'middle'; ctx.fillStyle = 'rgba(217,208,240,.62)';
         for (const s of W.def.signs) ctx.fillText(s.t, s.x * TS, s.y * TS);
