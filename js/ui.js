@@ -872,15 +872,18 @@
   }
 
   // ---------- the garden ----------
-  // A garden to walk round (the Garden button on the map): a moonlit plot of twelve beds.
-  // Stand on an empty bed and press ↓ to buy a seed with ammo (from your ammo bank first, then
-  // what you carry) and plant it. It grows on its own, by the clock, even while you're away.
-  // Multi-harvest plants grow once and then fruit by themselves for good (up to three hanging
-  // at a time, a new one every so often); single-harvest plants grow once into a bigger crop
-  // and the bed's empty again. Walk onto a bed with fruit to pick it all: it goes straight
-  // into your items. Any fruit can come up mutated, worth more fruit when picked: Moonlit ×2,
-  // Golden ×3, Rainbow ×5. (Not in practice or Hardcore.)
-  const BEDS = 12;
+  // Farms to walk round (the Garden button on the map): each a terraced garden of 5 × 5 beds,
+  // five tiers of five, plank steps up the left. You start with one; a second costs
+  // FARM_COST[1] ammo and a third FARM_COST[2]. Seeds are bought with ammo (from your ammo
+  // bank first, then what you carry) into your seed bag, which you only see here; stand on an
+  // empty bed and press ↓ to plant one from the bag (or buy more), on a planted one to dig it
+  // up (its seed goes back in the bag). Plants grow on their own, by the clock, even while
+  // you're away. Multi-harvest plants grow once and then fruit by themselves for good (up to
+  // three hanging at a time, a new one every so often); single-harvest plants grow once into
+  // a bigger crop and the bed's empty again. Walk onto a bed with fruit to pick it all: it
+  // goes straight into your items. Any fruit can come up mutated, worth more fruit when
+  // picked: Moonlit ×2, Golden ×3, Rainbow ×5. (Not in practice or Hardcore.)
+  const SIDE = 5, BEDS = SIDE * SIDE, FARM_COST = [0, 5000, 15000];
   // cost (ammo), grow (seconds to grow), then either every (seconds a fruit) for a
   // multi-harvest plant, or yield (fruit) for a single-harvest one.
   const SEEDS = {
@@ -895,82 +898,125 @@
   const MUTS = [{ id: 'rainbow', name: 'Rainbow', p: .01, x: 5, c: '#FF6BD6' }, { id: 'gold', name: 'Golden', p: .04, x: 3, c: '#FFD24A' }, { id: 'moon', name: 'Moonlit', p: .10, x: 2, c: '#9FD8FF' }];
   // (Whether a fruit's mutated is settled when it grows, so you can see it before you pick it.)
   const mutOf = (bed, n) => { let h = 2166136261 ^ (bed * 7919 + n * 104729); h = Math.imul(h ^ (h >>> 13), 1274126177); const r = ((h ^ (h >>> 16)) >>> 0) / 4294967296; let acc = 0; for (const m of MUTS) { acc += m.p; if (r < acc) return m; } return null; };
-  let beds = store.get('beds', []); while (beds.length < BEDS) beds.push(null);
-  const saveBeds = () => store.set('beds', beds);
+  // farms[f][k]: bed k of farm f (k = tier × 5 + column), or null. (The old one-farm garden's
+  // beds move into the first farm.)
+  let farms = store.get('farms', null);
+  if (!farms) { const old = store.get('beds', []); farms = [Array.from({ length: BEDS }, (_, k) => old[k] || null)]; }
+  let farmsOwned = Math.max(1, store.get('farmsOwned', 1));
+  while (farms.length < 3) farms.push(Array(BEDS).fill(null));
+  let seedBag = store.get('seedBag', {});
+  const saveFarms = () => { store.set('farms', farms); store.set('farmsOwned', farmsOwned); };
+  const saveBag = () => store.set('seedBag', seedBag);
+  let farmAt = 0;
   // A bed's state now: how grown (0 to 1), and the fruit hanging on it (each its mutation or null).
-  function bedNow(k, now = Date.now()) {
-    const b = beds[k]; if (!b) return null;
+  function bedNow(f, k, now = Date.now()) {
+    const b = farms[f][k]; if (!b) return null;
     const sd = SEEDS[b.t], ripeAt = b.at + sd.grow * 1000;
     if (now < ripeAt) return { grown: (now - b.at) / (sd.grow * 1000), fruit: [] };
     let n;
     if (sd.yield) n = sd.yield;
     else { const from = b.last || ripeAt; n = Math.min(HANG, (b.last ? 0 : 1) + Math.floor((now - from) / (sd.every * 1000))); }
-    return { grown: 1, fruit: Array.from({ length: n }, (_, i) => mutOf(k, (b.seq || 0) + i)) };
+    return { grown: 1, fruit: Array.from({ length: n }, (_, i) => mutOf(f * BEDS + k, (b.seq || 0) + i)) };
   }
-  const ripeBeds = () => beds.reduce((n, b, k) => n + (b && bedNow(k).fruit.length ? 1 : 0), 0);
-  // The auto-harvester (2000 ammo, once): picks every ripe fruit for you, every few seconds on
-  // the map and in the garden, and as soon as the game opens (for what grew while you were away).
-  const AUTO_COST = 2000;
-  let autoOwned = store.get('autoHarvest', false);
-  function autoHarvest(quiet) {
-    if (!autoOwned || practice || hardcore) return 0;
-    let total = 0; const muts = [];
-    beds.forEach((b, k) => { if (!b) return; const got = pickBed(k); if (got) { total += got.total; muts.push(...got.muts); } });
-    if (total && !quiet) flash(`🧺 The auto-harvester picked ${total} fruit for you${muts.length ? ` (${muts.length} mutated!)` : ''}`);
-    return total;
-  }
-  function renderGardenButton() { const b = $('map-garden'); if (b) { const n = ripeBeds(); b.textContent = n ? `Garden · ${n} ready` : 'Garden'; } }
+  const ripeBeds = () => farms.slice(0, farmsOwned).reduce((n, beds, f) => n + beds.reduce((m, b, k) => m + (b && bedNow(f, k).fruit.length ? 1 : 0), 0), 0);
   const ammoHave = () => store.get('ammoBank', 0) + store.get('ammo', 0);
   function payAmmo(n) {
     const bank = store.get('ammoBank', 0), fromBank = Math.min(bank, n);
     store.set('ammoBank', bank - fromBank); store.set('ammo', store.get('ammo', 0) - (n - fromBank));
   }
-  function pickBed(k) {
-    const st = bedNow(k); if (!st || !st.fruit.length) return null;
-    const b = beds[k], sd = SEEDS[b.t];
+  function pickBed(f, k) {
+    const st = bedNow(f, k); if (!st || !st.fruit.length) return null;
+    const b = farms[f][k], sd = SEEDS[b.t];
     let total = 0; const muts = [];
     for (const m of st.fruit) { total += m ? m.x : 1; if (m) muts.push(m.name); }
     inventory[b.t] = Math.min(INV_MAX, (inventory[b.t] || 0) + total); store.set('inventory', inventory);
-    if (sd.yield) beds[k] = null; else { b.last = Date.now(); b.seq = (b.seq || 0) + st.fruit.length; }
-    saveBeds();
+    if (sd.yield) farms[f][k] = null; else { b.last = Date.now(); b.seq = (b.seq || 0) + st.fruit.length; }
+    saveFarms();
     return { t: b.t, total, muts };
   }
-  // The garden itself: a lane of beds (two tiles each), a seed sign at the start, a gate home.
-  const BED_X = k => 9 + k * 4, BED_Y = 12;
-  function gardenLevel() {
+  // The auto-harvester (2000 ammo, once): picks every ripe fruit on every farm you own, every
+  // few seconds on the map and in the garden, and whenever you come to the map.
+  const AUTO_COST = 2000;
+  let autoOwned = store.get('autoHarvest', false);
+  function autoHarvest(quiet) {
+    if (!autoOwned || practice || hardcore) return 0;
+    let total = 0; const muts = [];
+    for (let f = 0; f < farmsOwned; f++) farms[f].forEach((b, k) => { if (!b) return; const got = pickBed(f, k); if (got) { total += got.total; muts.push(...got.muts); } });
+    if (total && !quiet) flash(`🧺 The auto-harvester picked ${total} fruit for you${muts.length ? ` (${muts.length} mutated!)` : ''}`);
+    return total;
+  }
+  function renderGardenButton() { const b = $('map-garden'); if (b) { const n = ripeBeds(); b.textContent = n ? `Garden · ${n} ready` : 'Garden'; } }
+  // A farm: five tiers (the ground, then one every TIER rows up), five beds a tier (two tiles
+  // each, GAP apart), plank steps up the open column on the left, the gate home on the ground.
+  const TIER = 4, COL0 = 8, GAP = 6, FW = COL0 + SIDE * GAP + 4, FH = 6 + SIDE * TIER;
+  const FLOOR0 = FH - 3;
+  const bedX = k => COL0 + (k % SIDE) * GAP, bedY = k => FLOOR0 - Math.floor(k / SIDE) * TIER;
+  function farmLevel(f) {
     return {
-      name: 'Your Garden', dark: .35, noRegrow: true, garden: true,
-      signs: [{ x: 2, y: 8.4, t: 'YOUR GARDEN · stand on a bed and press ↓ to plant (seeds cost ammo) · walk onto fruit to pick it' }, { x: 53, y: 8.4, t: 'back to the map →' }],
-      map: LF.build(62, 15, ({ r, s }) => { r(0, BED_Y, 61, 14); s(3, BED_Y - 1, 'P'); s(59, BED_Y - 1, 'D'); }),
+      name: `Farm ${f + 1}`, dark: .35, noRegrow: true, garden: true, farm: f,
+      map: LF.build(FW, FH, ({ r, s }) => {
+        r(0, 0, FW - 1, 0); r(0, 0, 0, FH - 1); r(FW - 1, 0, FW - 1, FH - 1);
+        r(0, FLOOR0, FW - 1, FH - 1);
+        for (let t = 1; t < SIDE; t++) { const y = FLOOR0 - t * TIER; r(5, y, FW - 2, y); r(1, y + 2, 3, y + 2, '='); }
+        s(2, FLOOR0 - 1, 'P'); s(FW - 3, FLOOR0 - 1, 'D');
+      }),
     };
   }
-  // In the garden: the beds drawn (see render.js), picking what you stand on, ↓ to plant.
+  // In a farm: the beds drawn (see render.js), picking what you stand on, ↓ for the bed's card.
   let gardenDown = false, gardenHint = 0;
   function stepGarden() {
     if (!W || !W.def.garden) return;
-    const now = Date.now(), p = W.player;
-    W.gardenView = beds.map((b, k) => ({ x: BED_X(k), y: BED_Y, t: b && b.t, ...(bedNow(k, now) || { grown: 0, fruit: [] }) }));
+    const f = W.def.farm || 0, now = Date.now(), p = W.player;
+    W.gardenView = farms[f].map((b, k) => ({ x: bedX(k), y: bedY(k), t: b && b.t, ...(bedNow(f, k, now) || { grown: 0, fruit: [] }) }));
     if (screen !== 'play' || p.dead) return;
-    const cx = (p.x + p.w / 2) / LF.TS, k = beds.findIndex((_, i) => cx >= BED_X(i) && cx < BED_X(i) + 2);
+    const cx = (p.x + p.w / 2) / LF.TS, row = Math.round((p.y + p.h) / LF.TS);
+    const k = farms[f].findIndex((_, i) => cx >= bedX(i) && cx < bedX(i) + 2 && row === bedY(i));
     const on = k >= 0 && p.onGround;
-    if (on && beds[k]) {
-      const got = pickBed(k);
+    if (on && farms[f][k]) {
+      const got = pickBed(f, k);
       if (got) { flash(`${FRUIT_ICON[got.t]} ×${got.total} into your items${got.muts.length ? ` (${got.muts.join(', ')}!)` : ''}`); SFX.fruit && SFX.fruit(); }
     }
-    if (on && !beds[k] && (gardenHint -= 1) <= 0) { gardenHint = 90; W.floaters.push({ x: (BED_X(k) + 1) * LF.TS, y: (BED_Y - 2) * LF.TS, t: '↓ to plant', life: 1.2, c: '#C8F08A' }); }
-    if (input.down && !gardenDown && on && !beds[k]) { gardenDown = true; showSeedShop(k); return; }
+    if (on && (gardenHint -= 1) <= 0) { gardenHint = 120; W.floaters.push({ x: (bedX(k) + 1) * LF.TS, y: (bedY(k) - 2) * LF.TS, t: farms[f][k] ? '↓ bed' : '↓ to plant', life: 1.2, c: '#C8F08A' }); }
+    if (input.down && !gardenDown && on) { gardenDown = true; showBed(f, k); return; }
     gardenDown = !!input.down;
   }
-  function showSeedShop(k) {
+  // A bed's card: plant from your seed bag, buy seeds into it, or (a planted bed) dig it up.
+  function showBed(f, k, shopping) {
     screen = 'paused'; setVisible({ hud: true, overlay: true });
-    const off = practice || hardcore, have = ammoHave();
-    const row = t => { const sd = SEEDS[t], f = LF.FRUITS[t]; return `<button class="mini" data-act="gardenSeed" data-k="${k}" data-t="${t}" ${off || have < sd.cost ? 'disabled' : ''}>${FRUIT_ICON[t]} ${esc(f.name)} · ${sd.cost} ammo · ${sd.yield ? `${sd.yield} once` : `1 every ${sd.every}s`} · ready in ${Math.round(sd.grow / 60 * 10) / 10} min</button>`; };
-    card(`<p class="eyebrow">Seed shop · bed ${k + 1}</p><h2>Plant a seed</h2>
-      <p class="lede">${off ? 'The garden rests while practice or Hardcore is on.' : `You have ${have} ammo (bank and carried). Multi-harvest plants fruit again and again for good; single-harvest ones give one big crop.`} Any fruit can come up mutated: 🌙 Moonlit ×2, ✨ Golden ×3, 🌈 Rainbow ×5.</p>
-      <p class="eyebrow">Multi-harvest</p><div class="seed-list">${Object.keys(SEEDS).filter(t => !SEEDS[t].yield).map(row).join('')}</div>
-      <p class="eyebrow">Single-harvest</p><div class="seed-list">${Object.keys(SEEDS).filter(t => SEEDS[t].yield).map(row).join('')}</div>
-      <p class="eyebrow">Tools</p><div class="seed-list">${autoOwned ? '<button class="mini" disabled>🧺 Auto-harvester · yours: it picks every ripe fruit for you</button>' : `<button class="mini" data-act="buyAuto" ${off || have < AUTO_COST ? 'disabled' : ''}>🧺 Auto-harvester · ${AUTO_COST} ammo · picks every ripe fruit for you, even while you’re away</button>`}</div>
-      <div class="menu"><button class="alt" data-act="resume">Not now</button></div>`);
+    const off = practice || hardcore, have = ammoHave(), b = farms[f][k];
+    const kind = t => (SEEDS[t].yield ? `single-harvest, ${SEEDS[t].yield} fruit` : `multi-harvest, one every ${SEEDS[t].every}s`);
+    const bag = Object.keys(SEEDS).filter(t => seedBag[t] > 0);
+    const bagRow = bag.length ? bag.map(t => `<button class="mini go-mini" data-act="plantSeed" data-f="${f}" data-k="${k}" data-t="${t}" ${off || b ? 'disabled' : ''}>${FRUIT_ICON[t]} ${esc(LF.FRUITS[t].name)} ×${seedBag[t]} · plant</button>`).join('') : '<small>No seeds yet: buy some below.</small>';
+    const shopRow = list => list.map(t => { const c = SEEDS[t].cost; return `<span class="seed-buy">${FRUIT_ICON[t]} ${esc(LF.FRUITS[t].name)} · ${c} ammo · ${kind(t)} · grows in ${Math.round(SEEDS[t].grow / 6) / 10} min <button class="mini" data-act="buySeed" data-f="${f}" data-k="${k}" data-t="${t}" data-n="1" ${off || have < c ? 'disabled' : ''}>Buy 1</button><button class="mini" data-act="buySeed" data-f="${f}" data-k="${k}" data-t="${t}" data-n="5" ${off || have < c * 5 ? 'disabled' : ''}>Buy 5</button></span>`; }).join('');
+    let top;
+    if (b) {
+      const st = bedNow(f, k);
+      top = `<h2>${FRUIT_ICON[b.t]} ${esc(LF.FRUITS[b.t].name)}</h2><p class="lede">${kind(b.t)} · ${st.grown < 1 ? `growing: ${Math.round(st.grown * 100)}%` : st.fruit.length ? `${st.fruit.length} fruit hanging` : 'grown, fruiting'}.</p>
+        <div class="menu"><button class="alt" data-act="digUp" data-f="${f}" data-k="${k}" ${off ? 'disabled' : ''}>Dig it up (its seed back in your bag)</button></div>`;
+    } else top = `<h2>Plant a seed</h2>`;
+    card(`<p class="eyebrow">Farm ${f + 1} · bed ${k + 1}</p>${top}
+      ${off ? '<p class="lede">The garden rests while practice or Hardcore is on.</p>' : ''}
+      <p class="eyebrow">Your seed bag</p><div class="seed-list">${bagRow}</div>
+      ${shopping || !b ? `<p class="eyebrow">Seed shop · you have ${have} ammo (bank and carried)</p>
+      <div class="seed-shop"><small>Multi-harvest: fruits again and again, for good</small>${shopRow(Object.keys(SEEDS).filter(t => !SEEDS[t].yield))}
+      <small>Single-harvest: one big crop</small>${shopRow(Object.keys(SEEDS).filter(t => SEEDS[t].yield))}</div>
+      <p class="lede">Any fruit can come up mutated: 🌙 Moonlit ×2, ✨ Golden ×3, 🌈 Rainbow ×5.</p>
+      <p class="eyebrow">Tools</p><div class="seed-list">${autoOwned ? '<button class="mini" disabled>🧺 Auto-harvester · yours: it picks every ripe fruit on all your farms</button>' : `<button class="mini" data-act="buyAuto" ${off || have < AUTO_COST ? 'disabled' : ''}>🧺 Auto-harvester · ${AUTO_COST} ammo · picks every ripe fruit on all your farms, even while you’re away</button>`}</div>` : `<div class="menu"><button class="alt" data-act="bedShop" data-f="${f}" data-k="${k}">Seed shop</button></div>`}
+      <div class="menu"><button class="go" data-act="resume">Done</button></div>`);
+  }
+  // The Garden button: your farms, to go to, or to buy.
+  function showFarms() {
+    if (screen !== 'map') return;
+    screen = 'farms'; setVisible({ overlay: true });
+    const have = ammoHave(), off = practice || hardcore;
+    const rows = [0, 1, 2].map(f => {
+      if (f < farmsOwned) { const n = farms[f].filter(Boolean).length, ripe = farms[f].reduce((m, b, k) => m + (b && bedNow(f, k).fruit.length ? 1 : 0), 0); return `<button class="go" data-act="enterFarm" data-f="${f}">Farm ${f + 1} · ${n}/${BEDS} planted${ripe ? ` · ${ripe} ready` : ''}</button>`; }
+      if (f === farmsOwned) return `<button class="alt" data-act="buyFarm" data-f="${f}" ${off || have < FARM_COST[f] ? 'disabled' : ''}>Buy Farm ${f + 1} · ${FARM_COST[f]} ammo</button>`;
+      return `<button class="alt" disabled>Farm ${f + 1} · ${FARM_COST[f]} ammo (buy Farm ${f} first)</button>`;
+    }).join('');
+    card(`<p class="eyebrow">Your farms</p><h2>Grow a garden</h2>
+      <p class="lede">Each farm is 5 × 5 beds. You have ${have} ammo (bank and carried).${autoOwned ? ' 🧺 Your auto-harvester picks every farm.' : ''}</p>
+      <div class="menu">${rows}<button class="alt" data-act="menu">Back to the map</button></div>`);
   }
 
   // ---------- daily challenges ----------
@@ -1253,7 +1299,7 @@
   }
   function hudLabelBase() {
     if (playCtx.kind === 'story') return `Chapter ${roman(chapterIndex(playCtx.index))} · Level ${playCtx.index + 1} of ${LF.LEVELS.length} · key ${levelKey(LF.LEVELS[playCtx.index].name)}`;
-    if (playCtx.kind === 'garden') return `Your garden · ${ammoHave()} ammo for seeds`;
+    if (playCtx.kind === 'garden') return `Farm ${(playCtx.farm || 0) + 1} · ${ammoHave()} ammo for seeds · ↓ on a bed`;
     if (playCtx.kind === 'daily') return `Daily challenge · ${dayKey(playCtx.day)} · ${dailyGoal(playCtx.day).text}`;
     if (playCtx.kind === 'random') return `Random · ${playCtx.opts.shape === 'mixed' ? 'up & across' : playCtx.opts.shape === 'up' ? 'upward' : 'across'} · seed ${playCtx.opts.seed}`;
     if (playCtx.kind === 'test') return 'Test play · Esc to edit';
@@ -1628,18 +1674,34 @@
     cannon: how => { if (how && cannonOpen(how)) play(cannonLevel(how), { kind: 'cannon', how: { world: how.world, secret: how.secret } }); },
     random: () => app.openGenerator('menu'),
     daily: () => showDaily(),
-    garden: () => { initAudio(); play(gardenLevel(), { kind: 'garden' }); },
+    garden: () => { initAudio(); showFarms(); },
+    enterFarm: d => { farmAt = +d.f; play(farmLevel(farmAt), { kind: 'garden', farm: farmAt }); },
+    buyFarm: d => {
+      const f = +d.f; if (f !== farmsOwned || practice || hardcore || ammoHave() < FARM_COST[f]) return;
+      payAmmo(FARM_COST[f]); farmsOwned = f + 1; saveFarms(); flash(`🌾 Farm ${f + 1} is yours (−${FARM_COST[f]} ammo)`); screen = 'map'; showFarms();
+    },
     buyAuto: () => {
       if (autoOwned || practice || hardcore || ammoHave() < AUTO_COST) return;
       payAmmo(AUTO_COST); autoOwned = true; store.set('autoHarvest', true);
-      ACTIONS.resume(); flash(`🧺 Auto-harvester bought (−${AUTO_COST} ammo): it picks every ripe fruit for you`); autoHarvest();
+      ACTIONS.resume(); flash(`🧺 Auto-harvester bought (−${AUTO_COST} ammo): it picks every ripe fruit on all your farms`); autoHarvest();
     },
-    gardenSeed: d => {
-      const k = +d.k, t = d.t, sd = SEEDS[t];
-      if (practice || hardcore || beds[k] || ammoHave() < sd.cost) return;
-      payAmmo(sd.cost); beds[k] = { t, at: Date.now(), seq: 0 }; saveBeds();
-      ACTIONS.resume(); flash(`${FRUIT_ICON[t]} planted (−${sd.cost} ammo)`);
+    buySeed: d => {
+      const t = d.t, n = +d.n, c = SEEDS[t].cost * n;
+      if (practice || hardcore || ammoHave() < c) return;
+      payAmmo(c); seedBag[t] = (seedBag[t] || 0) + n; saveBag(); flash(`${FRUIT_ICON[t]} ×${n} seeds in your bag (−${c} ammo)`); showBed(+d.f, +d.k, true);
     },
+    plantSeed: d => {
+      const f = +d.f, k = +d.k, t = d.t;
+      if (practice || hardcore || farms[f][k] || !(seedBag[t] > 0)) return;
+      seedBag[t]--; saveBag(); farms[f][k] = { t, at: Date.now(), seq: 0 }; saveFarms();
+      ACTIONS.resume(); flash(`${FRUIT_ICON[t]} planted`);
+    },
+    digUp: d => {
+      const f = +d.f, k = +d.k, b = farms[f][k]; if (!b || practice || hardcore) return;
+      seedBag[b.t] = (seedBag[b.t] || 0) + 1; saveBag(); farms[f][k] = null; saveFarms();
+      ACTIONS.resume(); flash(`${FRUIT_ICON[b.t]} dug up: its seed's back in your bag`);
+    },
+    bedShop: d => showBed(+d.f, +d.k, true),
     playDaily: () => { const d = dayNum(); play(dailyDef(d), { kind: 'daily', day: d }); },
     editor: () => openEditor(),
     menu: () => { if (screen === 'paused') saveMidway(true); showMap(); },

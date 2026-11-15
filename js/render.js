@@ -1142,6 +1142,12 @@
         ctx.strokeStyle = '#4E9A3A'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx, y); ctx.quadraticCurveTo(cx + sway, y - h / 2, cx + sway, y - h); ctx.stroke();
         ctx.fillStyle = '#5FBF5A';
         for (let k = 1; k <= Math.ceil(g * 3); k++) { const ly = y - h * k / 4; ctx.beginPath(); ctx.ellipse(cx + sway * k / 4 + (k % 2 ? 7 : -7), ly, 7, 3, k % 2 ? -.5 : .5, 0, TAU); ctx.fill(); }
+        // (So you can tell plants apart while they grow: a bud of their fruit's colour atop the
+        // stem, and a little tag of the fruit at the foot of the bed.)
+        const fc = (LF.FRUITS[b.t] || {}).color || '#FFB547';
+        if (b.grown < 1) { ctx.fillStyle = fc; ctx.beginPath(); ctx.arc(cx + sway, y - h, 3 + b.grown * 3, 0, TAU); ctx.fill(); }
+        ctx.fillStyle = 'rgba(42,35,72,.75)'; ctx.fillRect(x + 1, y - 13, 14, 13);
+        ctx.font = '10px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(icons[b.t] || '●', x + 8, y - 6);
         if (b.grown < 1) { ctx.fillStyle = 'rgba(255,241,207,.7)'; ctx.fillRect(x + 4, y - 4, (TS * 2 - 8) * b.grown, 2); continue; }
         b.fruit.forEach((m, k) => {
           const fx = cx + sway + (k - (b.fruit.length - 1) / 2) * 14, fy = y - h + 4 + (k % 2) * 8;

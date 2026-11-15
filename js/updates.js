@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Bigger gardens: each farm is 5 × 5 beds on five terraces, and you can buy a second farm (5000 ammo) and a third (15000). Seeds now go into a seed bag (only seen in the garden): buy them 1 or 5 at a time, plant from the bag, and dig a plant up to get its seed back. Growing plants show their fruit on a tag and a bud of its colour, so you can tell them apart. The auto-harvester picks every farm you own.',
       'No more writing on the levels: the hint signs are gone from play (you work each level out yourself). They still show in the level editor.',
       'The auto-harvester (2000 ammo, from the garden’s seed shop): once it’s yours, it picks every ripe fruit for you, every few seconds on the map and in the garden, and whenever you come back to the map, gathering what grew while you were away.',
       'The garden is a place now: walk round twelve beds, stand on one and press ↓ to buy a seed with ammo (bank first, then what you carry) and plant it. Plants grow on their own, even while you’re away; multi-harvest ones (apple, orange, banana, berries, grapes, peach, pear, kiwi) fruit again and again for good, single-harvest ones (watermelon, pineapple, mango, green apple, tomato) give one big crop. Walk onto a plant to pick its fruit. Mutations: 🌙 Moonlit ×2, ✨ Golden ×3, 🌈 Rainbow ×5.',
