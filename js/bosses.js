@@ -10,7 +10,7 @@
   // its own number of hits (see BOSS_HITS in engine.js); the trickiest fights set fewer.
   // Every arena has a boss gate (g) from floor to ceiling in front of the door, which falls
   // with the boss. There are no lanterns: the door opens when the boss is down. Fruit
-  // (apple shield, orange boost, banana double jump) helps instead, and grows back.
+  // (apple heals, orange boost, banana double jump) helps instead, and grows back.
   const SPEED = [1, 1.1, 1.2, 1.3];
 
   // Make every platform an easy jump: where a plank or ledge sits a full jump (3 rows) or

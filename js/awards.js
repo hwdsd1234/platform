@@ -31,7 +31,7 @@
     { id: 'djump', name: 'Second Wind', desc: 'Double jump 25 times.', stat: 'djump', goal: 25 },
     { id: 'swim', name: 'Deep Diver', desc: 'Kick 50 times while swimming.', stat: 'swim', goal: 50 },
     { id: 'fruit', name: 'Fruit Salad', desc: 'Eat an apple, an orange and a banana.', stat: 'salad', goal: 3 },
-    { id: 'shield', name: 'Close Call', desc: 'Let an apple shield take a hit for you.' },
+    { id: 'shield', name: 'Close Call', desc: 'Take a hit and live.' },
     { id: 'keys', name: 'Keymaster', desc: 'Unlock 20 locked-door blocks.', stat: 'unlock', goal: 20 },
     { id: 'crates', name: 'Challenge Accepted', desc: 'Grab 5 big ammo crates.', stat: 'bigammo', goal: 5 },
     { id: 'falls', name: 'Persistence', desc: 'Fall 100 times. It happens.', stat: 'falls', goal: 100 },
@@ -79,7 +79,7 @@
     { id: 'golem10', name: 'Scrap Merchant', desc: 'Bring down 10 iron golems.', stat: 'golems', goal: 10 },
     { id: 'cart', name: 'Demolition', desc: 'Blow up a TNT cart.' },
     { id: 'cart10', name: 'Powder Monkey', desc: 'Blow up 10 TNT carts.', stat: 'carts', goal: 10 },
-    { id: 'shield25', name: 'Well Padded', desc: 'Let apple shields take 25 hits for you.', stat: 'shields', goal: 25 },
+    { id: 'shield25', name: 'Well Padded', desc: 'Take 25 hits and live.', stat: 'shields', goal: 25 },
     { id: 'ammo100', name: 'Stocked Up', desc: 'Pick up 100 ammo crates.', stat: 'ammo', goal: 100 },
     { id: 'lamps100', name: 'Lantern Bearer', desc: 'Light 100 lanterns.', stat: 'light', goal: 100 },
     // ---- Fruit ----

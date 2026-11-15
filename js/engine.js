@@ -46,13 +46,15 @@
   // A: the kill shot. 3 ammo, and whatever it hits dies at once: golems, TNT carts, armor
   // and all (a boss just takes it as one hit). It doesn't splash.
   const KILL_COST = LF.KILL_COST = 3;
+  // The sword (a click, or V): a slash SWORD_REACH in front of you, every SWORD_COOL seconds.
+  const SWORD_DMG = .5, SWORD_KNOCK = 420, SWORD_REACH = LF.SWORD_REACH = 42, SWORD_COOL = .32, SWORD_SWING = LF.SWORD_SWING = .18;
   const BLINK = LF.BLINK = 2, CONVEY = 110, BULLET = 620, AMMO = { q: 3, Q: 10, $: 25 };
   const TAU = Math.PI * 2;
 
   // Fruit: touch to gain a power, which lasts until you die (and carries on into the next
   // level). Picked fruit grows back after REGROW seconds.
   LF.FRUITS = {
-    a: { name: 'Apple', power: 'Shield', color: '#E5484D', note: 'shield: blocks one hit (a second apple doubles it, no more)' },
+    a: { name: 'Apple', power: 'Shield', color: '#E5484D', note: 'heals 25 HP (you have 100, more when ripe); eat one from your items in a level with H' },
     o: { name: 'Orange', power: 'Jump boost', color: '#FF9A2E', note: 'higher jumps, until you die' },
     b: { name: 'Banana', power: 'Double jump', color: '#FFE066', note: 'jump again in mid-air, until you die' },
     m: { name: 'Watermelon', power: 'Speed', color: '#4CAF50', note: 'run faster, until you die' },
@@ -66,8 +68,8 @@
     'ƀ': { name: 'Blueberry', power: 'Night eyes', color: '#5B6EE1', note: 'your light reaches twice as far, until you die' },
     'ǫ': { name: 'Kiwi', power: 'Multishot', color: '#8DB33A', note: 'every gun button fires two at once (three with a green apple’s ripeness), for the ammo of one, until you die (not the nuke)' },
     // The green apple isn't a power of its own and takes no power slot: it ripens the rest.
-    'ǵ': { name: 'Green apple', power: 'Ripe', color: '#7BC043', note: 'takes no power slot; hold up to two: each lets you take one more of each fruit: a third (and fourth) apple shield, and a second (and third) of any power fruit makes its power stronger (a triple jump, a bigger boost, faster, a slower glide and slide, a wider magnet, brighter eyes, spiked chains harmless, triple ammo, stronger swimming, a half-speed clock, two second chances), until you die' },
-    'ŧ': { name: 'Tomato', power: 'Second chance', color: '#E8402A', note: 'takes no power slot: a hit with no shield doesn’t kill you: the tomato takes it, then for 5 seconds you run fast, jump high and can’t be hurt, and whatever you touch dies (a boss takes a hit)' },
+    'ǵ': { name: 'Green apple', power: 'Ripe', color: '#7BC043', note: 'takes no power slot; hold up to two: each lets you take one more of each fruit: 50 more HP (150, then 200, at most: you get the extra 50 straight away), and a second (and third) of any power fruit makes its power stronger (a triple jump, a bigger boost, faster, a slower glide and slide, a wider magnet, brighter eyes, spiked chains harmless, triple ammo, stronger swimming, a half-speed clock, two second chances), until you die' },
+    'ŧ': { name: 'Tomato', power: 'Second chance', color: '#E8402A', note: 'takes no power slot: a hit that would take your last HP doesn’t kill you: the tomato takes it, then for 5 seconds you run fast, jump high and can’t be hurt, and whatever you touch dies (a boss takes a hit)' },
   };
   // Every fruit but the apple gives a power that's on or off: the player's flag for each.
   const POWERS = LF.POWERS = { o: 'boost', b: 'dbl', m: 'fast', p: 'glide', s: 'grip', 'ç': 'magnet', 'ƀ': 'glow', 'ƥ': 'spiky', 'ǥ': 'lucky', 'ƫ': 'swimmer', 'ɯ': 'slowtime', 'ŧ': 'tomato', 'ǫ': 'multi' };
@@ -106,7 +108,19 @@
     8: { name: 'The Iron Colossus', boss: true, w: 64, h: 76, stomp: true, drop: 10, hits: 22, note: 'boss: slow; its leaps send shockwaves along the floor' },
     9: { name: 'The Powder King', boss: true, w: 48, h: 56, stomp: true, drop: 10, hits: 18, note: 'boss: lobs bombs and sends TNT carts' },
   };
-  // A fruit's power on the player: apple adds a shield layer (up to 2), orange the jump
+  // Health: you have HP (100, and 50 more for each green apple you hold); a hit takes off the
+  // damage of whatever hit you (ENEMY_DMG, or the hazard's own), and at none you die. You get
+  // back REGEN every REGEN_EVERY seconds, and an apple heals APPLE_HEAL.
+  const HP = LF.HP = 100, RIPE_HP = 50, APPLE_HEAL = LF.APPLE_HEAL = 25, REGEN = 5, REGEN_EVERY = 5;
+  LF.maxHp = p => HP + RIPE_HP * (p.green || 0);
+  // How hard each enemy hits (bosses BOSS_DMG, giant bosses GIANT_DMG).
+  const ENEMY_DMG = LF.ENEMY_DMG = { B: 15, K: 25, F: 15, J: 15, S: 20, G: 30, X: 15, R: 30, Z: 25, Y: 20, U: 20, W: 20, A: 20, I: 35, '*': 30, N: 20, 'ĸ': 20, '@': 40 };
+  const BOSS_DMG = 35, GIANT_DMG = 40;
+  const enemyDmg = e => (LF.ENEMIES[e.type] && LF.ENEMIES[e.type].boss ? (String(e.type).endsWith('+') ? GIANT_DMG : BOSS_DMG) : ENEMY_DMG[e.type] || 20);
+  LF.enemyDmg = enemyDmg;
+  // An apple (picked up, or eaten from your items) heals; false at full health.
+  LF.heal = (p, n) => { const m = LF.maxHp(p); if ((p.hp ?? m) >= m) return false; p.hp = Math.min(m, (p.hp ?? m) + n); return true; };
+  // A fruit's power on the player: apple heals (see LF.heal), orange the jump
   // boost, banana the double jump, watermelon speed, and so on (POWERS). Only one of those
   // works at a time: a new one takes the place of the last (but in a Power Stack event,
   // see events.js, they pile up). False if it would add nothing.
@@ -114,8 +128,8 @@
   // four shields, or a power you have already goes up a level, to 2 and then 3 (stronger
   // each time: see where each is used).
   LF.applyFruit = (p, type) => {
-    if (type === 'ǵ') { if ((p.green || 0) >= 2) return false; p.green = (p.green || 0) + 1; return true; }
-    if (type === 'a') { if (p.shield >= 2 + (p.green || 0)) return false; p.shield++; return true; }
+    if (type === 'ǵ') { if ((p.green || 0) >= 2) return false; p.green = (p.green || 0) + 1; if (p.hp != null) p.hp += RIPE_HP; return true; }
+    if (type === 'a') return LF.heal(p, APPLE_HEAL);
     const k = POWERS[type];
     if (!k || p[k] >= 1 + (p.green || 0)) return false;
     if (p[k]) { p[k]++; if (k === 'dbl') p.airJumps++; return true; }
@@ -418,10 +432,11 @@
     if (def.powers) {
       const pw = def.powers;
       const green = Math.min(2, pw.green || 0);
-      W.player.shield = Math.min(2 + green, pw.shield || 0); W.player.green = green; W.player.stack = pw.stack ? 1 : 0;
+      W.player.green = green; W.player.stack = pw.stack ? 1 : 0;
       // (Every power you're carrying: powers stacked in a Power Stack event stay stacked
       // until you die, even once the event's over.)
       for (const k of FLAGS) if (pw[k]) W.player[k] = Math.min(1 + green, pw[k]);
+      W.player.hp = LF.maxHp(W.player);   // (ripe: more than 100)
     }
     if (LF.eventIs && LF.eventIs('stack')) W.player.stack = 1;
     // (The enemies there at the start, bosses aside: if they're all still alive when you
@@ -456,7 +471,8 @@
       for (const k of def.resume.lit) if (W.lanterns[k]) W.lanterns[k].lit = true;
       W.lanternLit = true; W.checkpoint = { ...def.resume.cp };
       const { ammo } = W.player;
-      Object.assign(W.player, makePlayer(W.checkpoint), { ammo, shield: W.player.shield, ...LF.powerFlags(W.player), held: W.player.held });
+      Object.assign(W.player, makePlayer(W.checkpoint), { ammo, ...LF.powerFlags(W.player), held: W.player.held });
+      W.player.hp = LF.maxHp(W.player);
       if (W.door && W.lanterns.every(l => l.lit) && !W.enemies.some(isBoss)) W.door.open = true;
       // (The clock is what that checkpoint gives you: see cpClock.)
       if (def.deadline) { W.cpBoss = W.bossClock = !!def.resume.boss; setClock(W, LF.cpClock(W)); }
@@ -554,7 +570,7 @@
       coyote: 0, buffer: 0, jumping: false, drop: 0, sx: 1, sy: 1, anim: 0, dead: false,
       wall: 0, wallDir: 0, wallCoyote: 0, sliding: false, lock: 0, wet: false,
       // One second of invincibility at the start of a level and after every respawn.
-      shield: 0, boost: 0, dbl: 0, fast: 0, airJumps: 0, inv: 1, conv: 0, cool: 0, flash: 0,
+      hp: HP, regen: 0, swing: 0, swordCool: 0, boost: 0, dbl: 0, fast: 0, airJumps: 0, inv: 1, conv: 0, cool: 0, flash: 0,
     };
   }
 
@@ -697,8 +713,9 @@
     return !!m;
   };
 
-  // A hit: the apple shield soaks it (with a short grace period), otherwise the player dies.
-  function hurt(W) {
+  // A hit: it takes `dmg` HP off (then a moment's grace, knocked back away from `fromX` if
+  // given); at none left, you die (unless a tomato takes it).
+  function hurt(W, dmg = 20, fromX) {
     const p = W.player;
     if (p.dead || p.inv > 0) return;
     // Carrying a shell, it takes the hit: it breaks, and you're unhurt (a moment's grace).
@@ -709,16 +726,28 @@
       W.shake = .12; W.emit('shield');
       return;
     }
-    if (!p.shield && p.tomato) return tomatoSave(W, p);
-    if (!p.shield) return kill(W);
-    // p.shield counts layers: 1, or 2 after a second apple. A hit takes one off.
-    p.shield--; p.inv = 1.2; p.vy = -520; p.jumping = false;
-    burst(W, p.x + p.w / 2, p.y + p.h / 2, 20, ['#9FD8FF', '#D9D0F0'], 200, 300);
-    W.floaters.push({ x: p.x + p.w / 2, y: p.y - 8, t: p.shield ? 'shield cracked' : 'shield broke', life: 1, c: '#9FD8FF' });
-    W.shake = .15; W.freeze = .06; ring(W, p.x + p.w / 2, p.y + p.h / 2, 46, '159,216,255', .45); W.emit('shield');
+    if (p.hp > dmg) {
+      p.hp -= dmg; p.inv = 1; p.vy = -420; p.jumping = false; p.regen = 0; p.hit = .3;
+      if (fromX != null) { p.vx = (p.x + p.w / 2 < fromX ? -1 : 1) * 260; p.lock = .15; }
+      burst(W, p.x + p.w / 2, p.y + p.h / 2, 14, ['#FF6B6B', '#FFD0D0'], 180, 300);
+      W.floaters.push({ x: p.x + p.w / 2, y: p.y - 8, t: `-${dmg}`, life: .9, c: '#FF6B6B' });
+      W.shake = .15; W.freeze = .05; ring(W, p.x + p.w / 2, p.y + p.h / 2, 40, '255,107,107', .4); W.emit('shield');
+      return;
+    }
+    if (p.tomato) { p.hp = 1; return tomatoSave(W, p); }
+    p.hp = 0; return kill(W);
   }
+  // Eating an apple from your items in a level (H): false at full health.
+  LF.eatApple = W => {
+    const p = W.player;
+    if (p.dead || W.cleared || !LF.heal(p, APPLE_HEAL)) return false;
+    burst(W, p.x + p.w / 2, p.y + p.h / 2, 14, ['#E5484D', '#9FF07A', '#FFF6C2'], 120, 100, 2.5);
+    W.floaters.push({ x: p.x + p.w / 2, y: p.y - 10, t: `+${APPLE_HEAL} HP`, life: 1, c: '#9FF07A' });
+    W.emit('fruit', { type: 'a' });
+    return true;
+  };
 
-  // The tomato: a hit with no shield, and it takes the hit instead (and is gone). Then
+  // The tomato: a hit that would take your last HP, and it takes the hit instead (and is gone). Then
   // RUSH seconds of all three: speed, a high jump, and invincibility that kills whatever you
   // touch (p.rush; see stepPlayer and the enemy checks).
   const RUSH = 5;
@@ -1091,11 +1120,12 @@
   // share one, so a grenade hits each enemy at most three times, once per blast.
   // A `lethal` blast (a TNT cart going up) kills outright instead: golems die and other
   // carts explode too. To a boss it's just one more hit.
-  function explode(W, x, y, r, big, shot = newShot(W), lethal = false) {
+  // `dmg`: what it takes off what it hits (explosives hit hard: see BLAST_DMG).
+  function explode(W, x, y, r, big, shot = newShot(W), lethal = false, dmg = BLAST_DMG) {
     for (const e of W.enemies) {
       if (!e.alive || e.phased || Math.hypot(e.x + e.w / 2 - x, e.y + e.h / 2 - y) > r + Math.max(e.w, e.h) / 2) continue;
-      if (lethal && !isBoss(e)) e.hp = 1;
-      shootEnemy(W, e, Math.sign(e.x + e.w / 2 - x) || 1, shot, lethal && e.armored ? 'KO' : 'boom');
+      if (lethal && !isBoss(e)) e.hp = Math.min(e.hp, dmg);
+      shootEnemy(W, e, Math.sign(e.x + e.w / 2 - x) || 1, shot, lethal && e.armored ? 'KO' : 'boom', dmg);
     }
     for (const q of W.projectiles) if (Math.hypot(q.x + q.w / 2 - x, q.y + q.h / 2 - y) < r) q.life = 0;
     for (const d of W.shotDoors) if (!d.open && d.tiles.some(([tx, ty]) => Math.hypot(tx * TS + 16 - x, ty * TS + 16 - y) < r + 16)) hitShotDoor(W, d, shot);
@@ -1106,6 +1136,9 @@
     W.emit(big ? 'boom' : 'pop');
   }
 
+  // Damage: a bullet 1 (a big one 2), a blast BLAST_DMG (a grenade's small bounce blasts 2),
+  // dynamite 4 and a nuke 6, all twice over when big, and twice again when set off in lava.
+  const BLAST_DMG = 3;
   // In water, a bomb, a grenade or a stick of dynamite sinks slowly, as you do (SINK), and
   // slows as it goes along: returns true if it's in. (In lava it goes off: see lavaHere.)
   function sinkIn(W, b, dt) {
@@ -1144,15 +1177,15 @@
       else b.y = ny;
       if (Math.random() < .5) W.particles.push({ x: b.x + 3, y: b.y - 8 * b.s, vx: (Math.random() - .5) * 60, vy: -40 - Math.random() * 60, life: .25, max: .25, c: Math.random() < .5 ? '#FFE066' : '#FF6B3D', size: 1.6, g: 200 });
       if (b.y > W.h * TS + 40) { b.life = 0; return; }
-      if (lavaHere(W, b.x, b.y)) { b.life = 0; return explode(W, b.x, b.y, TS * DYN_R * b.s * LAVA_BLAST, true, b.id, true); }
-      if (b.life <= 0) explode(W, b.x, b.y, TS * DYN_R * b.s, true, b.id, true);
+      if (lavaHere(W, b.x, b.y)) { b.life = 0; return explode(W, b.x, b.y, TS * DYN_R * b.s * LAVA_BLAST, true, b.id, true, 4 * b.s * LAVA_BLAST); }
+      if (b.life <= 0) explode(W, b.x, b.y, TS * DYN_R * b.s, true, b.id, true, 4 * b.s);
       return;
     }
     if (b.kind === 'nuke') {
       if (b.life > 0 && lavaHere(W, b.x, b.y - 8)) { b.life = 0; b.s *= LAVA_BLAST; }
       if (Math.random() < .6) W.particles.push({ x: b.x + (Math.random() - .5) * 10, y: b.y - 10, vx: (Math.random() - .5) * 40, vy: -50, life: .4, max: .4, c: Math.random() < .5 ? '#9FF07A' : '#FFE066', size: 2, g: 0 });
       if (b.life <= 0) {
-        explode(W, b.x, b.y, TS * NUKE_R * b.s, true, b.id, true);
+        explode(W, b.x, b.y, TS * NUKE_R * b.s, true, b.id, true, 6 * b.s);
         ring(W, b.x, b.y, TS * NUKE_R * b.s, '210,255,170', .9); ring(W, b.x, b.y, TS * 6, '255,255,255', .5);
         for (let n = 0; n < 8; n++) burst(W, b.x + (Math.random() - .5) * 120, b.y + (Math.random() - .5) * 80, 30, ['#FFFFFF', '#E9FFB8', '#FFE066', '#FF6B3D'], 420, 200, 5);
         W.shake = Math.max(W.shake, 1.4); W.freeze = Math.max(W.freeze, .15); W.nukeFlash = 1;
@@ -1166,8 +1199,8 @@
       if (inHorde()) { b.life = 0; return; }
       const hitWall = isSolid(tile(W, Math.floor(b.x / TS), Math.floor(b.y / TS)));
       const hitEnemy = W.enemies.some(e => e.alive && !e.phased && overlap({ x: b.x - 5 * b.s, y: b.y - 3 * b.s, w: 10 * b.s, h: 6 * b.s }, e));
-      if (lavaHere(W, b.x, b.y)) { b.life = 0; return explode(W, b.x, b.y, TS * 3 * b.s * LAVA_BLAST, true, b.id); }
-      if (hitWall || hitEnemy || b.life <= 0) { b.life = 0; explode(W, b.x - Math.sign(b.vx) * (hitWall ? 6 : 0), b.y, TS * 3 * b.s, true, b.id); }
+      if (lavaHere(W, b.x, b.y)) { b.life = 0; return explode(W, b.x, b.y, TS * 3 * b.s * LAVA_BLAST, true, b.id, false, BLAST_DMG * b.s * LAVA_BLAST); }
+      if (hitWall || hitEnemy || b.life <= 0) { b.life = 0; explode(W, b.x - Math.sign(b.vx) * (hitWall ? 6 : 0), b.y, TS * 3 * b.s, true, b.id, false, BLAST_DMG * b.s); }
       return;
     }
     // Grenade: falls and bounces; every contact counts. The first two blast 2 blocks,
@@ -1194,13 +1227,13 @@
     if (foe && !b.lastFoe) { b.vx = -b.vx * .7; b.vy = -Math.max(220, Math.abs(b.vy) * .6); bounced = true; }
     b.lastFoe = foe;
     if (inHorde()) { b.life = 0; return; }
-    if (lavaHere(W, b.x, b.y)) { b.life = 0; return explode(W, b.x, b.y, TS * 3 * b.s * LAVA_BLAST, true, b.id); }
+    if (lavaHere(W, b.x, b.y)) { b.life = 0; return explode(W, b.x, b.y, TS * 3 * b.s * LAVA_BLAST, true, b.id, false, BLAST_DMG * b.s * LAVA_BLAST); }
     if (bounced) {
       b.bounces++;
-      if (b.bounces >= 3) { b.life = 0; return explode(W, b.x, b.y, TS * 3 * b.s, true, b.id); }
-      explode(W, b.x, b.y, TS * 2 * b.s, false, b.id);
+      if (b.bounces >= 3) { b.life = 0; return explode(W, b.x, b.y, TS * 3 * b.s, true, b.id, false, BLAST_DMG * b.s); }
+      explode(W, b.x, b.y, TS * 2 * b.s, false, b.id, false, 2 * b.s);
     }
-    if (b.life <= 0 || b.y > W.h * TS + 40) { b.life = 0; if (b.y <= W.h * TS + 40) explode(W, b.x, b.y, TS * 3 * b.s, true, b.id); }
+    if (b.life <= 0 || b.y > W.h * TS + 40) { b.life = 0; if (b.y <= W.h * TS + 40) explode(W, b.x, b.y, TS * 3 * b.s, true, b.id, false, BLAST_DMG * b.s); }
   }
 
   // Killing an enemy (shot, blown up or stomped) pops out one bullet per point of its drop
@@ -1273,16 +1306,18 @@
     }
     if (boss) {
       if (e.fury > 0) return;
-      dmg = 1; wakeBoss(W, e);
+      // (A boss takes damage whole, at least 1: an explosive or a big shot hits harder. A kill
+      // shot, a stomp or a TNT cart is one hit.)
+      dmg = how === 'KO' || how === 'stomp' || dmg > 50 ? 1 : Math.max(1, Math.round(dmg)); wakeBoss(W, e);
       if (W.def.bossFury && shot != null && W.gunShots && W.gunShots.has(shot)) {
-        e.gunHits = (e.gunHits || 0) + 1;
+        e.gunHits = (e.gunHits || 0) + dmg;
         if (e.gunHits < GUN_HITS) {
           e.hurt = .08; burst(W, e.x + e.w / 2, e.y + e.h / 2, 5, ['#FFE2A8'], 90, 300, 2); W.emit('clank');
           W.floaters.push({ x: e.x + e.w / 2, y: e.y - 6, t: `${e.gunHits}/${GUN_HITS}`, life: .6, c: '#FFE2A8' });
           return;
         }
-        e.gunHits = 0;
-      }
+        e.gunHits -= GUN_HITS; dmg = 1;
+      } else if (W.def.bossFury) dmg = 1;
     }
     if (e.armored && how !== 'KO') {
       W.floaters.push({ x: e.x + e.w / 2, y: e.y - 6, t: 'armored', life: .6, c: '#CFC6E8' });
@@ -1290,7 +1325,7 @@
       return;
     }
     if (e.hp > dmg) {
-      e.hp -= dmg; e.hurt = .15; if (!boss && e.type !== '@') e.x += dir * 5;
+      e.hp -= dmg; e.hurt = .15; if (!boss && e.type !== '@') { if (how === 'slash') e.knock = dir * SWORD_KNOCK; else e.x += dir * 5; }
       if (boss && W.def.bossFury) startFury(W, e);
       burst(W, e.x + e.w / 2, e.y + e.h / 2, 8, ['#CFC6E8', '#FFE2A8'], 120, 300, 2); W.emit('clank');
       return;
@@ -1327,7 +1362,7 @@
   // (two blocks for a big Shift shot).
   function splash(W, x, y, dir, except, s = 1, shot) {
     ring(W, x, y, TS * s, '255,226,168', .2);
-    for (const e of W.enemies) if (e.alive && !e.phased && e !== except && circleHits(x, y, TS * s, e)) shootEnemy(W, e, dir, shot);
+    for (const e of W.enemies) if (e.alive && !e.phased && e !== except && circleHits(x, y, TS * s, e)) shootEnemy(W, e, dir, shot, 'zap', s);
   }
 
   // How many shots each press fires, fanned out (-1 … 1): one, or a kiwi's two, or three ripe.
@@ -1347,7 +1382,7 @@
         if (!e.alive || e.phased || !overlap({ x: b.x - 4 * b.s, y: b.y - 2 * b.s, w: 8 * b.s, h: 4 * b.s }, e)) continue;
         b.life = 0;
         if (b.kill) { shootEnemy(W, e, Math.sign(b.vx), b.id, 'KO', 999); ring(W, e.x + e.w / 2, e.y + e.h / 2, 40, '229,72,77', .3); break; }
-        shootEnemy(W, e, Math.sign(b.vx), b.id);
+        shootEnemy(W, e, Math.sign(b.vx), b.id, 'zap', b.s);
         splash(W, e.x + e.w / 2, e.y + e.h / 2, Math.sign(b.vx), e, b.s, b.id);
         break;
       }
@@ -1447,7 +1482,7 @@
   }
   function hordeCaught(W, p) {
     if (!W.horde || p.inv > 0 || playerAlong(W.horde, p) > W.horde.f) return false;
-    p.shield = 0; p.inv = 0; kill(W);
+    p.inv = 0; kill(W);
     return true;
   }
 
@@ -1539,6 +1574,10 @@
       if (e.fury > 0 && furyKind(e)) return furyMove(W, e, dt);
       if (e.fury > 0) stepBoss(W, e, dt * .3, playing);
       return stepBoss(W, e, dt, playing);
+    }
+    // Knocked back by the sword: it slides back, slowing, till it hits a wall.
+    if (e.knock) {
+      if (moveX(W, e, e.knock * dt) || Math.abs(e.knock *= Math.pow(.003, dt)) < 30) e.knock = 0;
     }
     // (TNT carts take stomps one at a time, like golems.)
     if (e.type === '@') { e.hurt = Math.max(0, e.hurt - dt); e.stompCool = Math.max(0, e.stompCool - dt); }
@@ -2983,7 +3022,7 @@
         const len = e.type === 'e+' ? e.len * (.78 + .22 * Math.cos(e.t * .7)) : e.len;
         e.bx = e.ax + Math.sin(a) * len; e.by = e.ay + Math.cos(a) * len;
         e.x = e.bx - e.w / 2; e.y = e.by - e.h / 2;
-        if (e.type === 'e+' && live && segDist(px, py, e.ax, e.ay, e.bx, e.by) < 12 && Math.hypot(px - e.bx, py - e.by) > e.w / 2) hurt(W);
+        if (e.type === 'e+' && live && segDist(px, py, e.ax, e.ay, e.bx, e.by) < 12 && Math.hypot(px - e.bx, py - e.by) > e.w / 2) hurt(W, 30, e.bx);
         break;
       }
       case 'f+': {
@@ -2999,7 +3038,7 @@
           e.armLen = 9;
           if ((e.wait -= dt) <= 0) { e.armsOn = false; daze(rage ? 1.2 : 1.8, 'dark'); }
         } else if ((e.wait -= dt) <= 0) { e.state = 'idle'; e.wait = rage ? 4 : 6; }
-        if (live) for (const b of LF.wheelBalls(e)) if (Math.hypot(px - b.x, py - b.y) < 15) { hurt(W); break; }
+        if (live) for (const b of LF.wheelBalls(e)) if (Math.hypot(px - b.x, py - b.y) < 15) { hurt(W, 30, b.x); break; }
         break;
       }
       case 'k+': {
@@ -3232,7 +3271,7 @@
     burst(W, x, y, big ? 34 : 22, ['#FFF1CF', '#FFB547', '#FF6B3D', '#463C6B'], big ? 280 : 220, 300, big ? 4 : 3);
     ring(W, x, y, r, '255,107,61', big ? .5 : .35);
     W.shake = Math.max(W.shake, big ? .3 : .15); W.emit(big ? 'boom' : 'pop');
-    if (playing && !p.dead && Math.hypot(p.x + p.w / 2 - x, p.y + p.h / 2 - y) < r) hurt(W);
+    if (playing && !p.dead && Math.hypot(p.x + p.w / 2 - x, p.y + p.h / 2 - y) < r) hurt(W, big ? 40 : 30, x);
   }
   // The Powder King's grenade: just like yours, it bounces, blasting 2 blocks on its first
   // two bounces and 3 on the third, when it's spent.
@@ -3265,6 +3304,8 @@
     }
     return null;
   }
+  // How hard each kind of boss and enemy shot hits.
+  const PROJ_DMG = { arrow: 15, shock: 25, flame: 20, rock: 25, bomb: 30, void: 30, gear: 25, wheel: 30, fall: 25 };
   function stepProjectiles(W, dt, playing) {
     const p = W.player;
     for (const b of W.projectiles) {
@@ -3297,11 +3338,11 @@
           const br = 52 * (inLava ? LAVA_BLAST : 1);
           burst(W, bx, by - 6, inLava ? 40 : 22, ['#FFF1CF', '#FFB547', '#FF6B3D', '#463C6B'], inLava ? 320 : 220, 300, 3);
           ring(W, bx, by - 6, br, '255,181,71', .35); W.shake = Math.max(W.shake, inLava ? .3 : .15); W.emit(inLava ? 'boom' : 'pop');
-          if (playing && !p.dead && Math.hypot(p.x + p.w / 2 - bx, p.y + p.h / 2 - by) < br) hurt(W);
+          if (playing && !p.dead && Math.hypot(p.x + p.w / 2 - bx, p.y + p.h / 2 - by) < br) hurt(W, 30, bx);
           // In the Fuse Hall the bombs leave a patch of fire behind.
           if (b.burn) W.projectiles.push({ kind: 'flame', x: bx - 7, y: Math.floor(by / TS) * TS - 18, w: 14, h: 18, vx: 0, vy: 0, life: 2.5 });
         }
-      } else if (playing && !p.dead && overlap(p, b)) { b.life = 0; hurt(W); }
+      } else if (playing && !p.dead && overlap(p, b)) { b.life = 0; hurt(W, PROJ_DMG[b.kind] || 20, bx); }
       // (An ember pot's ember hurts any other enemy it hits, too: one hit, and it's spent. Not
       // a boss, nor the pot that spat it.)
       else if (b.ember) {
@@ -3376,8 +3417,12 @@
       W.emit('hop');
       return;
     }
-    p.lock -= dt; p.inv -= dt;
+    p.lock -= dt; p.inv -= dt; p.hit = Math.max(0, (p.hit || 0) - dt);
     if (p.rush > 0) p.rush -= dt;
+    // Health comes back: REGEN every REGEN_EVERY seconds while you're under full.
+    const maxHp = LF.maxHp(p);
+    if (p.hp < maxHp) { if ((p.regen += dt) >= REGEN_EVERY) { p.regen = 0; p.hp = Math.min(maxHp, p.hp + REGEN); } }
+    else { p.regen = 0; p.hp = maxHp; }
 
     if (dir && p.lock <= 0) p.face = dir;
     // Right after a wall jump, steering is weak so the kick carries you off the wall.
@@ -3550,6 +3595,27 @@
       W.emit(kind === 'rocket' ? 'rocket' : 'lob');
     }
 
+    // The sword: a slash in front of you. Half a hit off an enemy (two for most), knocking it
+    // back; a boss takes it as one gun hit. It knocks shots out of the air (not fire).
+    p.swing = Math.max(0, (p.swing || 0) - dt); p.swordCool = (p.swordCool || 0) - dt;
+    if (input.swordPressed) {
+      input.swordPressed = false;
+      if (p.swordCool <= 0) {
+        p.swordCool = SWORD_COOL; p.swing = SWORD_SWING;
+        const box = { x: p.face > 0 ? p.x + p.w / 2 : p.x + p.w / 2 - SWORD_REACH, y: p.y - 12, w: SWORD_REACH, h: p.h + 18 };
+        const id = gunShot(W);
+        let hit = false;
+        for (const e of W.enemies) {
+          if (!e.alive || e.phased || e.state === 'carried' || (e.type === 'G' && e.fade > .85) || !overlap(box, e)) continue;
+          shootEnemy(W, e, p.face, id, 'slash', SWORD_DMG); hit = true;
+        }
+        for (const q of W.projectiles) if (q.kind !== 'flame' && q.kind !== 'warn' && q.life > 0 && overlap(box, q)) {
+          q.life = 0; hit = true; burst(W, q.x + q.w / 2, q.y + q.h / 2, 8, ['#E8F4FF', '#FFE2A8'], 120, 200, 2);
+        }
+        W.emit(hit ? 'slash' : 'swish');
+      }
+    }
+
     const wasAir = !p.onGround, fallSpeed = p.vy;
     p.onGround = false; p.onPlat = null; p.spinOn = null; p.conv = 0; p.ice = false;
     if (moveX(W, p, p.vx * dt)) p.vx = 0;
@@ -3625,9 +3691,9 @@
     if (p.y > W.h * TS + 60) return kill(W);
     // Lava kills outright, still or moving: the shield doesn't help, and nor does being
     // invincible for a moment after a hit (or you could fall into it and walk out).
-    if (lavaAt(W, p) || inFlow(W, p)) { p.shield = 0; return kill(W); }
-    if (hazardHit(W, p, true)) { hurt(W); if (p.dead) return; }
-    if (p.inv <= 0 && trapHit(W, p)) { hurt(W); if (p.dead) return; }
+    if (lavaAt(W, p) || inFlow(W, p)) return kill(W);
+    if (hazardHit(W, p, true)) { hurt(W, 25); if (p.dead) return; }
+    if (p.inv <= 0 && trapHit(W, p)) { hurt(W, 30); if (p.dead) return; }
     // Crusher sides push you out instead of hurting.
     for (const t of W.traps) {
       if (t.type !== 'crush' || p.onPlat === t || !overlap(p, { x: t.x, y: t.y + 4, w: t.w, h: t.h - 10 })) continue;
@@ -3671,7 +3737,7 @@
           if (midair) W.floaters.push({ x: e.x + e.w / 2, y: e.y - 18, t: 'air stomp!', life: .9, c: '#9FF0C8' });
           W.floaters.push({ x: e.x + e.w / 2, y: e.y - 6, t: 'stomp', life: .8, c: '#FF6B3D' });
           W.shake = .1; W.emit('stomp', { type: e.type });
-        } else { hurt(W); if (p.dead) return; }
+        } else { hurt(W, enemyDmg(e), e.x + e.w / 2); if (p.dead) return; }
         continue;
       }
       // A tomato rush: whatever you touch dies; a boss takes a hit (and flies into its fury,
@@ -3688,7 +3754,7 @@
         if (p.vy > 0 && p.y + p.h - e.y < 18) {
           p.vy = -560 * Math.sqrt(T.gravity); p.jumping = false; p.spun = false; p.airJumps = T.airJumps + (p.dbl || 0);
           if (!W.floaters.some(f => f.t === 'it’s raging!')) W.floaters.push({ x: e.x + e.w / 2, y: e.y - 8, t: 'it’s raging!', life: .8, c: '#FF4D3D' });
-        } else if (e.stompCool <= 0) { hurt(W); if (p.dead) return; }
+        } else if (e.stompCool <= 0) { hurt(W, enemyDmg(e), e.x + e.w / 2); if (p.dead) return; }
         continue;
       }
       // Armored heads (bosses, golems until their last hit, and TNT carts, whose last stomp
@@ -3702,7 +3768,7 @@
             W.emit('stomp', { type: e.type });
             shootEnemy(W, e, 0, null, 'stomp');
           }
-        } else if (e.stompCool <= 0) { hurt(W); if (p.dead) return; }
+        } else if (e.stompCool <= 0) { hurt(W, enemyDmg(e), e.x + e.w / 2); if (p.dead) return; }
         continue;
       }
       // (In a level of stomp chains, def.batChain, falling onto a bat anywhere counts.)
@@ -3711,7 +3777,7 @@
         burst(W, e.x + e.w / 2, e.y + e.h / 2, 14, ['#FF6B3D', '#463C6B'], 160, 500);
         W.floaters.push({ x: e.x + e.w / 2, y: e.y - 6, t: 'stomp', life: .8, c: '#FF6B3D' });
         W.shake = .12; W.freeze = .05; ring(W, e.x + e.w / 2, e.y + e.h / 2, 28, '255,107,61'); W.emit('stomp', { type: e.type, kill: true });
-      } else { hurt(W); if (p.dead) return; }
+      } else { hurt(W, enemyDmg(e), e.x + e.w / 2); if (p.dead) return; }
     }
 
     const cx = p.x + p.w / 2, cy = p.y + p.h / 2;
@@ -3771,7 +3837,7 @@
       LF.applyFruit(p, f.type);
       W.got[f.type] = (W.got[f.type] || 0) + 1;
       burst(W, f.x, f.y, 16, [spec.color, '#FFF6C2'], 130, 150, 2.5);
-      W.floaters.push({ x: f.x, y: f.y - 20, t: f.type === 'a' && p.shield > 1 ? `shield ×${p.shield}` : spec.power.toLowerCase(), life: 1.1, c: spec.color });
+      W.floaters.push({ x: f.x, y: f.y - 20, t: f.type === 'a' ? `+${APPLE_HEAL} HP` : f.type === 'ǵ' ? `ripe: ${LF.maxHp(p)} HP` : spec.power.toLowerCase(), life: 1.1, c: spec.color });
       W.emit('fruit', { type: f.type });
     }
 

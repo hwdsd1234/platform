@@ -136,6 +136,8 @@
     fruit: () => { tone(660, 990, .1, 'triangle', .05); tone(990, 1480, .14, 'triangle', .04, .06); },
     strip: () => { tone(700, 180, .35, 'sawtooth', .04); tone(500, 120, .4, 'triangle', .04, .08); },
     shield: () => { tone(900, 300, .25, 'triangle', .05); tone(1200, 400, .2, 'sine', .03, .03); },
+    swish: () => tone(1800, 600, .07, 'sine', .025),
+    slash: () => { tone(1600, 500, .08, 'sawtooth', .03); tone(420, 120, .1, 'square', .035, .01); },
     door: () => [523, 659, 784, 1046].forEach((f, i) => tone(f, f, .22, 'triangle', .05, .25 + i * .08)),
     clear: () => [392, 523, 659, 784, 1046, 1318].forEach((f, i) => tone(f, f, .3, 'triangle', .05, i * .07)),
   };
@@ -1165,7 +1167,7 @@
   // ---------- inventory ----------
   // Fruit you've gathered (in Fruit Groves), up to INV_MAX of each. Tab opens it, on the map
   // only (not in a level): using a fruit gets you ready for your next level. Powers last until you
-  // die, and carry on from level to level (carry: { shield, boost, dbl }). Not in Hardcore.
+  // die, and carry on from level to level (carry: { boost, dbl, … }). Not in Hardcore.
   const INV_MAX = 999;
   let inventory = { ...Object.fromEntries(Object.keys(LF.FRUITS).map(t => [t, 0])), ...store.get('inventory', {}) };
   for (const t in inventory) if (!LF.FRUITS[t]) delete inventory[t];   // (fruit that's since gone, like the pear)
@@ -1173,11 +1175,21 @@
   // Practice: every item is yours without end, and what you use goes on the practice runs
   // only (practiceCarry), never on your real powers or items.
   let practiceCarry = null;
+  // (Apple shields are gone: apples heal now. Any shields you were carrying go back as apples.)
+  if (carry && carry.shield) { inventory.a = Math.min(INV_MAX, (inventory.a || 0) + carry.shield); store.set('inventory', inventory); delete carry.shield; carry = LF.hasPowers(carry) ? carry : null; store.set('powers', carry); }
   function saveCarry(p) {
-    carry = p.shield || LF.hasPowers(p) ? { shield: p.shield, ...LF.powerFlags(p) } : null;
+    carry = LF.hasPowers(p) ? LF.powerFlags(p) : null;
     store.set('powers', carry);
   }
-  const powersText = p => [p.stack ? '✨ stacking' : '', p.green ? `🍏 ripe${p.green > 1 ? ' ×2' : ''}` : '', p.shield ? `🍎 shield${p.shield > 1 ? ' ×' + p.shield : ''}` : '', ...Object.entries(LF.POWERS).map(([t, k]) => p[k] ? `${FRUIT_ICON[t]} ${LF.FRUITS[t].power.toLowerCase()}${p[k] > 1 ? ' ×' + p[k] : ''}` : '')].filter(Boolean).join(' · ') || 'none';
+  // Apples you can eat in a level (H): all you like in practice, none in Hardcore.
+  const applesToEat = () => (hardcore ? 0 : practice ? Infinity : inventory.a || 0);
+  function eatApple() {
+    if (screen !== 'play' || !W || W.player.dead) return;
+    if (!applesToEat()) return flash(hardcore ? 'No fruit in Hardcore' : 'No apples in your items');
+    if (!LF.eatApple(W)) return flash('You’re at full health');
+    if (!practice) { inventory.a--; store.set('inventory', inventory); }
+  }
+  const powersText = p => [p.stack ? '✨ stacking' : '', p.green ? `🍏 ripe (${LF.maxHp(p)} HP)` : '', ...Object.entries(LF.POWERS).map(([t, k]) => p[k] ? `${FRUIT_ICON[t]} ${LF.FRUITS[t].power.toLowerCase()}${p[k] > 1 ? ' ×' + p[k] : ''}` : '')].filter(Boolean).join(' · ') || 'none';
   function showInventory() {
     if (screen === 'play') return flash('Your items are on the map, not in a level');
     if (screen !== 'map' && screen !== 'inv') return;
@@ -1199,7 +1211,7 @@
       ${onYouHTML()}
       <ul class="inv-items">${Object.entries(LF.FRUITS).map(([t, f]) => `<li>
         <span class="inv-icon">${FRUIT_ICON[t]}</span><div><b>${f.name} ×${practice ? '∞' : inventory[t] || 0}</b><small>${esc(f.note)}</small></div>
-        <button class="mini go-mini" data-use="${t}" ${(practice || (inventory[t] || 0) > 0) && !hardcore ? '' : 'disabled'}>Use</button></li>`).join('')}</ul>
+        ${t === 'a' ? '<small class="inv-eat">eat in a level: H</small>' : `<button class="mini go-mini" data-use="${t}" ${(practice || (inventory[t] || 0) > 0) && !hardcore ? '' : 'disabled'}>Use</button>`}</li>`).join('')}</ul>
       <p class="lede">${practice ? `Practice is on: every item without end, for practice runs only (your own items stay put). Ready for your next practice run: ${powersText(practiceCarry || {})}` : hardcore ? 'Hardcore is on: no fruit.' : `Ready for your next level: ${powersText(now)}`}</p>
       <p class="inv-note">Gather fruit in the fruit houses on the map (each one’s grove grows back 15 minutes after you’ve been in, even while you’re away; fruit in a level only grows back while you play it). Powers last until you die and carry on from level to level. Ammo left over when you clear a level carries on too, until you die${hardcore ? '' : ` (you have ${store.get('ammo', 0)})`}.</p>
     </div>`;
@@ -1209,15 +1221,14 @@
     for (const b of $('inv').querySelectorAll('[data-putback]')) b.addEventListener('click', () => putBack(b.dataset.putback));
   }
   // The ammo bank: w takes ammo out to carry into your next level, d puts carried ammo back.
-  // What you're carrying (your powers, shields and green apples), each able to go back into
-  // your items as the fruit it came from: a power as many of its fruit as its level, shields as
-  // apples, green apples as themselves (and with one gone, any level or shield it let you have
+  // What you're carrying (your powers and green apples), each able to go back into
+  // your items as the fruit it came from: a power as many of its fruit as its level, green
+  // apples as themselves (and with one gone, any level it let you have
   // past the usual goes back too). Not in Hardcore; in practice, just taken off.
   const powerList = c => {
     if (!c) return [];
     const out = [];
     if (c.green) out.push({ key: 'green', t: 'ǵ', n: c.green, label: 'Ripe' });
-    if (c.shield) out.push({ key: 'shield', t: 'a', n: c.shield, label: 'Shield' });
     for (const [t, k] of Object.entries(LF.POWERS)) if (c[k]) out.push({ key: k, t, n: c[k], label: LF.FRUITS[t].power });
     return out;
   };
@@ -1232,12 +1243,10 @@
     if (hardcore) return;
     const c = { ...(practice ? practiceCarry : carry) }, give = (t, n) => { if (!practice && n > 0) inventory[t] = Math.min(INV_MAX, (inventory[t] || 0) + n); };
     const one = k => {
-      if (k === 'shield') { give('a', c.shield || 0); c.shield = 0; return; }
       if (k === 'green') {
         give('ǵ', 1); c.green = Math.max(0, (c.green || 0) - 1);
-        // (Levels and shields past what's left allowed go back as fruit too.)
+        // (Levels past what's left allowed go back as fruit too.)
         for (const [t, f] of Object.entries(LF.POWERS)) if (c[f] > 1 + c.green) { give(t, c[f] - 1 - c.green); c[f] = 1 + c.green; }
-        if ((c.shield || 0) > 2 + c.green) { give('a', c.shield - 2 - c.green); c.shield = 2 + c.green; }
         return;
       }
       const t = Object.keys(LF.POWERS).find(x => LF.POWERS[x] === k); if (!t) return;
@@ -1246,7 +1255,7 @@
     if (key === '*') { for (const x of powerList(c)) if (x.key !== 'green') one(x.key); while (c.green) one('green'); }
     else one(key);
     if (practice) practiceCarry = c;
-    else { store.set('inventory', inventory); carry = c.shield || LF.hasPowers(c) ? c : null; store.set('powers', carry); }
+    else { store.set('inventory', inventory); carry = LF.hasPowers(c) ? c : null; store.set('powers', carry); }
     flash(key === '*' ? 'Everything put back in your items' : 'Put back in your items'); SFX.fruit && SFX.fruit();
     renderInventory();
   }
@@ -1262,15 +1271,15 @@
   function useItem(t) {
     if (hardcore) return;
     if (practice) {
-      const target = { shield: 0, airJumps: 0, ...(practiceCarry || {}) };
-      if (!LF.applyFruit(target, t)) return flash('You already have that power');
-      practiceCarry = { shield: target.shield, ...LF.powerFlags(target) };
+      const target = { airJumps: 0, ...(practiceCarry || {}) };
+      if (t === 'a' || !LF.applyFruit(target, t)) return flash(t === 'a' ? 'Apples heal: eat one in a level with H' : 'You already have that power');
+      practiceCarry = LF.powerFlags(target);
       flash(`${FRUIT_ICON[t]} ${LF.FRUITS[t].power} (practice)`); SFX.fruit && SFX.fruit();
       return renderInventory();
     }
     if (!(inventory[t] > 0)) return;
-    const target = { shield: 0, airJumps: 0, ...(carry || {}) };
-    if (!LF.applyFruit(target, t)) return flash('You already have that power');
+    const target = { airJumps: 0, ...(carry || {}) };
+    if (t === 'a' || !LF.applyFruit(target, t)) return flash(t === 'a' ? 'Apples heal: eat one in a level with H' : 'You already have that power');
     inventory[t]--; store.set('inventory', inventory);
     saveCarry(target);
     flash(`${FRUIT_ICON[t]} ${LF.FRUITS[t].power}`); SFX.fruit && SFX.fruit();
@@ -1289,13 +1298,16 @@
         <li><kbd>←</kbd><kbd>→</kbd> walk · <kbd>Space</kbd> jump (hold for height) · <kbd>↓</kbd> drop through planks</li>
         <li>Every level has a clock: 300 seconds, 400 in a castle (a tower’s boss arena adds 100 seconds when you reach it, a castle’s 200); come back at a lantern and the clock gives you the share of the level still ahead of it, plus 30 seconds (never under 150 seconds): at 50 seconds left a hurry-up tune plays and the music speeds up; when it runs out you die (fruit groves have their own short clocks)</li>
         <li>Push into a wall to slide down it · jump off walls to climb</li>
+        <li>Health: you have 100 HP (150 with a 🍏 green apple, 200 with two), shown top left · each enemy hits for its own damage: a beetle, bat, frog or spider 15, an ember pot, archer, wasp, Shellback or water creature 20, a Thornback or Spark 25, a ram, wraith or lava bubble 30, a golem 35, a TNT cart 40, a boss 35, a giant boss 40; spikes 25, pendulums, fire bars and crushers 30, boss shots 15–30 · you get 5 HP back every 5 seconds · 🍎 apples heal 25: pick them up, or press <kbd>H</kbd> to eat one from your items · lava and falling out of the world still kill outright</li>
+        <li>Sword: click (or <kbd>V</kbd>, or ⚔ on a phone) to slash in front of you: half a hit off an enemy (two slashes for most), knocking it back; a boss takes it like a gun hit; it knocks arrows, embers and bombs out of the air too</li>
+        <li>Damage: a bullet does 1, a big (<kbd>Shift</kbd>) shot 2, an explosion 3 (a grenade's two smaller bounce blasts 2), dynamite 4 and a nuke 6; big explosives twice that, and lava doubles a blast again · golems, TNT carts and bosses all feel the difference (a tower or castle boss counts it towards the 10 gun hits that send it into a fury)</li>
         <li>Shellbacks: stomp one into its shell, touch the shell to kick it (it knocks out enemies, hits bosses, picks up coins for you, and comes back off walls) · hold <kbd>S</kbd> and run into a shell lying still to carry it (it can't come out while you hold it), press <kbd>S</kbd> again to let it go, kicked off ahead of you · stomp a Shellback or shell in mid-air for a big bounce: that's the shell jump: throw a shell off a ramp across a gap; it bounces off the wall on the far side and flies back off the lip there, and you jump from the edge and land on it in the air (in mid-air a shell's easy to land on: feet over its middle will do)</li>
         <li><kbd>E</kbd> fire: tap for one shot, hold for autofire; shots splash 1 block · <kbd>X</kbd> explosive round (2 ammo, 3-block blast) · <kbd>A</kbd> kill shot (3 ammo): kills whatever it hits in one go, golems and carts too (a boss takes it as one hit) · every shot counts as one hit (a grenade one per blast, up to three), so golems take 3 and TNT carts 5 (stomps count too); a TNT blast kills everything near it but you · <kbd>Q</kbd> bouncing grenade (3 ammo) · <kbd>D</kbd> dynamite (4 ammo): thrown, it falls and sits where it lands, and after a 3-second fuse kills everything within 5 blocks, golems and carts too (a boss takes it as one hit; it never hurts you) · <kbd>Shift</kbd>+<kbd>D</kbd> big dynamite (8 ammo, 10 blocks) · <kbd>W</kbd> nuke (10 ammo): primed right where you are, and after a 3-second fuse it kills everything within 30 blocks (a boss takes it as one hit; it never hurts you) · <kbd>Shift</kbd>+<kbd>W</kbd> big nuke (20 ammo, 60 blocks) · hold any of them to keep firing · hold <kbd>Shift</kbd> for a big shot: 2× size and blast, 2× ammo · ammo crates are hidden through each level; big crates hold 10, huge ones 25; enemies drop 1–5 ammo when killed, more for tougher ones (TNT carts drop none)</li>
         <li>Keys open the locked-door blocks you touch, one block at a time; you keep the key</li>
         <li>Water is safe: you sink slowly and can jump as often as you like</li>
         <li>Events: for the first hour of every three hours an event is on (the map shows which, and when the next one starts): 🧺 Double Harvest (grove fruit counts twice) · ✨ Power Stack (play during it and fruit powers stack until you die) · 🌱 Quick Groves (groves grow straight back) · 🎯 Ammo Rain (double ammo) · 🕰️ Long Night (60 more seconds on every level clock)</li>
-        <li>Fruit: 🍎 shield (a second apple doubles it) · 🍊 jump boost · 🍌 double jump · 🍉 speed · 🍐 glide (hold <kbd>↑</kbd> or jump while falling; press <kbd>Space</kbd> in mid-air for a small lift, after which you can't glide and fall steadily till you land (wall jumps don't give it back); letting go of <kbd>↑</kbd> and pressing it again just keeps you gliding) · 🍍 spikes don't hurt · 🍇 double ammo from enemies · 🍑 stronger swimming · 🥭 a slower clock · 🍓 wall grip (and you can cling to and wall-jump off ice walls, which you can't without it) · 🍒 ammo magnet · 🫐 night eyes (twice the light) · 🥝 multishot (every gun button fires two at once for the ammo of one, not the nuke) · 🍅 second chance (a hit with no shield is taken by the tomato, then 5 seconds of speed, a high jump, and touching kills) · 🍏 green apple (takes no power slot: with it you can take one more of each fruit, so a third apple shield, or a second of any power fruit for a stronger power) · only one fruit power besides the apple's shield, the 🍅 tomato and the 🍏 green apple (none of them take the power slot) works at a time: a new fruit takes the place of the last (except once you've played during a ✨ Power Stack event: from then until you die, every fruit power you get adds to the ones you have) · powers last until you die; powers and leftover ammo carry on to the next level</li>
-        <li>Doubles: you can hold up to two 🍏 green apples; a second one lets you take each fruit once more again, for a level 3 power (×3: four shields, a quadruple jump, more speed and boost, a slower glide still, a 12-block magnet, 4× light, pendulum balls harmless too, 4× ammo, stronger swimming, the clock at a third speed, three second chances, four shots) · with a 🍏 green apple, eat the same fruit a second time (picked up or from your items) and its power goes up to level 2, marked ×2 (a different power fruit still takes its place, unless a ✨ Power Stack event is on; the green apple itself stays) · 🍎 a third shield (a green ring) · 🍊 an even bigger jump (about 1.9× as high instead of 1.5×) · 🍌 a triple jump (two air jumps; each resets your rise, so it's more steering than height) · 🍉 faster still (1.61× instead of 1.4×) · 🍐 a slower glide (about 1.8 tiles a second instead of 3) · 🍓 wall slide at a sixth of the speed instead of a third · 🍒 the magnet reaches 8 blocks instead of 4 · 🫐 your light reaches 3× as far instead of 2× · 🍍 spiked pendulum chains don't hurt either (the ball still does) · 🍇 triple ammo from enemies instead of double · 🍑 stronger strokes still (1.3× instead of 1.15×) and you sink at 30% instead of half speed · 🥭 the clock at half speed instead of two-thirds · 🍅 two second chances instead of one · 🥝 three shots a press instead of two · doubles last until you die, like every power</li>
+        <li>Fruit: 🍎 apple: heals 25 HP (pick it up, or press <kbd>H</kbd> in a level to eat one from your items) · 🍊 jump boost · 🍌 double jump · 🍉 speed · 🍐 glide (hold <kbd>↑</kbd> or jump while falling; press <kbd>Space</kbd> in mid-air for a small lift, after which you can't glide and fall steadily till you land (wall jumps don't give it back); letting go of <kbd>↑</kbd> and pressing it again just keeps you gliding) · 🍍 spikes don't hurt · 🍇 double ammo from enemies · 🍑 stronger swimming · 🥭 a slower clock · 🍓 wall grip (and you can cling to and wall-jump off ice walls, which you can't without it) · 🍒 ammo magnet · 🫐 night eyes (twice the light) · 🥝 multishot (every gun button fires two at once for the ammo of one, not the nuke) · 🍅 second chance (a hit that would take your last HP is taken by the tomato, then 5 seconds of speed, a high jump, and touching kills) · 🍏 green apple (takes no power slot: with it you can take one more of each fruit, 50 more HP (150, past the usual 100), or a second of any power fruit for a stronger power) · only one fruit power besides the 🍅 tomato and the 🍏 green apple (neither takes the power slot) works at a time: a new fruit takes the place of the last (except once you've played during a ✨ Power Stack event: from then until you die, every fruit power you get adds to the ones you have) · powers last until you die; powers and leftover ammo carry on to the next level</li>
+        <li>Doubles: you can hold up to two 🍏 green apples; a second one lets you take each fruit once more again, for a level 3 power (×3: 200 HP, a quadruple jump, more speed and boost, a slower glide still, a 12-block magnet, 4× light, pendulum balls harmless too, 4× ammo, stronger swimming, the clock at a third speed, three second chances, four shots) · with a 🍏 green apple, eat the same fruit a second time (picked up or from your items) and its power goes up to level 2, marked ×2 (a different power fruit still takes its place, unless a ✨ Power Stack event is on; the green apple itself stays) · 🍏 150 HP instead of 100 (you get the extra 50 at once, and apples heal you up to it) · 🍊 an even bigger jump (about 1.9× as high instead of 1.5×) · 🍌 a triple jump (two air jumps; each resets your rise, so it's more steering than height) · 🍉 faster still (1.61× instead of 1.4×) · 🍐 a slower glide (about 1.8 tiles a second instead of 3) · 🍓 wall slide at a sixth of the speed instead of a third · 🍒 the magnet reaches 8 blocks instead of 4 · 🫐 your light reaches 3× as far instead of 2× · 🍍 spiked pendulum chains don't hurt either (the ball still does) · 🍇 triple ammo from enemies instead of double · 🍑 stronger strokes still (1.3× instead of 1.15×) and you sink at 30% instead of half speed · 🥭 the clock at half speed instead of two-thirds · 🍅 two second chances instead of one · 🥝 three shots a press instead of two · doubles last until you die, like every power</li>
         <li>A tower's boss falls to 3 hits (a castle's keeper to 4): a stomp is a hit, and so are ten gun hits (shots, rockets, grenades, dynamite, nukes: the boss shows the count); each hit throws it into a 10-second fury: it glows red and rampages round the arena, leaping (with a slam where it lands) or darting about dropping bombs, and throwing rings of embers, rocks from the ceiling and fire round your feet; then it's worn out and stands dazed for a moment: stomp it then · its last fury (one stomp left) adds its own signature move · the Last Dark takes 4 stomps and you can't stomp it again until it calms down; after its third it swells to a giant (a cutscene) and chases you over a lake of lava on lifts to a TNT cart: blow the cart up yourself (five hits) with the Last Dark close behind, and then cross the castle that rises out of the lava to its door · your ammo waits for you outside</li>
         <li>Neo: when a slab sits right over your ledge, flush with its edge, run off the edge, jump at once and steer straight back in to land on top (miss, and you just drop back)</li>
         <li>Wheels turn their platforms round and round: ride one to the top · in the Sky Roads there's no floor at all, just the long drop</li>
@@ -1768,7 +1780,7 @@
   // ---------- input ----------
   // (No WASD: A is the kill shot.)
   const heldKeys = new Set();   // (the keys down right now: see keyup)
-  const KEYMAP = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'jump', Space: 'jump', KeyZ: 'jump', ArrowDown: 'down', KeyE: 'fire', KeyF: 'fire', KeyX: 'rocket', KeyC: 'rocket', KeyQ: 'grenade', KeyA: 'kill', KeyD: 'dyn', KeyS: 'carry', KeyW: 'nuke' };
+  const KEYMAP = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'jump', Space: 'jump', KeyZ: 'jump', ArrowDown: 'down', KeyE: 'fire', KeyF: 'fire', KeyX: 'rocket', KeyC: 'rocket', KeyQ: 'grenade', KeyA: 'kill', KeyD: 'dyn', KeyS: 'carry', KeyW: 'nuke', KeyV: 'sword' };
   const SHOTS = ['fire', 'rocket', 'grenade', 'kill', 'dyn', 'nuke'];
   // Big shots: hold Shift, or on a phone tap BIG to switch them on until tapped again.
   let bigLock = false;
@@ -1803,8 +1815,11 @@
         if ((e.code === 'Space' || e.code === 'KeyZ') && !e.repeat) input.spinPressed = true;
         if (SHOTS.includes(k) && !input[k] && !e.repeat) input[k + 'Pressed'] = true;
         if (k === 'carry' && !input.carry && !e.repeat) input.carryPressed = true;
+        if (k === 'sword' && !e.repeat) input.swordPressed = true;
         input[k] = true; heldKeys.add(e.code);
       }
+      // H eats an apple from your items: it heals (see eatApple).
+      if (e.code === 'KeyH' && !e.repeat) eatApple();
       // R gives up: it's a death like any other (back to the map, your lit lanterns kept), and
       // in the story you lose everything you were carrying too: fruit powers and ammo.
       if (e.code === 'KeyR' && !e.repeat && !W.cleared && playCtx.kind !== 'house' && playCtx.kind !== 'garden') { if (e.shiftKey) hardRestart(); else if (!W.player.dead) giveUp(); }
@@ -1839,6 +1854,10 @@
     el.addEventListener('pointerdown', on); el.addEventListener('pointerup', off);
     el.addEventListener('pointercancel', off); el.addEventListener('pointerleave', off);
   }
+  // The sword: a click on the game (or V, or the ⚔ button).
+  cvs.addEventListener('pointerdown', e => { if (screen === 'play' && e.pointerType === 'mouse' && e.button === 0) { e.preventDefault(); input.swordPressed = true; } });
+  $('t-sword').addEventListener('pointerdown', e => { e.preventDefault(); initAudio(); input.swordPressed = true; });
+  $('t-eat').addEventListener('pointerdown', e => { e.preventDefault(); initAudio(); eatApple(); });
   bindTouch('t-left', 'left'); bindTouch('t-right', 'right'); bindTouch('t-jump', 'jump'); bindTouch('t-down', 'down'); bindTouch('t-fire', 'fire'); bindTouch('t-rocket', 'rocket'); bindTouch('t-grenade', 'grenade'); bindTouch('t-kill', 'kill'); bindTouch('t-dyn', 'dyn');
   $('t-pause').addEventListener('click', () => pause());
   $('t-big').addEventListener('pointerdown', e => {
@@ -1853,7 +1872,7 @@
     const lit = W.lanterns.filter(l => l.lit).length, open = W.door && W.door.open;
     const p = W.player;
     const boss = W.enemies.find(e => e.alive && e.awake && LF.isBoss(e));
-    const key = `${lit}|${Math.floor(W.time * 10)}|${W.falls}|${open}|${p.shield}|${Object.values(LF.powerFlags(p)).join('')}|${p.ammo}|${JSON.stringify(p.keys)}|${boss ? boss.type + boss.hp : ''}|${W.coins.filter(c => c.taken).length}`;
+    const key = `${lit}|${Math.floor(W.time * 10)}|${W.falls}|${open}|${Object.values(LF.powerFlags(p)).join('')}|${p.ammo}|${Math.ceil(p.hp)}|${inventory.a}|${JSON.stringify(p.keys)}|${boss ? boss.type + boss.hp : ''}|${W.coins.filter(c => c.taken).length}`;
     if (key === hudCache) return;
     hudCache = key;
     // With no lanterns (a boss arena, or Hardcore) the door is all there is to show.
@@ -1865,6 +1884,14 @@
     $('hud-time').previousElementSibling.textContent = W.def.timeLimit || clock != null ? 'Left' : 'Time';
     $('hud-time').style.color = clock != null && clock <= (W.def.hurry || LF.HURRY) ? '#FF6B3D' : '';
     $('hud-falls').textContent = W.falls;
+    // Health: the bar's as long as your most (longer when ripe); apples you could eat (H) beside it.
+    const maxHp = LF.maxHp(p), hp = Math.max(0, Math.ceil(p.hp));
+    $('hud-hp').textContent = `${hp}/${maxHp}`;
+    $('hud-hp-bar').style.width = `${maxHp * .8}px`;
+    $('hud-hp-fill').style.width = `${hp / maxHp * 100}%`;
+    $('hud-hp-fill').className = hp <= 25 ? 'low' : hp <= 50 ? 'mid' : '';
+    const apples = applesToEat();
+    $('hud-apples').textContent = apples ? `🍎${apples === Infinity ? '∞' : '×' + apples} · H` : '';
     $('hud-coins-wrap').hidden = !W.coins.length;
     // (A coin you have is a gold disc; one picked up this run, not yours till you finish, a
     // pulsing gold ring; one still out there, an empty ring.)
@@ -1879,7 +1906,6 @@
     const lv = k => (p[k] > 1 ? ' ×' + p[k] : '');
     if (p.stack) powers.push('<i style="color:#FFD24A">✨ Stacking</i>');
     if (p.green) powers.push(`<i style="color:${LF.FRUITS['ǵ'].color}">Ripe${p.green > 1 ? ' ×2' : ''}</i>`);
-    if (p.shield) powers.push(`<i class="pw-a">Shield${p.shield > 1 ? ' ×' + p.shield : ''}</i>`);
     if (p.boost > 0) powers.push(`<i class="pw-o">Boost${lv('boost')}</i>`);
     if (p.dbl > 0) powers.push(`<i class="pw-b">${['Double', 'Triple', 'Quadruple'][p.dbl - 1] || 'Double'}</i>`);
     if (p.fast > 0) powers.push(`<i class="pw-m">Speed${lv('fast')}</i>`);

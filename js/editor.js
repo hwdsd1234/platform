@@ -14,7 +14,7 @@
     { c: 'O', label: 'Spring', group: 'Terrain', chip: '#FF6B3D', note: 'launches about 8 tiles up' },
     { c: '^', label: 'Spikes', group: 'Terrain', chip: '#CFC6E8' },
     { c: '~', label: 'Water', group: 'Terrain', chip: '#2E4E82' },
-    { c: '!', label: 'Lava', group: 'Terrain', chip: '#E0561E', note: 'kills on touch, even through a shield' },
+    { c: '!', label: 'Lava', group: 'Terrain', chip: '#E0561E', note: 'kills on touch, whatever your health' },
     { c: 'T', label: 'Blink A', group: 'Terrain', chip: '#FFB547', note: 'solid, then gone — swaps with Blink B every 2s' },
     { c: 'H', label: 'Blink B', group: 'Terrain', chip: '#7FB0E0', note: 'starts gone — swaps with Blink A every 2s' },
     { c: '<', label: 'Belt ←', group: 'Terrain', chip: '#FF9A2E', glyph: '‹', note: 'conveyor: carries you left' },
@@ -188,7 +188,7 @@
         return [
           ['Moves', `${c === '%' ? 'rises' : 'advances'} a steady ${Math.round(h.speed * t.speed)} px/s`],
           ['Starts', '0.5 s after the level starts and after each respawn'],
-          ['Touch', 'kills you, even through a shield'],
+          ['Touch', 'kills you, whatever your health'],
           ['Stomp / shoot', 'no — bullets vanish into it'],
           ['Starts / respawn', '4 tiles behind you'],
         ].map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join('');

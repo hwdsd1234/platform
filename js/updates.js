@@ -6,6 +6,11 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Health: you have 100 HP instead of dying in one hit (shown top left); each enemy hits for its own damage (a beetle 15, a Thornback 25, a ram 30, a golem 35, a TNT cart 40, bosses 35–40; spikes 25, traps 30), and you get 5 HP back every 5 seconds; lava and falling still kill outright',
+      'Apples heal 25 HP instead of shielding: pick one up, or press H in a level to eat one from your items (🍎 on a phone); any apple shields you were carrying went back into your items as apples',
+      'Ripe: each green apple adds 50 HP to your most (150, then 200), straight away',
+      'Sword: click (or V, or ⚔ on a phone) to slash in front of you: half a hit off an enemy, so two slashes for most, knocking it back; a boss takes it like a gun hit; it knocks arrows, embers and bombs out of the air',
+      'Explosives and big shots hit harder: a big shot 2, an explosion 3, dynamite 4, a nuke 6 (twice that when big, twice again in lava): golems, TNT carts and bosses take it all, and a tower or castle boss counts it towards its 10 gun hits',
       'Multi-harvest plants now fruit a whole crop of three at once (every three times their old time between fruits), not one at a time. And the auto-harvester can be paused and resumed (from your farms list or any bed’s card); paused, it shows 🧺⏸.',
       'The auto-harvester now harvests every 10 seconds (no more than that).',
       'Own the auto-harvester and it shows: a 🧺 on the Garden button on the map, and on your farms.',

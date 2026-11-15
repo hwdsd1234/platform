@@ -63,7 +63,7 @@
   L.push({
     chapter: 'The Orchard', name: 'Orchard Walls', dark: .5,
     signs: [
-      { x: 1.2, y: 16.4, t: 'apple = shield' },
+      { x: 1.2, y: 16.4, t: 'apple = heal' },
       { x: 15.1, y: 16, t: 'slide ↓' },
       { x: 20.5, y: 20.4, t: 'wall jump ↑' },
       { x: 21.5, y: 5.4, t: 'banana = double jump' },

@@ -60,6 +60,13 @@
   .boss-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--ember), var(--wick)); transition: width .2s; }
   .boss-tag { color: var(--ember); }
   .stats .ammo b { color: #FFE2A8; }
+  .stats .hp { display: flex; align-items: center; gap: 0; }
+  .stats .hp b { color: #FF8A8A; min-width: 54px; }
+  .hp-bar { display: inline-block; height: 8px; border-radius: 4px; background: rgba(23,20,47,.75); border: 1px solid rgba(217,208,240,.3); overflow: hidden; margin-left: 6px; max-width: 30vw; }
+  .hp-bar i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #E5484D, #7FD87A); transition: width .2s; }
+  .hp-bar i.mid { background: linear-gradient(90deg, #E5484D, #FFB547); }
+  .hp-bar i.low { background: #E5484D; }
+  .stats .hp small { margin-left: 8px; color: var(--mist-dim); font-size: 11px; }
   .stats .ammo.empty b { color: var(--mist-dim); }
   .stats .pw-a { color: #9FD8FF; }
   .stats .pw-o { color: #FF9A2E; }
@@ -467,6 +474,8 @@
   .touch button.on { background: rgba(255,181,71,.25); }
   .touch .pause { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 64px); right: 16px; width: 44px; height: 44px; font-size: 14px; }
   .touch .big { position: fixed; left: 16px; bottom: calc(env(safe-area-inset-bottom, 0px) + 98px); width: 56px; height: 56px; font-size: 12px; }
+  .touch .big.sword { bottom: calc(env(safe-area-inset-bottom, 0px) + 162px); font-size: 22px; }
+  .touch .big.eat { bottom: calc(env(safe-area-inset-bottom, 0px) + 226px); font-size: 20px; }
   .touch .big.on { border-color: rgba(255,181,71,.8); color: var(--wick); }
   @media (pointer: coarse) { .touch:not([hidden]) { display: flex; } }
   @media (max-width: 560px) {
@@ -482,6 +491,7 @@
 <div class="hud" id="hud" hidden>
   <div class="hud-level"><small id="hud-num">Level 1</small><strong id="hud-name">First Light</strong></div>
   <div class="stats">
+    <div class="hp" id="hud-hp-wrap"><span>HP</span><b id="hud-hp">100/100</b><i class="hp-bar" id="hud-hp-bar"><i id="hud-hp-fill"></i></i><small id="hud-apples"></small></div>
     <div class="lamps" id="hud-lamps-wrap"><span id="hud-lamps-label">Lanterns</span><b id="hud-lamps">0/0</b></div>
     <div><span>Time</span><b id="hud-time">0:00.0</b></div>
     <div><span>Falls</span><b id="hud-falls">0</b></div>
@@ -624,6 +634,8 @@
 <div class="touch" id="touch" hidden>
   <button class="pause" id="t-pause" aria-label="Pause">❚❚</button>
   <button class="big" id="t-big" aria-label="Big shots (2× size and blast, 2× ammo)" aria-pressed="false">BIG</button>
+  <button class="big sword" id="t-sword" aria-label="Sword">⚔</button>
+  <button class="big eat" id="t-eat" aria-label="Eat an apple">🍎</button>
   <div class="pad">
     <button id="t-left" aria-label="Walk left">◀</button>
     <button id="t-right" aria-label="Walk right">▶</button>
@@ -639,41 +651,41 @@
   </div>
 </div>
 
-<script src="js/engine.js?v=286"></script>
-<script src="js/events.js?v=286"></script>
-<script src="js/render.js?v=286"></script>
-<script src="js/gen.js?v=286"></script>
-<script src="js/levels-1.js?v=286"></script>
-<script src="js/levels-2.js?v=286"></script>
-<script src="js/levels-3.js?v=286"></script>
-<script src="js/levels-4.js?v=286"></script>
-<script src="js/levels-5.js?v=286"></script>
-<script src="js/levels-6.js?v=286"></script>
-<script src="js/levels-7.js?v=286"></script>
-<script src="js/levels-8.js?v=286"></script>
-<script src="js/levels-9.js?v=286"></script>
-<script src="js/levels-10.js?v=286"></script>
-<script src="js/levels-11.js?v=286"></script>
-<script src="js/levels-12.js?v=286"></script>
-<script src="js/levels-13.js?v=286"></script>
-<script src="js/levels-14.js?v=286"></script>
-<script src="js/levels-15.js?v=286"></script>
-<script src="js/levels-16.js?v=286"></script>
-<script src="js/levels-17.js?v=286"></script>
-<script src="js/levels-18.js?v=286"></script>
-<script src="js/levels-19.js?v=286"></script>
-<script src="js/checkpoints.js?v=286"></script>
-<script src="js/bosses.js?v=286"></script>
-<script src="js/worlds.js?v=286"></script>
-<script src="js/lengthen.js?v=286"></script>
-<script src="js/slopes.js?v=286"></script>
-<script src="js/crowd.js?v=286"></script>
-<script src="js/coins.js?v=286"></script>
-<script src="js/special.js?v=286"></script>
-<script src="js/secrets.js?v=286"></script>
-<script src="js/awards.js?v=286"></script>
-<script src="js/editor.js?v=286"></script>
-<script src="js/music.js?v=286"></script>
-<script src="js/mapart.js?v=286"></script>
-<script src="js/updates.js?v=286"></script>
-<script src="js/ui.js?v=286"></script>
+<script src="js/engine.js?v=287"></script>
+<script src="js/events.js?v=287"></script>
+<script src="js/render.js?v=287"></script>
+<script src="js/gen.js?v=287"></script>
+<script src="js/levels-1.js?v=287"></script>
+<script src="js/levels-2.js?v=287"></script>
+<script src="js/levels-3.js?v=287"></script>
+<script src="js/levels-4.js?v=287"></script>
+<script src="js/levels-5.js?v=287"></script>
+<script src="js/levels-6.js?v=287"></script>
+<script src="js/levels-7.js?v=287"></script>
+<script src="js/levels-8.js?v=287"></script>
+<script src="js/levels-9.js?v=287"></script>
+<script src="js/levels-10.js?v=287"></script>
+<script src="js/levels-11.js?v=287"></script>
+<script src="js/levels-12.js?v=287"></script>
+<script src="js/levels-13.js?v=287"></script>
+<script src="js/levels-14.js?v=287"></script>
+<script src="js/levels-15.js?v=287"></script>
+<script src="js/levels-16.js?v=287"></script>
+<script src="js/levels-17.js?v=287"></script>
+<script src="js/levels-18.js?v=287"></script>
+<script src="js/levels-19.js?v=287"></script>
+<script src="js/checkpoints.js?v=287"></script>
+<script src="js/bosses.js?v=287"></script>
+<script src="js/worlds.js?v=287"></script>
+<script src="js/lengthen.js?v=287"></script>
+<script src="js/slopes.js?v=287"></script>
+<script src="js/crowd.js?v=287"></script>
+<script src="js/coins.js?v=287"></script>
+<script src="js/special.js?v=287"></script>
+<script src="js/secrets.js?v=287"></script>
+<script src="js/awards.js?v=287"></script>
+<script src="js/editor.js?v=287"></script>
+<script src="js/music.js?v=287"></script>
+<script src="js/mapart.js?v=287"></script>
+<script src="js/updates.js?v=287"></script>
+<script src="js/ui.js?v=287"></script>
