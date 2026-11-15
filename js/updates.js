@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Every tower’s name now ends in Tower and every castle’s in Castle: Bell Pit Tower, Sky Tower, Matriarch’s Tower, Candle Castle, Sunken Castle, Last Dark Castle and so on.',
       'Secret exits show on the map: a blue ? on every level that has one (a star once found), and the level’s info says what it takes. Most are now tricks built into the level that need a fruit’s power, the fruit growing at the foot of each: an ice chimney to wall-climb with the 🍓 strawberry (ice walls are too slippery to wall-jump off without its grip), a long gap to glide with the 🍐 pear, a ledge only a 🍌 banana’s double jump or an 🍊 orange’s boost reaches, and a leap only the 🍉 watermelon’s speed makes.',
       'Put fruit back: the inventory shows what you’re carrying (powers, shields, green apples), and you can put any of it, or all of it, back into your items as fruit.',
       'No more bonus doors in the groves: get every fruit, crate or panel prize and the grove ends at once.',

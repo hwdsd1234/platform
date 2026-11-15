@@ -1558,5 +1558,14 @@
   // every star coin on the rest of the Star Road (see special.js and ui.js). (Its starOf is the
   // Star Road itself, the tenth world.)
   out.push({ chapter: 'The Star Road', name: 'Star of Star Road', starOf: 9, starOfStars: true, since: 18, dark: .96, map: ['P........D', '##########'] });
+  // Every tower is "… Tower" and every castle "… Castle" (The Bell Pit → Bell Pit Tower, The Sky
+  // Spire → Sky Tower, Candle Keep → Candle Castle, Castle of the Last Dark → Last Dark Castle).
+  // (Named last, once everything else that goes by their old names is done.)
+  for (const lv of out) {
+    if (!lv.boss) continue;
+    const base = lv.name.replace(/^The /, '').replace(/^Castle of the /, '');
+    if (lv.castle) lv.name = /Castle$/.test(base) ? base : base.replace(/ Keep$/, '') + ' Castle';
+    else lv.name = /Spire$/.test(base) ? base.replace(/Spire$/, 'Tower') : /Towers$/.test(base) ? base.replace(/Towers$/, 'Tower') : base + ' Tower';
+  }
   L.length = 0; L.push(...out);
 })();

@@ -50,7 +50,7 @@
   // where they stood), each level found again by name; a cleared castle that's gone counts
   // as its world's castle cleared.
   const SAVE_V = 21;
-  const GONE = [{ name: 'Lighthouse Castle', after: 'Sunken Keep', now: 'Sunken Keep' }, { name: 'Rat Castle', after: 'The Long Glide', now: 'Drowned Castle' }];
+  const GONE = [{ name: 'Lighthouse Castle', after: 'Sunken Castle', now: 'Sunken Castle' }, { name: 'Rat Castle', after: 'The Long Glide', now: 'Drowned Castle' }];
   if (levelsV < SAVE_V) {
     let old = LF.LEVELS.map((lv, i) => ({ name: lv.name, since: lv.since || 0, boss: lv.boss, giantFight: lv.giantFight, i }));
     if (levelsV < 13) {
