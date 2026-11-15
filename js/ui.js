@@ -883,6 +883,10 @@
   let seedBag = store.get('seedBag', {});
   const saveFarms = () => { store.set('farms', farms); store.set('farmsOwned', farmsOwned); };
   const saveBag = () => store.set('seedBag', seedBag);
+  // Bone meal (BONE_COST ammo a bag): grows a plant on the spot: a growing one is ripe at
+  // once, and a multi-harvest one waiting on its next crop has it now.
+  const BONE_COST = 20;
+  let boneMeal = store.get('boneMeal', 0);
   let farmAt = 0;
   // A bed's state now: how grown (0 to 1), and the fruit hanging on it (each its mutation or null).
   function bedNow(f, k, now = Date.now()) {
@@ -973,10 +977,12 @@
     const bag = Object.keys(SEEDS).filter(t => seedBag[t] > 0);
     const bagRow = bag.length ? bag.map(t => `<button class="mini go-mini" data-act="plantSeed" data-f="${f}" data-k="${k}" data-t="${t}" ${off || b ? 'disabled' : ''}>${FRUIT_ICON[t]} ${esc(LF.FRUITS[t].name)} ×${seedBag[t]} · plant</button>`).join('') : '<small>No seeds yet: buy some below.</small>';
     const shopRow = list => list.map(t => { const c = SEEDS[t].cost; return `<span class="seed-buy">${FRUIT_ICON[t]} ${esc(LF.FRUITS[t].name)} · ${c} ammo · ${kind(t)} · grows in ${Math.round(SEEDS[t].grow / 6) / 10} min <button class="mini" data-act="buySeed" data-f="${f}" data-k="${k}" data-t="${t}" data-n="1" ${off || have < c ? 'disabled' : ''}>Buy 1</button><button class="mini" data-act="buySeed" data-f="${f}" data-k="${k}" data-t="${t}" data-n="5" ${off || have < c * 5 ? 'disabled' : ''}>Buy 5</button></span>`; }).join('');
+    const boneBuy = (f, k, shop) => [1, 5].map(n => `<button class="mini" data-act="buyBone" data-f="${f}" data-k="${k}" data-n="${n}"${shop ? ' data-shop="1"' : ''} ${off || have < BONE_COST * n ? 'disabled' : ''}>Buy ${n} · ${BONE_COST * n} ammo</button>`).join('');
     let top;
     if (b) {
       const st = bedNow(f, k);
       top = `<h2>${FRUIT_ICON[b.t]} ${esc(LF.FRUITS[b.t].name)}</h2><p class="lede">${kind(b.t)} · ${st.grown < 1 ? `growing: ${Math.round(st.grown * 100)}%` : st.fruit.length ? `${st.fruit.length} fruit hanging` : `next crop in ${Math.ceil((st.next || 0) / 1000)}s`}.</p>
+        <div class="seed-list"><button class="mini go-mini" data-act="useBone" data-f="${f}" data-k="${k}" ${off || !boneMeal || st.fruit.length ? 'disabled' : ''}>🦴 Bone meal ×${boneMeal} · grow it now</button>${boneBuy(f, k)}</div>
         <div class="menu"><button class="alt" data-act="digUp" data-f="${f}" data-k="${k}" ${off ? 'disabled' : ''}>Dig it up (its seed back in your bag)</button></div>`;
     } else top = `<h2>Plant a seed</h2>`;
     card(`<p class="eyebrow">Farm ${f + 1} · bed ${k + 1}</p>${top}
@@ -986,7 +992,7 @@
       <div class="seed-shop"><small>Multi-harvest: fruits again and again, for good</small>${shopRow(Object.keys(SEEDS).filter(t => !SEEDS[t].yield))}
       <small>Single-harvest: one big crop</small>${shopRow(Object.keys(SEEDS).filter(t => SEEDS[t].yield))}</div>
       <p class="lede">Any fruit can come up mutated: 🌙 Moonlit ×2, ✨ Golden ×3, 🌈 Rainbow ×5.</p>
-      <p class="eyebrow">Tools</p><div class="seed-list">${autoOwned ? `<button class="mini" data-act="toggleAuto" data-f="${f}" data-k="${k}">${autoPaused ? '🧺⏸ Auto-harvester paused · resume it' : '🧺 Auto-harvester on · pause it'}</button>` : `<button class="mini" data-act="buyAuto" ${off || have < AUTO_COST ? 'disabled' : ''}>🧺 Auto-harvester · ${AUTO_COST} ammo · picks every ripe fruit on all your farms, even while you’re away</button>`}</div>` : `<div class="menu"><button class="alt" data-act="bedShop" data-f="${f}" data-k="${k}">Seed shop</button></div>`}
+      <p class="eyebrow">Tools</p><div class="seed-list"><span class="seed-buy">🦴 Bone meal ×${boneMeal} · ${BONE_COST} ammo a bag · grows a plant on the spot (a growing one ripe at once, a multi-harvest one's next crop now) ${boneBuy(f, k, 1)}</span>${autoOwned ? `<button class="mini" data-act="toggleAuto" data-f="${f}" data-k="${k}">${autoPaused ? '🧺⏸ Auto-harvester paused · resume it' : '🧺 Auto-harvester on · pause it'}</button>` : `<button class="mini" data-act="buyAuto" ${off || have < AUTO_COST ? 'disabled' : ''}>🧺 Auto-harvester · ${AUTO_COST} ammo · picks every ripe fruit on all your farms, even while you’re away</button>`}</div>` : `<div class="menu"><button class="alt" data-act="bedShop" data-f="${f}" data-k="${k}">Seed shop</button></div>`}
       <div class="menu"><button class="go" data-act="resume">Done</button></div>`);
   }
   // The Garden button: your farms, to go to, or to buy.
@@ -1739,6 +1745,20 @@
       ACTIONS.resume(); flash(`${FRUIT_ICON[b.t]} dug up: its seed's back in your bag`);
     },
     bedShop: d => showBed(+d.f, +d.k, true),
+    buyBone: d => {
+      const n = +d.n, c = BONE_COST * n;
+      if (practice || hardcore || ammoHave() < c) return;
+      payAmmo(c); boneMeal += n; store.set('boneMeal', boneMeal); flash(`🦴 ×${n} bone meal (−${c} ammo)`); showBed(+d.f, +d.k, !farms[+d.f][+d.k] || !!d.shop);
+    },
+    useBone: d => {
+      const f = +d.f, k = +d.k, b = farms[f][k]; if (!b || practice || hardcore || !boneMeal) return;
+      const st = bedNow(f, k), sd = SEEDS[b.t], now = Date.now();
+      if (st.fruit.length) return flash('It’s ready to pick already');
+      if (st.grown < 1) b.at = now - sd.grow * 1000;
+      else b.last = now - sd.every * HANG * 1000;
+      boneMeal--; store.set('boneMeal', boneMeal); saveFarms();
+      flash(`🦴 ${LF.FRUITS[b.t].name} grown`); showBed(f, k);
+    },
     // (Pause the auto-harvester, or set it going again: from the farms list or a bed's card.)
     toggleAuto: d => {
       if (!autoOwned) return;
