@@ -1296,7 +1296,7 @@
   // (GUN_HITS) for one hit, where a stomp, a kicked shell or a TNT cart is a hit outright.
   const GUN_HITS = 10;
   function gunShot(W, k) { const id = newShot(W, k); (W.gunShots ||= new Set()).add(id); return id; }
-  function shootEnemy(W, e, dir, shot, how = 'zap', dmg = 1) {
+  function shootEnemy(W, e, dir, shot, how = 'zap', dmg = 1, size = 1) {
     const boss = isBoss(e);
     if (shot) {
       // (A grenade's three blasts can each land a hit, bosses included.)
@@ -1307,8 +1307,8 @@
     if (boss) {
       if (e.fury > 0) return;
       // (A boss takes damage whole, at least 1: an explosive or a big shot hits harder. A kill
-      // shot, a stomp or a TNT cart is one hit.)
-      dmg = how === 'KO' || how === 'stomp' || dmg > 50 ? 1 : Math.max(1, Math.round(dmg)); wakeBoss(W, e);
+      // shot, a stomp or a TNT cart is one hit; a big kill shot two.)
+      dmg = how === 'KO' || how === 'stomp' || dmg > 50 ? size : Math.max(1, Math.round(dmg)); wakeBoss(W, e);
       if (W.def.bossFury && shot != null && W.gunShots && W.gunShots.has(shot)) {
         e.gunHits = (e.gunHits || 0) + dmg;
         if (e.gunHits < GUN_HITS) {
@@ -1381,7 +1381,7 @@
       for (const e of W.enemies) {
         if (!e.alive || e.phased || !overlap({ x: b.x - 4 * b.s, y: b.y - 2 * b.s, w: 8 * b.s, h: 4 * b.s }, e)) continue;
         b.life = 0;
-        if (b.kill) { shootEnemy(W, e, Math.sign(b.vx), b.id, 'KO', 999); ring(W, e.x + e.w / 2, e.y + e.h / 2, 40, '229,72,77', .3); break; }
+        if (b.kill) { shootEnemy(W, e, Math.sign(b.vx), b.id, 'KO', 999, b.s); ring(W, e.x + e.w / 2, e.y + e.h / 2, 40 * b.s, '229,72,77', .3); break; }
         shootEnemy(W, e, Math.sign(b.vx), b.id, 'zap', b.s);
         splash(W, e.x + e.w / 2, e.y + e.h / 2, Math.sign(b.vx), e, b.s, b.id);
         break;
@@ -3556,15 +3556,16 @@
     }
     if (input.killPressed && p.cool <= 0) {
       input.killPressed = false;
-      if (p.ammo >= KILL_COST) {
-        p.ammo -= KILL_COST; p.cool = .35; p.flash = .12;
+      // (Big, like any shot: twice the size, twice the ammo, and two hits on a boss.)
+      if (p.ammo >= KILL_COST * s) {
+        p.ammo -= KILL_COST * s; p.cool = .35; p.flash = .12;
         const g = LF.gunPos(p);
-        for (const sp of spread(p)) W.bullets.push({ id: gunShot(W), x: g.x, y: g.y, vx: p.face * BULLET * 1.25, vy: sp * 70, life: 1.1, s: 1, kill: true });
+        for (const sp of spread(p)) W.bullets.push({ id: gunShot(W), x: g.x, y: g.y, vx: p.face * BULLET * 1.25, vy: sp * 70, life: 1.1, s, kill: true });
         p.vx -= p.face * 60;
         W.emit('rocket');
       } else {
         p.cool = .3; W.emit('empty');
-        W.floaters.push({ x: p.x + p.w / 2, y: p.y - 10, t: W.def.noAmmo ? 'no guns in a tower: stomp!' : `kill shot needs ${KILL_COST} ammo`, life: 1, c: '#D9D0F0' });
+        W.floaters.push({ x: p.x + p.w / 2, y: p.y - 10, t: W.def.noAmmo ? 'no guns in a tower: stomp!' : `${s > 1 ? 'big ' : ''}kill shot needs ${KILL_COST * s} ammo`, life: 1, c: '#D9D0F0' });
       }
     }
     // X, Q and D work like E: tap for one, hold to keep firing while there's ammo for it.
