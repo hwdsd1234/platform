@@ -6,6 +6,9 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'New fruit: the 🥥 coconut, heavy boots: your stomps do 2 damage to golems, TNT carts and bosses (3 ripe, 4 ripe twice). It grows in levels, the groves and the garden',
+      'New event: 🍏 Triple Ripe: you can hold a third green apple (250 HP, the yellow apple’s regeneration up to 5), and you keep it until you die',
+      'A kill shot now sends a tower or castle boss straight into its fury: a hit outright, not one of the 10 gun hits (a big kill shot is two)',
       'New chapter, the Ferry Line (four levels at the end of the Canal District, before Drowned Castle): rides. Step onto the raft and it carries you the whole level along its dotted track to the door, so stay on it, with nothing below. Jump the walls across the track (run into one and jump: in the air you keep going with the raft), keep your head down in the spiked tunnels, and come back at a lantern to find the raft waiting there',
       'The 💛 yellow apple’s regeneration now comes in bursts: every second, a burst of 1, 2, 3 or 4 HP (by its level), with a little yellow sparkle',
       'No more health coming back by itself (the 5 HP every 5 seconds is gone): only apples heal you, and a 💛 yellow apple’s regeneration',

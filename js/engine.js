@@ -67,20 +67,26 @@
     'ǫ': { name: 'Kiwi', power: 'Multishot', color: '#8DB33A', note: 'every gun button fires two at once (three with a green apple’s ripeness), for the ammo of one, until you die (not the nuke)' },
     // The green apple isn't a power of its own and takes no power slot: it ripens the rest.
     'ǵ': { name: 'Green apple', power: 'Ripe', color: '#7BC043', note: 'takes no power slot; hold up to two: each lets you take one more of each fruit: 50 more HP (150, then 200, at most: you get the extra 50 straight away), and a second (and third) of any power fruit makes its power stronger (a triple jump, a bigger boost, faster, a slower glide and slide, a wider magnet, brighter eyes, spiked chains harmless, triple ammo, stronger swimming, a half-speed clock, two second chances), until you die' },
+    'ċ': { name: 'Coconut', power: 'Heavy boots', color: '#8B5A2B', note: 'your stomps hit twice as hard: 2 damage a stomp (3 ripe, 4 ripe twice) to golems, TNT carts and bosses, until you die' },
     'ý': { name: 'Yellow apple', power: 'Regeneration', color: '#F2C82E', note: 'takes no power slot: every second you get a burst of 1 HP; eat a second for bursts of 2 (no ripeness needed), and with a green apple a third (3), with two a fourth (4), until you die' },
     'ŧ': { name: 'Tomato', power: 'Second chance', color: '#E8402A', note: 'takes no power slot: a hit that would take your last HP doesn’t kill you: the tomato takes it, then for 5 seconds you run fast, jump high and can’t be hurt, and whatever you touch dies (a boss takes a hit)' },
   };
   // Every fruit but the apple gives a power that's on or off: the player's flag for each.
-  const POWERS = LF.POWERS = { o: 'boost', b: 'dbl', m: 'fast', p: 'glide', s: 'grip', 'ç': 'magnet', 'ƀ': 'glow', 'ƥ': 'spiky', 'ǥ': 'lucky', 'ƫ': 'swimmer', 'ɯ': 'slowtime', 'ŧ': 'tomato', 'ǫ': 'multi', 'ý': 'heal' };
+  const POWERS = LF.POWERS = { o: 'boost', b: 'dbl', m: 'fast', p: 'glide', s: 'grip', 'ç': 'magnet', 'ƀ': 'glow', 'ƥ': 'spiky', 'ǥ': 'lucky', 'ƫ': 'swimmer', 'ɯ': 'slowtime', 'ŧ': 'tomato', 'ǫ': 'multi', 'ý': 'heal', 'ċ': 'boots' };
   const FLAGS = Object.values(POWERS);
   // The most of a power you can have: 1, and one more for each green apple you hold (the
   // yellow apple's regeneration goes to 2 without one). Powers that take no slot: SLOTLESS.
-  const powerCap = LF.powerCap = (k, green) => (k === 'heal' ? 2 : 1) + (green || 0);
+  // (A third green apple, in a Triple Ripe event, takes a power no further than level 3; the
+  // yellow apple's regeneration to 5.)
+  const powerCap = LF.powerCap = (k, green) => (k === 'heal' ? 2 + (green || 0) : Math.min(3, 1 + (green || 0)));
+  // How many green apples you can hold: two, or three in a Triple Ripe event (see events.js),
+  // and once you've had a third you keep it till you die.
+  const greenCap = LF.greenCap = p => (p.ripe3 || (LF.eventIs && LF.eventIs('ripe3')) ? 3 : 2);
   const SLOTLESS = new Set(['tomato', 'heal']);
   // (A power's level: 1, or 2 when ripened by a green apple. The green apple's own flag
   // rides along.)
   // (p.stack: caught a Power Stack event, so powers stack till you die: see applyFruit.)
-  LF.powerFlags = p => ({ ...Object.fromEntries(FLAGS.map(k => [k, p[k] || 0])), green: p.green || 0, stack: p.stack ? 1 : 0 });
+  LF.powerFlags = p => ({ ...Object.fromEntries(FLAGS.map(k => [k, p[k] || 0])), green: p.green || 0, stack: p.stack ? 1 : 0, ripe3: p.ripe3 ? 1 : 0 });
   LF.hasPowers = p => FLAGS.some(k => p[k]) || !!p.green || !!p.stack;
 
   // drop: ammo an enemy leaves behind when you kill it — the harder it is to kill, the more.
@@ -131,7 +137,7 @@
   // four shields, or a power you have already goes up a level, to 2 and then 3 (stronger
   // each time: see where each is used).
   LF.applyFruit = (p, type) => {
-    if (type === 'ǵ') { if ((p.green || 0) >= 2) return false; p.green = (p.green || 0) + 1; if (p.hp != null) p.hp += RIPE_HP; return true; }
+    if (type === 'ǵ') { if ((p.green || 0) >= greenCap(p)) return false; p.green = (p.green || 0) + 1; if (p.green > 2) p.ripe3 = 1; if (p.hp != null) p.hp += RIPE_HP; return true; }
     if (type === 'a') return LF.heal(p, APPLE_HEAL);
     const k = POWERS[type];
     if (!k || p[k] >= powerCap(k, p.green)) return false;
@@ -445,7 +451,7 @@
     // Powers brought from the last level (or the inventory): def.powers = { shield, boost, dbl }.
     if (def.powers) {
       const pw = def.powers;
-      const green = Math.min(2, pw.green || 0);
+      const green = Math.min(pw.ripe3 ? 3 : 2, pw.green || 0); W.player.ripe3 = pw.ripe3 ? 1 : 0;
       W.player.green = green; W.player.stack = pw.stack ? 1 : 0;
       // (Every power you're carrying: powers stacked in a Power Stack event stay stacked
       // until you die, even once the event's over.)
@@ -1354,7 +1360,8 @@
       // (A boss takes damage whole, at least 1: an explosive or a big shot hits harder. A kill
       // shot, a stomp or a TNT cart is one hit; a big kill shot two.)
       dmg = how === 'KO' || how === 'stomp' || dmg > 50 ? size : Math.max(1, Math.round(dmg)); wakeBoss(W, e);
-      if (W.def.bossFury && shot != null && W.gunShots && W.gunShots.has(shot)) {
+      // (A kill shot isn't counted with the gun hits: it's a hit outright, into its fury.)
+      if (W.def.bossFury && how !== 'KO' && shot != null && W.gunShots && W.gunShots.has(shot)) {
         e.gunHits = (e.gunHits || 0) + dmg;
         if (e.gunHits < GUN_HITS) {
           e.hurt = .08; burst(W, e.x + e.w / 2, e.y + e.h / 2, 5, ['#FFE2A8'], 90, 300, 2); W.emit('clank');
@@ -1362,7 +1369,7 @@
           return;
         }
         e.gunHits -= GUN_HITS; dmg = 1;
-      } else if (W.def.bossFury) dmg = 1;
+      } else if (W.def.bossFury) dmg = how === 'KO' ? size : 1;
     }
     if (e.armored && how !== 'KO') {
       W.floaters.push({ x: e.x + e.w / 2, y: e.y - 6, t: 'armored', life: .6, c: '#CFC6E8' });
@@ -3796,7 +3803,8 @@
             e.stompCool = .4; W.shake = .15;
             W.floaters.push({ x: e.x + e.w / 2, y: e.y - 6, t: 'stomp', life: .8, c: '#FF6B3D' });
             W.emit('stomp', { type: e.type });
-            shootEnemy(W, e, 0, null, 'stomp');
+            // (A coconut's heavy boots: 2, 3 or 4 a stomp.)
+            shootEnemy(W, e, 0, null, 'stomp', 1 + (p.boots || 0), 1 + (p.boots || 0));
           }
         } else if (e.stompCool <= 0) { hurt(W, enemyDmg(e), e.x + e.w / 2); if (p.dead) return; }
         continue;

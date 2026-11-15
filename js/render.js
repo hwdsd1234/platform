@@ -1262,6 +1262,12 @@
         ctx.fillStyle = '#4E9A3A'; ctx.beginPath();
         for (let k = 0; k < 10; k++) { const ang = -Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? 1.2 : 4; ctx.lineTo(Math.cos(ang) * rr, -4 + Math.sin(ang) * rr * .6); }
         ctx.fill();
+      } else if (f.type === 'ċ') {
+        // A coconut: hairy brown shell, three dark eyes at the top.
+        ctx.fillStyle = '#6B4423'; ctx.beginPath(); ctx.arc(0, 1, 7, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#8B5A2B'; ctx.beginPath(); ctx.arc(-1, 0, 5.6, 0, TAU); ctx.fill();
+        ctx.strokeStyle = '#A8784A'; ctx.lineWidth = .8; for (let k = 0; k < 5; k++) { const ang = .4 + k * .5; ctx.beginPath(); ctx.moveTo(Math.cos(ang) * 3, 1 + Math.sin(ang) * 3); ctx.lineTo(Math.cos(ang) * 6, 1 + Math.sin(ang) * 6); ctx.stroke(); }
+        ctx.fillStyle = '#2E1C0E'; for (const [ex, ey] of [[-2, -3], [1.5, -3.5], [0, -1]]) { ctx.beginPath(); ctx.arc(ex, ey, 1.1, 0, TAU); ctx.fill(); }
       } else if (f.type === 'ǫ') {
         // A kiwi cut in half: fuzzy brown rim, green flesh, a pale heart ringed with seeds.
         ctx.fillStyle = '#7A5A34'; ctx.beginPath(); ctx.ellipse(0, 1, 7, 6.5, 0, 0, TAU); ctx.fill();
