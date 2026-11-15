@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Levels are lighter: still night, but the darkness is about half as deep, so you can see where you’re going away from the lanterns',
       'The sword is gone again (no more clicking or V to slash)',
       'Big (Shift) versions of every shot now do twice the damage, the kill shot too: a big kill shot is twice the size, costs twice the ammo, and is two hits on a boss',
       'Health: you have 100 HP instead of dying in one hit (shown top left); each enemy hits for its own damage (a beetle 15, a Thornback 25, a ram 30, a golem 35, a TNT cart 40, bosses 35–40; spikes 25, traps 30), and you get 5 HP back every 5 seconds; lava and falling still kill outright',

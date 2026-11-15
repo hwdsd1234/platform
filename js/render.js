@@ -1517,12 +1517,14 @@
       return out;
     }
 
+    const DIM = .55;
     function drawDarkness(W, cam) {
       const sc = R.scale(cam);
       dctx.setTransform(1, 0, 0, 1, 0, 0);
       dctx.globalCompositeOperation = 'source-over';
       dctx.clearRect(0, 0, R.W, R.H);
-      dctx.fillStyle = `rgba(9,7,24,${W.dark})`;
+      // (Only a bit dark: each level's darkness is drawn at DIM of its strength.)
+      dctx.fillStyle = `rgba(9,7,24,${W.dark * DIM})`;
       dctx.fillRect(0, 0, R.W, R.H);
       dctx.globalCompositeOperation = 'destination-out';
       for (const li of lights(W)) {
