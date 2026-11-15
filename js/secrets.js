@@ -4,7 +4,8 @@
 // (or the last one). lv.secretTo is the index of that world's first level, lv.secretWorld the
 // world's index. Load after worlds.js, so the worlds and level indexes are final.
 //
-// The door's at the top of a climb in the level itself (see challengeRoom): a stair of floating
+// The door's at the end of a trick built into the level (see trickRoom): one you need a fruit's
+// power for, the fruit growing at its foot. Failing room for one, at the top of a climb (see challengeRoom): a stair of floating
 // blocks, stone or crumbling or ice or blinking, somewhere out of the way, in plain sight;
 // failing room for one, in the hardest spot to get to, out of the way and high up. (Leaving by it gets you only its cannon on the map: see ui.js.)
 (() => {
@@ -66,6 +67,94 @@
     return false;
   }
 
+  // A trick to the secret door, built into some out-of-the-way open ground of the level: one
+  // you need a fruit's power for, the fruit growing right at its foot, so you see what it
+  // asks of you. (Each is measured against the player's jumps: out of reach without the power,
+  // in reach with it.)
+  //   grip (🍓 strawberry): a tall chimney of ice to wall-climb (ice walls won't hold you without
+  //     its grip), the door on its top.
+  //   glide (🍐 pear): steps up to a perch, then a gap far too long to jump; glide across.
+  //   dbl (🍌 banana): a ledge five rows up, a double jump's height.
+  //   boost (🍊 orange): a ledge four rows up, a boosted jump's height.
+  //   fast (🍉 watermelon): steps to a run-up, then a gap only a running leap at speed clears.
+  // Each builds into g (rows of tiles) from the spot (x, y: open ground) going d (±1), and
+  // gives back the cells it needs clear (a box) and the door.
+  const TRICKS = {
+    grip: { fruit: 's', w: 9, h: 8, ground: [0, 2, 6], margin: 4, build(g, x, y, d) {
+      // The chimney's walls (three tiles apart), six rows tall, of ice: too slippery to wall-jump
+      // up without the strawberry's grip.
+      const n = x + d * 2, f = x + d * 6;
+      for (let yy = y - 6; yy <= y; yy++) { if (yy < y - 1) g[yy][n] = 'i'; if (yy > y - 6) g[yy][f] = 'i'; }
+      for (const k of [0, 1, 2]) g[y - 6][f + d * k] = '#';
+      g[y - 7][f + d] = '?'; return { x: f + d, y: y - 7 };
+    } },
+    glide: { fruit: 'p', w: 23, h: 9, ground: [0, 1, 2], build(g, x, y, d) {
+      let bx = x, by = y + 1;
+      for (let k = 0; k < 3; k++) { bx += d * (k ? 3 : 2); by -= 2; g[by][bx] = '#'; }
+      for (const k of [1, 2, 3]) g[by][bx + d * k] = '#';   // the perch, six rows up
+      const lx = bx + d * 14, ly = y - 4;   // the far ledge: ten tiles on from the perch, four rows up (out of a ground jump's reach)
+      for (const k of [-1, 0, 1]) g[ly][lx + k] = '#';
+      g[ly - 1][lx] = '?'; return { x: lx, y: ly - 1 };
+    } },
+    dbl: { fruit: 'b', w: 7, h: 8, ground: [0, 1, 2, 3, 4], build(g, x, y, d) {
+      const lx = x + d * 4, ly = y - 5;
+      for (const k of [-1, 0, 1]) g[ly][lx + k] = '#';
+      g[ly - 1][lx] = '?'; return { x: lx, y: ly - 1 };
+    } },
+    boost: { fruit: 'o', w: 7, h: 7, ground: [0, 1, 2, 3, 4], build(g, x, y, d) {
+      const lx = x + d * 4, ly = y - 4;
+      for (const k of [-1, 0, 1]) g[ly][lx + k] = '#';
+      g[ly - 1][lx] = '?'; return { x: lx, y: ly - 1 };
+    } },
+    fast: { fruit: 'm', w: 25, h: 8, ground: [0, 1, 2], build(g, x, y, d) {
+      let bx = x, by = y + 1;
+      for (let k = 0; k < 3; k++) { bx += d * (k ? 3 : 2); by -= 2; g[by][bx] = '#'; }
+      for (const k of [1, 2, 3, 4]) g[by][bx + d * k] = '#';   // the run-up, six rows up
+      const lx = bx + d * 13, ly = by;   // seven tiles of gap, the same height (a running jump, jumping late off the edge, clears about six; at a watermelon's speed, nearly eight)
+      for (const k of [-1, 0, 1]) g[ly][lx + k] = '#';
+      g[ly - 1][lx] = '?'; return { x: lx, y: ly - 1 };
+    } },
+  };
+  const TRICK_ORDER = ['grip', 'glide', 'dbl', 'boost', 'fast'];
+  LF.secretKit = { trickRoom: (...a) => trickRoom(...a), TRICK_ORDER };   // (for testing)
+  function trickRoom(lv, name) {
+    const t = TRICKS[name], g0 = LF.normalize(lv.map).map(row => row.split('')), h = g0.length, w = g0[0].length;
+    const a0 = LF.analyze(lv), seen = a0.seen, P = find(g0, 'P'), D = find(g0, 'D') || lastDoor(g0), marks = landmarks(g0);
+    if (!a0.ok || !P || !D) return false;
+    const at = (x, y) => (y >= 0 && y < h && x >= 0 && x < w ? g0[y][x] : '#');
+    const lava = (x, y) => (lv.flows || lv.map.flows || []).some(f => x >= f.x0 - 3 && x <= f.x1 + 3 && y >= Math.min(f.hi ?? f.lo, f.lo - (f.amp || 0)) - 6) || g0.slice(Math.max(0, y - 2), y + 3).some(r => r.slice(Math.max(0, x - 4), x + 5).includes('!'));
+    const spots = [];
+    for (let y = t.h + 1; y < h - 1; y++) for (let x = 2; x < w - 2; x++) {
+      if (!seen[y * w + x] || at(x, y) !== '.' || !floor(at(x, y + 1)) || nearAny(marks, x, y) || lava(x, y)) continue;
+      for (const d of [1, -1]) {
+        // (Clear air over the whole of it, a tile round, and solid ground under its width, so
+        // the steps and ledges stand out over the level's floor.)
+        const x1 = x + d * t.w;
+        if (Math.min(x, x1) < 1 + (t.margin || 1) || Math.max(x, x1) > w - 2 - (t.margin || 1)) continue;
+        // (Clear: nothing solid or harmful in the way, whatever else is about; ground under where
+        // you start, take off from and land, and under the chimney's walls.)
+        const free = c => !LF.isSolid(c) && !'!^~=CTHdð|MV?DjnPL'.includes(c);
+        let clear = true;
+        // (Some want a wider berth, so no wall nearby helps you up: t.margin.)
+        const mg = t.margin || 1;
+        for (let yy = y - t.h; yy <= y && clear; yy++) for (let xx = Math.min(x, x1) - mg; xx <= Math.max(x, x1) + mg; xx++) if (!free(at(xx, yy))) { clear = false; break; }
+        for (const k of t.ground || [0]) if (clear && !floor(at(x + d * k, y + 1))) clear = false;
+        if (clear) spots.push({ x, y, d, score: Math.hypot(x - P.x, y - P.y) + Math.hypot(x - D.x, y - D.y) + ((x * 7 + y * 13) % 11) });
+      }
+    }
+    spots.sort((a, b) => b.score - a.score);
+    for (const { x, y, d } of spots.slice(0, 30)) {
+      const g = g0.map(row => row.slice());
+      t.build(g, x, y, d);
+      g[y][x] = t.fruit;   // the fruit it needs, at its foot
+      const tryLv = { ...lv, map: g.map(r => r.join('')) }, a = LF.analyze(tryLv);
+      if (!a.ok || a.litOk !== a0.litOk) continue;
+      lv.map = tryLv.map; lv.secretTrick = name;
+      return true;
+    }
+    return false;
+  }
+
   // Hide a secret door in level lv (left of column xMax and, for a tower, at least minUp rows
   // above the start): in the hardest spot to get to, as far from the start and the door as it
   // can be and high up. Out of moving lava's reach and away from lava. True if it found a spot.
@@ -105,6 +194,19 @@
     // door in its hardest spot).
     for (const at of [Math.floor(regular.length / 3), Math.floor(regular.length * 2 / 3)]) {
       let placed = false;
+      // (The first in each world a wall-climb, the strawberry's, wherever there's room for one.)
+      if (at === Math.floor(regular.length / 3))
+        for (let n = at; n < regular.length && !placed; n++) {
+          const lv = L[regular[n]];
+          if (lv.secretTo == null && trickRoom(lv, 'grip')) { lv.secretTo = WORLDS[to].first; lv.secretWorld = to; placed = true; }
+        }
+      for (let n = at; n < regular.length && !placed; n++) {
+        const lv = L[regular[n]];
+        // (The tricks in turn, from this level's: the first that fits.)
+        for (let q = 0; q < TRICK_ORDER.length && !placed; q++)
+          if (lv.secretTo == null && trickRoom(lv, TRICK_ORDER[(k * 2 + n + q) % TRICK_ORDER.length])) { lv.secretTo = WORLDS[to].first; lv.secretWorld = to; placed = true; }
+      }
+      // (No room for a trick: a climb to the door, as before.)
       for (let n = at; n < regular.length && !placed; n++) {
         const lv = L[regular[n]];
         if (lv.secretTo == null && challengeRoom(lv, CLIMB_KINDS[(k + n) % CLIMB_KINDS.length])) { lv.secretTo = WORLDS[to].first; lv.secretWorld = to; placed = true; }

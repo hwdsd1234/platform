@@ -57,7 +57,7 @@
     b: { name: 'Banana', power: 'Double jump', color: '#FFE066', note: 'jump again in mid-air, until you die' },
     m: { name: 'Watermelon', power: 'Speed', color: '#4CAF50', note: 'run faster, until you die' },
     p: { name: 'Pear', power: 'Glide', color: '#C5D94A', note: 'hold up (or jump) while falling to glide down slowly; press Space in mid-air for a small lift, after which you can’t glide and fall steadily till you land, until you die' },
-    s: { name: 'Strawberry', power: 'Wall grip', color: '#F0506E', note: 'slide down walls at a third of the speed, until you die' },
+    s: { name: 'Strawberry', power: 'Wall grip', color: '#F0506E', note: 'slide down walls at a third of the speed, and cling to ice walls (too slippery to wall-jump off without it), until you die' },
     'ç': { name: 'Cherry', power: 'Ammo magnet', color: '#B3123A', note: 'ammo crates within 4 blocks fly to you, until you die' },
     'ƥ': { name: 'Pineapple', power: 'Spike-proof', color: '#F2C94C', note: 'spikes don’t hurt you (lava and spiked pendulums still do), until you die' },
     'ǥ': { name: 'Grapes', power: 'Lucky', color: '#8E5BC2', note: 'enemies drop twice the ammo, until you die' },
@@ -404,8 +404,7 @@
     // Every boss takes an exact number of hits, however it's hit (see BOSS_HITS).
     for (const e of W.enemies) if (isBoss(e)) e.hp = e.maxHp = def.bossHits || LF.ENEMIES[e.type].hits || BOSS_HITS;
     W.total = W.lanterns.length;
-    // (A grove's bonus door, def.bonusDoor, stays shut till you've got everything: see stepBonus.)
-    if (W.door && !W.total && !W.enemies.some(isBoss) && !def.bonusDoor) W.door.open = true;
+    if (W.door && !W.total && !W.enemies.some(isBoss)) W.door.open = true;
     W.checkpoint = { ...W.start };
     W.blinkT = 0; W.blinkOn = 'T';
     W.player = makePlayer(W.start);
@@ -990,7 +989,7 @@
         // (An ammo panel: that much ammo.)
         const n = +pn.sym.slice(1); pn.done = true; W.player.ammo += n; W.emit('bigammo'); say(`+${n} ammo`, '#FFE2A8');
         burst(W, tx * TS + 16, ty * TS + 32, 12, ['#FFE2A8', '#FFB547'], 160, 200);
-        if (W.panels.every(q => q.sym === '☠' || q.open) && !W.def.bonusDoor) W.panelOver = 1.4;
+        if (W.panels.every(q => q.sym === '☠' || q.open)) W.panelOver = 1.4;
       } else if (pn.sym === '☠') {
         W.panelBad++; W.shake = Math.max(W.shake, .2); W.emit('buzz');
         say(W.panelBad >= 2 ? 'two skulls!' : 'a skull! (one more and it’s over)', '#FF8A8A');
@@ -998,7 +997,7 @@
       } else {
         pn.done = true; W.got[pn.sym] = (W.got[pn.sym] || 0) + 1; W.emit('fruit'); say('+1', '#FFE2A8');
         burst(W, tx * TS + 16, ty * TS + 32, 12, [(LF.FRUITS[pn.sym] || LF.FRUITS.a).color, '#FFFFFF'], 160, 200);
-        if (W.panels.every(q => q.sym === '☠' || q.open) && !W.def.bonusDoor) W.panelOver = 1.4;
+        if (W.panels.every(q => q.sym === '☠' || q.open)) W.panelOver = 1.4;
       }
       return;
     }
@@ -1007,7 +1006,7 @@
     if (first.sym === pn.sym) {
       first.done = pn.done = true; W.got[pn.sym] = (W.got[pn.sym] || 0) + 2; W.emit('fruit'); say('a match! +2', '#FFE2A8');
       burst(W, tx * TS + 16, ty * TS + 32, 16, [(LF.FRUITS[pn.sym] || LF.FRUITS.a).color, '#FFFFFF'], 180, 200);
-      if (W.panels.every(q => q.done) && !W.def.bonusDoor) W.panelOver = 1.4;
+      if (W.panels.every(q => q.done)) W.panelOver = 1.4;
     } else {
       // (No match: they just turn back over. Try again till the clock runs out.)
       W.emit('buzz'); say('no match', '#9FC4FF');
@@ -1038,16 +1037,13 @@
     W.fruits = W.fruits.filter(f => !f.rain || (!f.taken && !(f.landed < 0)));
     W.ammo = W.ammo.filter(f => !f.rain || (!f.taken && !(f.landed < 0)));
   }
-  // A grove's bonus door (def.bonusDoor): get every fruit, every crate, every panel's prize,
-  // and it opens; go through it and everything you got there counts twice (see ui.js).
+  // A grove that ends the moment you've got everything in it (def.endWhenAll): every fruit and
+  // every crate. (Panel groves end on their own when every prize is found: see hitPanel.)
   function stepBonus(W) {
-    if (!W.def.bonusDoor || !W.door || W.door.open || W.cleared || W.panelOver) return;
-    const panels = W.panels || [], prize = q => q.sym !== '☠';
-    const any = W.fruits.length + W.ammo.length + panels.length > 0;
-    const all = W.fruits.every(f => f.taken) && W.ammo.every(a => a.taken) && panels.every(q => !prize(q) || (W.def.panelGame.mode === 'pairs' ? q.done : q.open));
-    if (!any || !all) return;
-    W.door.open = true; W.emit('door'); W.shake = Math.max(W.shake, .15);
-    W.floaters.push({ x: W.player.x + W.player.w / 2, y: W.player.y - 30, t: 'every one! the bonus door is open: double it all', life: 2.6, c: '#FFE066' });
+    if (!W.def.endWhenAll || W.cleared || W.panels) return;
+    if (W.fruits.length + W.ammo.length === 0 || !W.fruits.every(f => f.taken) || !W.ammo.every(a => a.taken)) return;
+    W.cleared = true; W.clearedBy = 'all'; W.emit('clear');
+    W.floaters.push({ x: W.player.x + W.player.w / 2, y: W.player.y - 30, t: 'every one!', life: 1.6, c: '#FFE066' });
   }
   function stepPanels(W, dt) {
     if (!W.panels) return;
@@ -2234,7 +2230,7 @@
   function openDoorIfDone(W) {
     // (The final castle's door opens once the castle has risen: its lanterns are only checkpoints.)
     if (W.def.castleFrom != null) { if (W.door && W.castleRisen && !W.door.hidden && !W.door.open) { W.door.open = true; W.emit('door'); } return; }
-    if (!W.door || W.door.open || W.def.bonusDoor || W.door.hidden || W.lanterns.some(l => !l.lit) || W.enemies.some(e => e.alive && isBoss(e))) return;
+    if (!W.door || W.door.open || W.door.hidden || W.lanterns.some(l => !l.lit) || W.enemies.some(e => e.alive && isBoss(e))) return;
     W.door.open = true; W.emit('door');
   }
   // Gravity for bosses that walk. Returns the falling speed on the frame it lands, else 0.
@@ -3323,7 +3319,9 @@
     const top = Math.floor((p.y + 4) / TS), bot = Math.floor((p.y + p.h - 4) / TS);
     for (let ty = top; ty <= bot; ty++) {
       const c = tile(W, tx, ty);
-      // (A slope's steep back is a wall too: slide down it, jump off it.)
+      // (A slope's steep back is a wall too: slide down it, jump off it. An ice wall is too
+      // slippery to cling to or jump off, unless you've the strawberry's grip.)
+      if (c === 'i' && !p.grip) continue;
       if (isSolid(c) || SLOPES[c] === -side) return true;
     }
     return false;
