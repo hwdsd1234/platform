@@ -1516,7 +1516,7 @@
 
     function lights(W) {
       const out = [], p = W.player;
-      if (!p.dead) { const f = LF.flamePos(p); out.push({ x: f.x, y: f.y, r: 150 * (p.glow > 2 ? 4 : p.glow > 1 ? 3 : p.glow ? 2 : 1) * flick(0, .03) }); }
+      if (!p.dead) { const f = LF.flamePos(p); out.push({ x: f.x, y: f.y, r: 150 * (p.glow > 3 ? 5 : p.glow > 2 ? 4 : p.glow > 1 ? 3 : p.glow ? 2 : 1) * flick(0, .03) }); }
       for (const f of W.fruits) if (!f.taken) out.push({ x: f.x, y: f.y, r: 84 * flick(f.tx, .05) });
       for (let k = 0; k < W.lavaTop.length; k += 3) { const l = W.lavaTop[k]; out.push({ x: l.tx * TS + 16, y: l.ty * TS + 10, r: 95 }); }
       for (const f of W.flows || []) for (let x = f.x0; x <= f.x1; x += 3) out.push({ x: x * TS + 16, y: LF.flowSurface(W, f, x * TS + 16) + 8, r: 100 });

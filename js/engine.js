@@ -76,9 +76,9 @@
   const FLAGS = Object.values(POWERS);
   // The most of a power you can have: 1, and one more for each green apple you hold (the
   // yellow apple's regeneration goes to 2 without one). Powers that take no slot: SLOTLESS.
-  // (A third green apple, in a Triple Ripe event, takes a power no further than level 3; the
-  // yellow apple's regeneration to 5.)
-  const powerCap = LF.powerCap = (k, green) => (k === 'heal' ? 2 + (green || 0) : Math.min(3, 1 + (green || 0)));
+  // (A third green apple, in a Triple Ripe event, takes a power to level 4; the yellow apple's
+  // regeneration to 5.)
+  const powerCap = LF.powerCap = (k, green) => (k === 'heal' ? 2 : 1) + (green || 0);
   // How many green apples you can hold: two, or three in a Triple Ripe event (see events.js),
   // and once you've had a third you keep it till you die.
   const greenCap = LF.greenCap = p => (p.ripe3 || (LF.eventIs && LF.eventIs('ripe3')) ? 3 : 2);
@@ -939,7 +939,7 @@
     if (playing && !W.cleared) {
       W.time += dt;
       // (The mango slows the level clock to two-thirds speed.)
-      if (W.player.slowtime && W.def.deadline && !W.player.dead) W.clockFrom = (W.clockFrom || 0) + dt * (W.player.slowtime > 2 ? 2 / 3 : W.player.slowtime > 1 ? 1 / 2 : 1 / 3);
+      if (W.player.slowtime && W.def.deadline && !W.player.dead) W.clockFrom = (W.clockFrom || 0) + dt * (W.player.slowtime > 3 ? 3 / 4 : W.player.slowtime > 2 ? 2 / 3 : W.player.slowtime > 1 ? 1 / 2 : 1 / 3);
       if (p.dead) { if (!W.lost) { W.deadTimer -= dt; if (W.deadTimer <= 0) respawn(W); } }
       else if (p.inCannon) stepCannon(W, p, dt);
       else stepPlayer(W, p, input, dt);
@@ -1291,7 +1291,7 @@
   // value. They fly to the player side by side as one group (n bullets, spaced so you can
   // count them) and arrive together for +n ammo. Hardcore has no ammo, so nothing drops there.
   function dropAmmo(W, e) {
-    const n = LF.ENEMIES[e.type].drop * (W.player.lucky > 2 ? 4 : W.player.lucky > 1 ? 3 : W.player.lucky ? 2 : 1) * (LF.eventIs && LF.eventIs('ammo') ? 2 : 1);   // (grapes, or an Ammo Rain event: twice the ammo)
+    const n = LF.ENEMIES[e.type].drop * (W.player.lucky > 3 ? 5 : W.player.lucky > 2 ? 4 : W.player.lucky > 1 ? 3 : W.player.lucky ? 2 : 1) * (LF.eventIs && LF.eventIs('ammo') ? 2 : 1);   // (grapes, or an Ammo Rain event: twice the ammo)
     if (!n || W.def.noSpawnInv || W.def.noAmmo) return;
     W.ammoFly.push({ n, x: e.x + e.w / 2, y: e.y + e.h / 2, vx: (Math.random() - .5) * 80, vy: -300, t: 0 });
   }
@@ -1418,7 +1418,7 @@
   }
 
   // How many shots each press fires, fanned out (-1 … 1): one, or a kiwi's two, or three ripe.
-  const spread = p => (p.multi > 2 ? [-1, -1 / 3, 1 / 3, 1] : p.multi > 1 ? [-1, 0, 1] : p.multi ? [-.5, .5] : [0]);
+  const spread = p => (p.multi > 3 ? [-1, -.5, 0, .5, 1] : p.multi > 2 ? [-1, -1 / 3, 1 / 3, 1] : p.multi > 1 ? [-1, 0, 1] : p.multi ? [-.5, .5] : [0]);
   function stepBullets(W, dt) {
     for (const b of W.bullets) {
       if (b.kind) { stepSpecial(W, b, dt); continue; }
@@ -1496,7 +1496,8 @@
         // A spiked chain hurts along its whole length.
         if (t.spiked && !(p.spiky > 1)) for (let k = 1; k < 14; k++) { const f = k / 14; if (circleHits(t.ax + (b.x - t.ax) * f, t.ay + (b.y - t.ay) * f, 4, p)) return true; }
       }
-      else if (t.type === 'bar') { for (const b of LF.barBalls(t)) if (circleHits(b.x, b.y, 5, p)) return true; }
+      // (A pineapple at level 4: fire bars can't hurt you either.)
+      else if (t.type === 'bar') { if (!(p.spiky > 3)) for (const b of LF.barBalls(t)) if (circleHits(b.x, b.y, 5, p)) return true; }
       // Crushers: only the spiked underside hurts. The top is a platform and the sides are solid.
       else if (p.onPlat !== t && overlap(p, { x: t.x + 3, y: t.y + t.h - 6, w: t.w - 6, h: 12 })) return true;
     }
@@ -3489,7 +3490,7 @@
     p.wet = wet;
     // (A watermelon makes you FAST times quicker on your feet. In water you move along just as
     // fast as you run on land.)
-    const T = playerTune(W.def), grav = G * T.gravity, run = RUN * T.run * (p.fast > 2 ? FAST * 1.3 : p.fast > 1 ? FAST * 1.15 : p.fast > 0 || p.rush > 0 ? FAST : 1);
+    const T = playerTune(W.def), grav = G * T.gravity, run = RUN * T.run * (p.fast > 3 ? FAST * 1.45 : p.fast > 2 ? FAST * 1.3 : p.fast > 1 ? FAST * 1.15 : p.fast > 0 || p.rush > 0 ? FAST : 1);
     const accel = p.onGround ? (p.ice ? (dir ? 450 : 120) : dir ? 2600 : 2200) : p.lock > 0 ? 250 : (dir ? 1700 : 700) * T.air;
     p.vx = approach(p.vx, dir * run, accel * dt);
 
@@ -3518,7 +3519,7 @@
     p.sliding = !!p.wall && dir === p.wall && p.vy > 0;
 
     // Jump speed scales with sqrt(height x gravity) so the height setting is exact at any gravity.
-    const jumpV = JUMP * Math.sqrt(T.jump * T.gravity) * (p.boost > 2 ? BOOST * 1.24 : p.boost > 1 ? BOOST * 1.12 : p.boost > 0 || p.rush > 0 ? BOOST : 1);
+    const jumpV = JUMP * Math.sqrt(T.jump * T.gravity) * (p.boost > 3 ? BOOST * 1.36 : p.boost > 2 ? BOOST * 1.24 : p.boost > 1 ? BOOST * 1.12 : p.boost > 0 || p.rush > 0 ? BOOST : 1);
     if (p.buffer > 0 && p.coyote > 0 && !dropping) {
       p.vy = -jumpV; p.buffer = 0; p.coyote = 0; p.jumping = true;
       p.onGround = false; p.onPlat = null; p.sx = .75; p.sy = 1.3;
@@ -3526,7 +3527,7 @@
       W.emit('jump');
     } else if (p.buffer > 0 && wet) {
       // Swimming: as many jumps as you like while in the water.
-      p.vy = -jumpV * .88 * (p.swimmer > 2 ? 1.45 : p.swimmer > 1 ? 1.3 : p.swimmer ? 1.15 : 1); p.buffer = 0; p.jumping = true; p.sx = .85; p.sy = 1.2;   // (the peach: stronger strokes)
+      p.vy = -jumpV * .88 * (p.swimmer > 3 ? 1.6 : p.swimmer > 2 ? 1.45 : p.swimmer > 1 ? 1.3 : p.swimmer ? 1.15 : 1); p.buffer = 0; p.jumping = true; p.sx = .85; p.sy = 1.2;   // (the peach: stronger strokes)
       burst(W, p.x + p.w / 2, p.y + p.h, 6, ['#7FB0E0', '#D9D0F0'], 70, 150, 2);
       W.emit('swim');
     } else if (p.buffer > 0 && p.wallCoyote > 0 && !p.onGround) {
@@ -3559,16 +3560,16 @@
     if (p.jumping && !input.jump && p.vy < 0) { p.vy *= .45; p.jumping = false; }
     if (p.vy >= 0) p.jumping = false;
     if (wet) {
-      p.vy = Math.min(SINK * (p.swimmer > 2 ? .15 : p.swimmer > 1 ? .3 : p.swimmer ? .5 : 1), p.vy + grav * WATER_G * dt);
+      p.vy = Math.min(SINK * (p.swimmer > 3 ? .05 : p.swimmer > 2 ? .15 : p.swimmer > 1 ? .3 : p.swimmer ? .5 : 1), p.vy + grav * WATER_G * dt);
       if (Math.random() < .05) W.particles.push({ x: p.x + p.w / 2 + p.face * 4, y: p.y + 4, vx: 0, vy: -40, life: .6, max: .6, c: '#9FD8FF', size: 2, g: -60 });
     } else p.vy = Math.min(MAXFALL * Math.sqrt(T.gravity), p.vy + grav * dt * (p.vy > 0 ? 1.15 : 1));
     // The pear's glide: holding jump while falling, you float down slowly. After its spin you
     // can't glide, and fall at up to SPUN_FALL, wall jumps and all, till you land.
     if (p.glide && p.spun && !wet) p.vy = Math.min(p.vy, SPUN_FALL);
     p.gliding = !!(p.glide && !p.spun && !p.onGround && !wet && !p.sliding && input.jump && p.vy > 0);
-    if (p.gliding) { p.vy = Math.min(p.vy, GLIDE_FALL * (p.glide > 2 ? .35 : p.glide > 1 ? .6 : 1)); if (Math.random() < .15) W.particles.push({ x: p.x + p.w / 2 + (Math.random() - .5) * 20, y: p.y, vx: 0, vy: -30, life: .4, max: .4, c: '#C5D94A', size: 2, g: 0 }); }
+    if (p.gliding) { p.vy = Math.min(p.vy, GLIDE_FALL * (p.glide > 3 ? .2 : p.glide > 2 ? .35 : p.glide > 1 ? .6 : 1)); if (Math.random() < .15) W.particles.push({ x: p.x + p.w / 2 + (Math.random() - .5) * 20, y: p.y, vx: 0, vy: -30, life: .4, max: .4, c: '#C5D94A', size: 2, g: 0 }); }
     if (p.sliding) {
-      p.vy = Math.min(p.vy, WALL_SLIDE * T.wallSlide / (p.grip > 2 ? 10 : p.grip > 1 ? 6 : p.grip ? 3 : 1));
+      p.vy = Math.min(p.vy, WALL_SLIDE * T.wallSlide / (p.grip > 3 ? 20 : p.grip > 2 ? 10 : p.grip > 1 ? 6 : p.grip ? 3 : 1));
       if (Math.random() < .12) W.particles.push({ x: p.wall > 0 ? p.x + p.w : p.x, y: p.y + p.h - 4, vx: -p.wall * 20, vy: -30, life: .35, max: .35, c: '#9A8FBF', size: 2, g: 200 });
     }
     if (p.boost > 0 && Math.random() < .08) W.particles.push({ x: p.x + Math.random() * p.w, y: p.y + p.h, vx: 0, vy: -40, life: .4, max: .4, c: '#FFB547', size: 2, g: -40 });
@@ -3856,7 +3857,7 @@
 
     for (const a of W.ammo) {
       // (With the cherry's magnet, crates nearby come flying to you.)
-      if (!a.taken && p.magnet && Math.hypot(cx - a.x, cy - a.y) < (p.magnet > 2 ? 12 : p.magnet > 1 ? 8 : 4) * TS && !(Math.abs(cx - a.x) <= 20 && Math.abs(cy - a.y) <= 22)) {
+      if (!a.taken && p.magnet && Math.hypot(cx - a.x, cy - a.y) < (p.magnet > 3 ? 16 : p.magnet > 2 ? 12 : p.magnet > 1 ? 8 : 4) * TS && !(Math.abs(cx - a.x) <= 20 && Math.abs(cy - a.y) <= 22)) {
         a.taken = true; W.ammoFly.push({ n: a.n, x: a.x, y: a.y, vx: 0, vy: -120, t: .2 });
         burst(W, a.x, a.y, 10, ['#FFE2A8', '#B3123A'], 110, 100, 2); W.emit('ammo');
         continue;

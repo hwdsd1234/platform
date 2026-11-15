@@ -12,7 +12,7 @@
     { id: 'regrow', icon: '🌱', name: 'Quick Groves', note: 'fruit groves grow straight back: go in as often as you like' },
     { id: 'ammo', icon: '🎯', name: 'Ammo Rain', note: 'ammo crates and enemy drops are worth twice as much' },
     { id: 'clock', icon: '🕰️', name: 'Long Night', note: 'every level clock gets 60 more seconds' },
-    { id: 'ripe3', icon: '🍏', name: 'Triple Ripe', note: 'you can hold a third green apple: 250 HP, the yellow apple’s regeneration up to 5, and you keep it until you die' },
+    { id: 'ripe3', icon: '🍏', name: 'Triple Ripe', note: 'you can hold a third green apple: 250 HP, every power up to level 4 (the yellow apple’s regeneration to 5), and you keep it until you die' },
   ];
   let forced = null;
   try { forced = new URLSearchParams(location.search).get('event'); } catch (e) {}
