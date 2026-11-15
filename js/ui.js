@@ -672,7 +672,7 @@
       : `<span>Next event: ${nx.ev.icon} ${nx.ev.name} in ${LF.eventLeft(nx.starts - Date.now())}</span>`;
   }
   setInterval(() => { if (screen === 'map') renderEvent(); }, 30000);
-  setInterval(() => { if (screen === 'map' || (screen === 'play' && W && W.def.garden)) autoHarvest(); if (screen === 'map') renderGardenButton(); }, 5000);
+  setInterval(() => { if (screen === 'map' || (screen === 'play' && W && W.def.garden)) autoHarvest(); if (screen === 'map') renderGardenButton(); }, 1000);
 
   function mapInfo() {
     const L = LF.LEVELS, lv = L[mapAt], p = progress[mapAt], hc = progressHC[mapAt];
@@ -855,7 +855,7 @@
   // empty bed and press ↓ to plant one from the bag (or buy more), on a planted one to dig it
   // up (its seed goes back in the bag). Plants grow on their own, by the clock, even while
   // you're away. Multi-harvest plants grow once and then fruit by themselves for good (up to
-  // three hanging at a time, a new one every so often); single-harvest plants grow once into
+  // a crop of three at once, again and again); single-harvest plants grow once into
   // a bigger crop and the bed's empty again. Walk onto a bed with fruit to pick it all: it
   // goes straight into your items. Any fruit can come up mutated, worth more fruit when
   // picked: Moonlit ×2, Golden ×3, Rainbow ×5. (Not in practice or Hardcore.)
@@ -889,9 +889,12 @@
     const b = farms[f][k]; if (!b) return null;
     const sd = SEEDS[b.t], ripeAt = b.at + sd.grow * 1000;
     if (now < ripeAt) return { grown: (now - b.at) / (sd.grow * 1000), fruit: [] };
+    // (A multi-harvest plant fruits a whole crop of HANG at once, every HANG × its every seconds
+    // after it was last picked, the first crop as it ripens: not one fruit at a time.)
     let n;
     if (sd.yield) n = sd.yield;
-    else { const from = b.last || ripeAt; n = Math.min(HANG, (b.last ? 0 : 1) + Math.floor((now - from) / (sd.every * 1000))); }
+    else n = !b.last || now - b.last >= sd.every * HANG * 1000 ? HANG : 0;
+    if (!n) return { grown: 1, fruit: [], next: b.last + sd.every * HANG * 1000 - now };
     return { grown: 1, fruit: Array.from({ length: n }, (_, i) => mutOf(f * BEDS + k, (b.seq || 0) + i)) };
   }
   const ripeBeds = () => farms.slice(0, farmsOwned).reduce((n, beds, f) => n + beds.reduce((m, b, k) => m + (b && bedNow(f, k).fruit.length ? 1 : 0), 0), 0);
@@ -911,17 +914,23 @@
     return { t: b.t, total, muts };
   }
   // The auto-harvester (2000 ammo, once): picks every ripe fruit on every farm you own, every
-  // few seconds on the map and in the garden, and whenever you come to the map.
+  // ten seconds while you're on the map or in the garden (and when you come to the map, if
+  // ten seconds have gone by since its last go).
   const AUTO_COST = 2000;
   let autoOwned = store.get('autoHarvest', false);
+  // (It harvests at most once every AUTO_EVERY: ten seconds between goes.)
+  const AUTO_EVERY = 10000;
+  let autoLast = 0, autoPaused = store.get('autoPaused', false);
   function autoHarvest(quiet) {
-    if (!autoOwned || practice || hardcore) return 0;
+    if (!autoOwned || autoPaused || practice || hardcore || Date.now() - autoLast < AUTO_EVERY) return 0;
+    autoLast = Date.now();
     let total = 0; const muts = [];
     for (let f = 0; f < farmsOwned; f++) farms[f].forEach((b, k) => { if (!b) return; const got = pickBed(f, k); if (got) { total += got.total; muts.push(...got.muts); } });
     if (total && !quiet) flash(`🧺 The auto-harvester picked ${total} fruit for you${muts.length ? ` (${muts.length} mutated!)` : ''}`);
     return total;
   }
-  function renderGardenButton() { const b = $('map-garden'); if (b) { const n = ripeBeds(); b.textContent = n ? `Garden · ${n} ready` : 'Garden'; } }
+  // (The Garden button wears a 🧺 once the auto-harvester's yours.)
+  function renderGardenButton() { const b = $('map-garden'); if (b) { const n = ripeBeds(), icon = autoOwned ? (autoPaused ? '🧺⏸ ' : '🧺 ') : ''; b.textContent = `${icon}Garden${n ? ` · ${n} ready` : ''}`; b.title = autoOwned ? (autoPaused ? 'Your auto-harvester is paused' : 'You have the auto-harvester: it picks every ripe fruit for you') : ''; } }
   // A farm: five tiers (the ground, then one every TIER rows up), five beds a tier (two tiles
   // each, GAP apart), plank steps up the open column on the left, the gate home on the ground.
   const TIER = 4, COL0 = 8, GAP = 6, FW = COL0 + SIDE * GAP + 4, FH = 6 + SIDE * TIER;
@@ -960,14 +969,14 @@
   function showBed(f, k, shopping) {
     screen = 'paused'; setVisible({ hud: true, overlay: true });
     const off = practice || hardcore, have = ammoHave(), b = farms[f][k];
-    const kind = t => (SEEDS[t].yield ? `single-harvest, ${SEEDS[t].yield} fruit` : `multi-harvest, one every ${SEEDS[t].every}s`);
+    const kind = t => (SEEDS[t].yield ? `single-harvest, ${SEEDS[t].yield} fruit` : `multi-harvest, ${HANG} at once every ${SEEDS[t].every * HANG}s`);
     const bag = Object.keys(SEEDS).filter(t => seedBag[t] > 0);
     const bagRow = bag.length ? bag.map(t => `<button class="mini go-mini" data-act="plantSeed" data-f="${f}" data-k="${k}" data-t="${t}" ${off || b ? 'disabled' : ''}>${FRUIT_ICON[t]} ${esc(LF.FRUITS[t].name)} ×${seedBag[t]} · plant</button>`).join('') : '<small>No seeds yet: buy some below.</small>';
     const shopRow = list => list.map(t => { const c = SEEDS[t].cost; return `<span class="seed-buy">${FRUIT_ICON[t]} ${esc(LF.FRUITS[t].name)} · ${c} ammo · ${kind(t)} · grows in ${Math.round(SEEDS[t].grow / 6) / 10} min <button class="mini" data-act="buySeed" data-f="${f}" data-k="${k}" data-t="${t}" data-n="1" ${off || have < c ? 'disabled' : ''}>Buy 1</button><button class="mini" data-act="buySeed" data-f="${f}" data-k="${k}" data-t="${t}" data-n="5" ${off || have < c * 5 ? 'disabled' : ''}>Buy 5</button></span>`; }).join('');
     let top;
     if (b) {
       const st = bedNow(f, k);
-      top = `<h2>${FRUIT_ICON[b.t]} ${esc(LF.FRUITS[b.t].name)}</h2><p class="lede">${kind(b.t)} · ${st.grown < 1 ? `growing: ${Math.round(st.grown * 100)}%` : st.fruit.length ? `${st.fruit.length} fruit hanging` : 'grown, fruiting'}.</p>
+      top = `<h2>${FRUIT_ICON[b.t]} ${esc(LF.FRUITS[b.t].name)}</h2><p class="lede">${kind(b.t)} · ${st.grown < 1 ? `growing: ${Math.round(st.grown * 100)}%` : st.fruit.length ? `${st.fruit.length} fruit hanging` : `next crop in ${Math.ceil((st.next || 0) / 1000)}s`}.</p>
         <div class="menu"><button class="alt" data-act="digUp" data-f="${f}" data-k="${k}" ${off ? 'disabled' : ''}>Dig it up (its seed back in your bag)</button></div>`;
     } else top = `<h2>Plant a seed</h2>`;
     card(`<p class="eyebrow">Farm ${f + 1} · bed ${k + 1}</p>${top}
@@ -977,7 +986,7 @@
       <div class="seed-shop"><small>Multi-harvest: fruits again and again, for good</small>${shopRow(Object.keys(SEEDS).filter(t => !SEEDS[t].yield))}
       <small>Single-harvest: one big crop</small>${shopRow(Object.keys(SEEDS).filter(t => SEEDS[t].yield))}</div>
       <p class="lede">Any fruit can come up mutated: 🌙 Moonlit ×2, ✨ Golden ×3, 🌈 Rainbow ×5.</p>
-      <p class="eyebrow">Tools</p><div class="seed-list">${autoOwned ? '<button class="mini" disabled>🧺 Auto-harvester · yours: it picks every ripe fruit on all your farms</button>' : `<button class="mini" data-act="buyAuto" ${off || have < AUTO_COST ? 'disabled' : ''}>🧺 Auto-harvester · ${AUTO_COST} ammo · picks every ripe fruit on all your farms, even while you’re away</button>`}</div>` : `<div class="menu"><button class="alt" data-act="bedShop" data-f="${f}" data-k="${k}">Seed shop</button></div>`}
+      <p class="eyebrow">Tools</p><div class="seed-list">${autoOwned ? `<button class="mini" data-act="toggleAuto" data-f="${f}" data-k="${k}">${autoPaused ? '🧺⏸ Auto-harvester paused · resume it' : '🧺 Auto-harvester on · pause it'}</button>` : `<button class="mini" data-act="buyAuto" ${off || have < AUTO_COST ? 'disabled' : ''}>🧺 Auto-harvester · ${AUTO_COST} ammo · picks every ripe fruit on all your farms, even while you’re away</button>`}</div>` : `<div class="menu"><button class="alt" data-act="bedShop" data-f="${f}" data-k="${k}">Seed shop</button></div>`}
       <div class="menu"><button class="go" data-act="resume">Done</button></div>`);
   }
   // The Garden button: your farms, to go to, or to buy.
@@ -991,8 +1000,8 @@
       return `<button class="alt" disabled>Farm ${f + 1} · ${FARM_COST[f]} ammo (buy Farm ${f} first)</button>`;
     }).join('');
     card(`<p class="eyebrow">Your farms</p><h2>Grow a garden</h2>
-      <p class="lede">Each farm is 5 × 5 beds. You have ${have} ammo (bank and carried).${autoOwned ? ' 🧺 Your auto-harvester picks every farm.' : ''}</p>
-      <div class="menu">${rows}<button class="alt" data-act="menu">Back to the map</button></div>`);
+      <p class="lede">Each farm is 5 × 5 beds. You have ${have} ammo (bank and carried).${autoOwned ? (autoPaused ? ' 🧺⏸ Your auto-harvester is paused.' : ' 🧺 Your auto-harvester picks every farm, every 10 seconds.') : ''}</p>
+      <div class="menu">${rows}${autoOwned ? `<button class="alt" data-act="toggleAuto">${autoPaused ? '🧺 Resume the auto-harvester' : '⏸ Pause the auto-harvester'}</button>` : ''}<button class="alt" data-act="menu">Back to the map</button></div>`);
   }
 
   // ---------- daily challenges ----------
@@ -1318,7 +1327,7 @@
   }
   function hudLabelBase() {
     if (playCtx.kind === 'story') return `Chapter ${roman(chapterIndex(playCtx.index))} · Level ${playCtx.index + 1} of ${LF.LEVELS.length} · key ${levelKey(LF.LEVELS[playCtx.index].name)}`;
-    if (playCtx.kind === 'garden') return `Farm ${(playCtx.farm || 0) + 1} · ${ammoHave()} ammo for seeds · ↓ on a bed`;
+    if (playCtx.kind === 'garden') return `Farm ${(playCtx.farm || 0) + 1}${autoOwned ? (autoPaused ? ' · 🧺⏸ auto-harvester paused' : ' · 🧺 auto-harvester on') : ''} · ${ammoHave()} ammo for seeds · ↓ on a bed`;
     if (playCtx.kind === 'daily') return `Daily challenge · ${dayKey(playCtx.day)} · ${dailyGoal(playCtx.day).text}`;
     if (playCtx.kind === 'random') return `Random · ${playCtx.opts.shape === 'mixed' ? 'up & across' : playCtx.opts.shape === 'up' ? 'upward' : 'across'} · seed ${playCtx.opts.seed}`;
     if (playCtx.kind === 'test') return 'Test play · Esc to edit';
@@ -1701,7 +1710,7 @@
     },
     buyAuto: () => {
       if (autoOwned || practice || hardcore || ammoHave() < AUTO_COST) return;
-      payAmmo(AUTO_COST); autoOwned = true; store.set('autoHarvest', true);
+      payAmmo(AUTO_COST); autoOwned = true; store.set('autoHarvest', true); renderGardenButton();
       ACTIONS.resume(); flash(`🧺 Auto-harvester bought (−${AUTO_COST} ammo): it picks every ripe fruit on all your farms`); autoHarvest();
     },
     buySeed: d => {
@@ -1721,6 +1730,13 @@
       ACTIONS.resume(); flash(`${FRUIT_ICON[b.t]} dug up: its seed's back in your bag`);
     },
     bedShop: d => showBed(+d.f, +d.k, true),
+    // (Pause the auto-harvester, or set it going again: from the farms list or a bed's card.)
+    toggleAuto: d => {
+      if (!autoOwned) return;
+      autoPaused = !autoPaused; store.set('autoPaused', autoPaused); renderGardenButton();
+      flash(autoPaused ? '🧺⏸ Auto-harvester paused' : '🧺 Auto-harvester picking again');
+      if (d.k != null) showBed(+d.f, +d.k, true); else { screen = 'map'; showFarms(); }
+    },
     playDaily: () => { const d = dayNum(); play(dailyDef(d), { kind: 'daily', day: d }); },
     editor: () => openEditor(),
     menu: () => { if (screen === 'paused') saveMidway(true); showMap(); },
