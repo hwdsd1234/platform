@@ -46,8 +46,6 @@
   // A: the kill shot. 3 ammo, and whatever it hits dies at once: golems, TNT carts, armor
   // and all (a boss just takes it as one hit). It doesn't splash.
   const KILL_COST = LF.KILL_COST = 3;
-  // The sword (a click, or V): a slash SWORD_REACH in front of you, every SWORD_COOL seconds.
-  const SWORD_DMG = .5, SWORD_KNOCK = 420, SWORD_REACH = LF.SWORD_REACH = 42, SWORD_COOL = .32, SWORD_SWING = LF.SWORD_SWING = .18;
   const BLINK = LF.BLINK = 2, CONVEY = 110, BULLET = 620, AMMO = { q: 3, Q: 10, $: 25 };
   const TAU = Math.PI * 2;
 
@@ -570,7 +568,7 @@
       coyote: 0, buffer: 0, jumping: false, drop: 0, sx: 1, sy: 1, anim: 0, dead: false,
       wall: 0, wallDir: 0, wallCoyote: 0, sliding: false, lock: 0, wet: false,
       // One second of invincibility at the start of a level and after every respawn.
-      hp: HP, regen: 0, swing: 0, swordCool: 0, boost: 0, dbl: 0, fast: 0, airJumps: 0, inv: 1, conv: 0, cool: 0, flash: 0,
+      hp: HP, regen: 0, boost: 0, dbl: 0, fast: 0, airJumps: 0, inv: 1, conv: 0, cool: 0, flash: 0,
     };
   }
 
@@ -1325,7 +1323,7 @@
       return;
     }
     if (e.hp > dmg) {
-      e.hp -= dmg; e.hurt = .15; if (!boss && e.type !== '@') { if (how === 'slash') e.knock = dir * SWORD_KNOCK; else e.x += dir * 5; }
+      e.hp -= dmg; e.hurt = .15; if (!boss && e.type !== '@') e.x += dir * 5;
       if (boss && W.def.bossFury) startFury(W, e);
       burst(W, e.x + e.w / 2, e.y + e.h / 2, 8, ['#CFC6E8', '#FFE2A8'], 120, 300, 2); W.emit('clank');
       return;
@@ -1574,10 +1572,6 @@
       if (e.fury > 0 && furyKind(e)) return furyMove(W, e, dt);
       if (e.fury > 0) stepBoss(W, e, dt * .3, playing);
       return stepBoss(W, e, dt, playing);
-    }
-    // Knocked back by the sword: it slides back, slowing, till it hits a wall.
-    if (e.knock) {
-      if (moveX(W, e, e.knock * dt) || Math.abs(e.knock *= Math.pow(.003, dt)) < 30) e.knock = 0;
     }
     // (TNT carts take stomps one at a time, like golems.)
     if (e.type === '@') { e.hurt = Math.max(0, e.hurt - dt); e.stompCool = Math.max(0, e.stompCool - dt); }
@@ -3594,27 +3588,6 @@
       }
       if (kind !== 'dyn' && kind !== 'nuke') p.vx -= p.face * 70;
       W.emit(kind === 'rocket' ? 'rocket' : 'lob');
-    }
-
-    // The sword: a slash in front of you. Half a hit off an enemy (two for most), knocking it
-    // back; a boss takes it as one gun hit. It knocks shots out of the air (not fire).
-    p.swing = Math.max(0, (p.swing || 0) - dt); p.swordCool = (p.swordCool || 0) - dt;
-    if (input.swordPressed) {
-      input.swordPressed = false;
-      if (p.swordCool <= 0) {
-        p.swordCool = SWORD_COOL; p.swing = SWORD_SWING;
-        const box = { x: p.face > 0 ? p.x + p.w / 2 : p.x + p.w / 2 - SWORD_REACH, y: p.y - 12, w: SWORD_REACH, h: p.h + 18 };
-        const id = gunShot(W);
-        let hit = false;
-        for (const e of W.enemies) {
-          if (!e.alive || e.phased || e.state === 'carried' || (e.type === 'G' && e.fade > .85) || !overlap(box, e)) continue;
-          shootEnemy(W, e, p.face, id, 'slash', SWORD_DMG); hit = true;
-        }
-        for (const q of W.projectiles) if (q.kind !== 'flame' && q.kind !== 'warn' && q.life > 0 && overlap(box, q)) {
-          q.life = 0; hit = true; burst(W, q.x + q.w / 2, q.y + q.h / 2, 8, ['#E8F4FF', '#FFE2A8'], 120, 200, 2);
-        }
-        W.emit(hit ? 'slash' : 'swish');
-      }
     }
 
     const wasAir = !p.onGround, fallSpeed = p.vy;

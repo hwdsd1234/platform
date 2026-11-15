@@ -136,8 +136,6 @@
     fruit: () => { tone(660, 990, .1, 'triangle', .05); tone(990, 1480, .14, 'triangle', .04, .06); },
     strip: () => { tone(700, 180, .35, 'sawtooth', .04); tone(500, 120, .4, 'triangle', .04, .08); },
     shield: () => { tone(900, 300, .25, 'triangle', .05); tone(1200, 400, .2, 'sine', .03, .03); },
-    swish: () => tone(1800, 600, .07, 'sine', .025),
-    slash: () => { tone(1600, 500, .08, 'sawtooth', .03); tone(420, 120, .1, 'square', .035, .01); },
     door: () => [523, 659, 784, 1046].forEach((f, i) => tone(f, f, .22, 'triangle', .05, .25 + i * .08)),
     clear: () => [392, 523, 659, 784, 1046, 1318].forEach((f, i) => tone(f, f, .3, 'triangle', .05, i * .07)),
   };
@@ -1299,7 +1297,6 @@
         <li>Every level has a clock: 300 seconds, 400 in a castle (a tower’s boss arena adds 100 seconds when you reach it, a castle’s 200); come back at a lantern and the clock gives you the share of the level still ahead of it, plus 30 seconds (never under 150 seconds): at 50 seconds left a hurry-up tune plays and the music speeds up; when it runs out you die (fruit groves have their own short clocks)</li>
         <li>Push into a wall to slide down it · jump off walls to climb</li>
         <li>Health: you have 100 HP (150 with a 🍏 green apple, 200 with two), shown top left · each enemy hits for its own damage: a beetle, bat, frog or spider 15, an ember pot, archer, wasp, Shellback or water creature 20, a Thornback or Spark 25, a ram, wraith or lava bubble 30, a golem 35, a TNT cart 40, a boss 35, a giant boss 40; spikes 25, pendulums, fire bars and crushers 30, boss shots 15–30 · you get 5 HP back every 5 seconds · 🍎 apples heal 25: pick them up, or press <kbd>H</kbd> to eat one from your items · lava and falling out of the world still kill outright</li>
-        <li>Sword: click (or <kbd>V</kbd>, or ⚔ on a phone) to slash in front of you: half a hit off an enemy (two slashes for most), knocking it back; a boss takes it like a gun hit; it knocks arrows, embers and bombs out of the air too</li>
         <li>Damage: a bullet does 1, a big (<kbd>Shift</kbd>) shot 2, an explosion 3 (a grenade's two smaller bounce blasts 2), dynamite 4 and a nuke 6; every big shot does twice its damage (a big kill shot is two hits on a boss), and lava doubles a blast again · golems, TNT carts and bosses all feel the difference (a tower or castle boss counts it towards the 10 gun hits that send it into a fury)</li>
         <li>Shellbacks: stomp one into its shell, touch the shell to kick it (it knocks out enemies, hits bosses, picks up coins for you, and comes back off walls) · hold <kbd>S</kbd> and run into a shell lying still to carry it (it can't come out while you hold it), press <kbd>S</kbd> again to let it go, kicked off ahead of you · stomp a Shellback or shell in mid-air for a big bounce: that's the shell jump: throw a shell off a ramp across a gap; it bounces off the wall on the far side and flies back off the lip there, and you jump from the edge and land on it in the air (in mid-air a shell's easy to land on: feet over its middle will do)</li>
         <li><kbd>E</kbd> fire: tap for one shot, hold for autofire; shots splash 1 block · <kbd>X</kbd> explosive round (2 ammo, 3-block blast) · <kbd>A</kbd> kill shot (3 ammo): kills whatever it hits in one go, golems and carts too (a boss takes it as one hit) · every shot counts as one hit (a grenade one per blast, up to three), so golems take 3 and TNT carts 5 (stomps count too); a TNT blast kills everything near it but you · <kbd>Q</kbd> bouncing grenade (3 ammo) · <kbd>D</kbd> dynamite (4 ammo): thrown, it falls and sits where it lands, and after a 3-second fuse kills everything within 5 blocks, golems and carts too (a boss takes it as one hit; it never hurts you) · <kbd>Shift</kbd>+<kbd>D</kbd> big dynamite (8 ammo, 10 blocks) · <kbd>W</kbd> nuke (10 ammo): primed right where you are, and after a 3-second fuse it kills everything within 30 blocks (a boss takes it as one hit; it never hurts you) · <kbd>Shift</kbd>+<kbd>W</kbd> big nuke (20 ammo, 60 blocks) · hold any of them to keep firing · hold <kbd>Shift</kbd> for a big shot: 2× size and blast, 2× ammo · ammo crates are hidden through each level; big crates hold 10, huge ones 25; enemies drop 1–5 ammo when killed, more for tougher ones (TNT carts drop none)</li>
@@ -1780,7 +1777,7 @@
   // ---------- input ----------
   // (No WASD: A is the kill shot.)
   const heldKeys = new Set();   // (the keys down right now: see keyup)
-  const KEYMAP = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'jump', Space: 'jump', KeyZ: 'jump', ArrowDown: 'down', KeyE: 'fire', KeyF: 'fire', KeyX: 'rocket', KeyC: 'rocket', KeyQ: 'grenade', KeyA: 'kill', KeyD: 'dyn', KeyS: 'carry', KeyW: 'nuke', KeyV: 'sword' };
+  const KEYMAP = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'jump', Space: 'jump', KeyZ: 'jump', ArrowDown: 'down', KeyE: 'fire', KeyF: 'fire', KeyX: 'rocket', KeyC: 'rocket', KeyQ: 'grenade', KeyA: 'kill', KeyD: 'dyn', KeyS: 'carry', KeyW: 'nuke' };
   const SHOTS = ['fire', 'rocket', 'grenade', 'kill', 'dyn', 'nuke'];
   // Big shots: hold Shift, or on a phone tap BIG to switch them on until tapped again.
   let bigLock = false;
@@ -1815,7 +1812,6 @@
         if ((e.code === 'Space' || e.code === 'KeyZ') && !e.repeat) input.spinPressed = true;
         if (SHOTS.includes(k) && !input[k] && !e.repeat) input[k + 'Pressed'] = true;
         if (k === 'carry' && !input.carry && !e.repeat) input.carryPressed = true;
-        if (k === 'sword' && !e.repeat) input.swordPressed = true;
         input[k] = true; heldKeys.add(e.code);
       }
       // H eats an apple from your items: it heals (see eatApple).
@@ -1854,9 +1850,6 @@
     el.addEventListener('pointerdown', on); el.addEventListener('pointerup', off);
     el.addEventListener('pointercancel', off); el.addEventListener('pointerleave', off);
   }
-  // The sword: a click on the game (or V, or the ⚔ button).
-  cvs.addEventListener('pointerdown', e => { if (screen === 'play' && e.pointerType === 'mouse' && e.button === 0) { e.preventDefault(); input.swordPressed = true; } });
-  $('t-sword').addEventListener('pointerdown', e => { e.preventDefault(); initAudio(); input.swordPressed = true; });
   $('t-eat').addEventListener('pointerdown', e => { e.preventDefault(); initAudio(); eatApple(); });
   bindTouch('t-left', 'left'); bindTouch('t-right', 'right'); bindTouch('t-jump', 'jump'); bindTouch('t-down', 'down'); bindTouch('t-fire', 'fire'); bindTouch('t-rocket', 'rocket'); bindTouch('t-grenade', 'grenade'); bindTouch('t-kill', 'kill'); bindTouch('t-dyn', 'dyn');
   $('t-pause').addEventListener('click', () => pause());

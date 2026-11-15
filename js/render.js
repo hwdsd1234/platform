@@ -1858,20 +1858,6 @@
         ctx.fillStyle = '#FFE2A8'; ctx.beginPath(); ctx.arc(g.x + W.player.face * 3, g.y, 4, 0, TAU); ctx.fill();
       }
       const p = W.player;
-      // The sword's slash: the blade sweeps down from over your head to in front of you, with a
-      // pale arc behind it.
-      if (!p.dead && !opts.hidePlayer && !p.inCannon && p.swing > 0) {
-        const k = 1 - p.swing / LF.SWORD_SWING, cx = p.x + p.w / 2, cy = p.y + p.h / 2 - 2, R = LF.SWORD_REACH - 4;
-        const a0 = -1.9, a = a0 + k * 2.6, ang = t => (p.face > 0 ? t : Math.PI - t);
-        ctx.save();
-        ctx.strokeStyle = `rgba(232,244,255,${.55 * (1 - k * .6)})`; ctx.lineWidth = 7; ctx.lineCap = 'round';
-        ctx.beginPath(); ctx.arc(cx, cy, R - 4, Math.min(ang(a0), ang(a)), Math.max(ang(a0), ang(a))); ctx.stroke();
-        const bx = cx + Math.cos(ang(a)) * R, by = cy + Math.sin(ang(a)) * R, hx = cx + Math.cos(ang(a)) * 8, hy = cy + Math.sin(ang(a)) * 8;
-        ctx.strokeStyle = '#E8F4FF'; ctx.lineWidth = 3.2; ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(bx, by); ctx.stroke();
-        ctx.strokeStyle = '#8A6A3A'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(hx, hy); ctx.stroke();
-        ctx.fillStyle = '#FFB547'; ctx.beginPath(); ctx.arc(hx, hy, 2.6, 0, TAU); ctx.fill();
-        ctx.restore();
-      }
       if (!p.dead && !opts.hidePlayer && !p.inCannon) {
         const f = LF.flamePos(p), k = flick(3, .15);
         ctx.fillStyle = '#FF6B3D'; ctx.beginPath(); ctx.ellipse(f.x, f.y, 3.4 * k, 4.8 * k, 0, 0, TAU); ctx.fill();
