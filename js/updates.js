@@ -6,6 +6,8 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'New fruit: the 💛 yellow apple, regeneration: you heal 1 HP more every second; a second makes it 2 (no ripeness needed), and with green apples a third and fourth make it 3 and 4. It takes no power slot. It grows in levels, the groves and the garden',
+      'A hit now knocks you straight upwards',
       'Levels are lighter: still night, but the darkness is about half as deep, so you can see where you’re going away from the lanterns',
       'The sword is gone again (no more clicking or V to slash)',
       'Big (Shift) versions of every shot now do twice the damage, the kill shot too: a big kill shot is twice the size, costs twice the ammo, and is two hits on a boss',

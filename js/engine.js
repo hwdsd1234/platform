@@ -67,11 +67,16 @@
     'ǫ': { name: 'Kiwi', power: 'Multishot', color: '#8DB33A', note: 'every gun button fires two at once (three with a green apple’s ripeness), for the ammo of one, until you die (not the nuke)' },
     // The green apple isn't a power of its own and takes no power slot: it ripens the rest.
     'ǵ': { name: 'Green apple', power: 'Ripe', color: '#7BC043', note: 'takes no power slot; hold up to two: each lets you take one more of each fruit: 50 more HP (150, then 200, at most: you get the extra 50 straight away), and a second (and third) of any power fruit makes its power stronger (a triple jump, a bigger boost, faster, a slower glide and slide, a wider magnet, brighter eyes, spiked chains harmless, triple ammo, stronger swimming, a half-speed clock, two second chances), until you die' },
+    'ý': { name: 'Yellow apple', power: 'Regeneration', color: '#F2C82E', note: 'takes no power slot: you heal 1 HP more every second; eat a second for 2 a second (no ripeness needed), and with a green apple a third (3), with two a fourth (4), until you die' },
     'ŧ': { name: 'Tomato', power: 'Second chance', color: '#E8402A', note: 'takes no power slot: a hit that would take your last HP doesn’t kill you: the tomato takes it, then for 5 seconds you run fast, jump high and can’t be hurt, and whatever you touch dies (a boss takes a hit)' },
   };
   // Every fruit but the apple gives a power that's on or off: the player's flag for each.
-  const POWERS = LF.POWERS = { o: 'boost', b: 'dbl', m: 'fast', p: 'glide', s: 'grip', 'ç': 'magnet', 'ƀ': 'glow', 'ƥ': 'spiky', 'ǥ': 'lucky', 'ƫ': 'swimmer', 'ɯ': 'slowtime', 'ŧ': 'tomato', 'ǫ': 'multi' };
+  const POWERS = LF.POWERS = { o: 'boost', b: 'dbl', m: 'fast', p: 'glide', s: 'grip', 'ç': 'magnet', 'ƀ': 'glow', 'ƥ': 'spiky', 'ǥ': 'lucky', 'ƫ': 'swimmer', 'ɯ': 'slowtime', 'ŧ': 'tomato', 'ǫ': 'multi', 'ý': 'heal' };
   const FLAGS = Object.values(POWERS);
+  // The most of a power you can have: 1, and one more for each green apple you hold (the
+  // yellow apple's regeneration goes to 2 without one). Powers that take no slot: SLOTLESS.
+  const powerCap = LF.powerCap = (k, green) => (k === 'heal' ? 2 : 1) + (green || 0);
+  const SLOTLESS = new Set(['tomato', 'heal']);
   // (A power's level: 1, or 2 when ripened by a green apple. The green apple's own flag
   // rides along.)
   // (p.stack: caught a Power Stack event, so powers stack till you die: see applyFruit.)
@@ -129,12 +134,13 @@
     if (type === 'ǵ') { if ((p.green || 0) >= 2) return false; p.green = (p.green || 0) + 1; if (p.hp != null) p.hp += RIPE_HP; return true; }
     if (type === 'a') return LF.heal(p, APPLE_HEAL);
     const k = POWERS[type];
-    if (!k || p[k] >= 1 + (p.green || 0)) return false;
+    if (!k || p[k] >= powerCap(k, p.green)) return false;
     if (p[k]) { p[k]++; if (k === 'dbl') p.airJumps++; return true; }
     // (Playing during a Power Stack event marks you: powers stack until you die, event or no.)
     if (LF.eventIs && LF.eventIs('stack')) p.stack = 1;
-    // (The tomato takes no power slot either: it neither replaces another power nor is replaced.)
-    if (!p.stack && k !== 'tomato') { if (p.dbl) p.airJumps = Math.max(0, p.airJumps - p.dbl); for (const f of FLAGS) if (f !== 'tomato') p[f] = 0; }
+    // (The tomato and the yellow apple take no power slot either: they neither replace another
+    // power nor are replaced.)
+    if (!p.stack && !SLOTLESS.has(k)) { if (p.dbl) p.airJumps = Math.max(0, p.airJumps - p.dbl); for (const f of FLAGS) if (!SLOTLESS.has(f)) p[f] = 0; }
     p[k] = 1; if (k === 'dbl') p.airJumps = Math.max(p.airJumps, 1);
     return true;
   };
@@ -433,7 +439,7 @@
       W.player.green = green; W.player.stack = pw.stack ? 1 : 0;
       // (Every power you're carrying: powers stacked in a Power Stack event stay stacked
       // until you die, even once the event's over.)
-      for (const k of FLAGS) if (pw[k]) W.player[k] = Math.min(1 + green, pw[k]);
+      for (const k of FLAGS) if (pw[k]) W.player[k] = Math.min(powerCap(k, green), pw[k]);
       W.player.hp = LF.maxHp(W.player);   // (ripe: more than 100)
     }
     if (LF.eventIs && LF.eventIs('stack')) W.player.stack = 1;
@@ -711,8 +717,8 @@
     return !!m;
   };
 
-  // A hit: it takes `dmg` HP off (then a moment's grace, knocked back away from `fromX` if
-  // given); at none left, you die (unless a tomato takes it).
+  // A hit: it takes `dmg` HP off (then a moment's grace, and you're knocked upwards); at
+  // none left, you die (unless a tomato takes it). (`fromX`: where the hit came from.)
   function hurt(W, dmg = 20, fromX) {
     const p = W.player;
     if (p.dead || p.inv > 0) return;
@@ -725,8 +731,8 @@
       return;
     }
     if (p.hp > dmg) {
-      p.hp -= dmg; p.inv = 1; p.vy = -420; p.jumping = false; p.regen = 0; p.hit = .3;
-      if (fromX != null) { p.vx = (p.x + p.w / 2 < fromX ? -1 : 1) * 260; p.lock = .15; }
+      // (Knocked upwards, straight up, out of whatever hit you.)
+      p.hp -= dmg; p.inv = 1; p.vy = -560; p.jumping = false; p.regen = 0; p.hit = .3;
       burst(W, p.x + p.w / 2, p.y + p.h / 2, 14, ['#FF6B6B', '#FFD0D0'], 180, 300);
       W.floaters.push({ x: p.x + p.w / 2, y: p.y - 8, t: `-${dmg}`, life: .9, c: '#FF6B6B' });
       W.shake = .15; W.freeze = .05; ring(W, p.x + p.w / 2, p.y + p.h / 2, 40, '255,107,107', .4); W.emit('shield');
@@ -3417,6 +3423,8 @@
     const maxHp = LF.maxHp(p);
     if (p.hp < maxHp) { if ((p.regen += dt) >= REGEN_EVERY) { p.regen = 0; p.hp = Math.min(maxHp, p.hp + REGEN); } }
     else { p.regen = 0; p.hp = maxHp; }
+    // (A yellow apple: its level in HP more every second.)
+    if (p.heal && p.hp < maxHp) p.hp = Math.min(maxHp, p.hp + p.heal * dt);
 
     if (dir && p.lock <= 0) p.face = dir;
     // Right after a wall jump, steering is weak so the kick carries you off the wall.
@@ -3811,7 +3819,7 @@
       LF.applyFruit(p, f.type);
       W.got[f.type] = (W.got[f.type] || 0) + 1;
       burst(W, f.x, f.y, 16, [spec.color, '#FFF6C2'], 130, 150, 2.5);
-      W.floaters.push({ x: f.x, y: f.y - 20, t: f.type === 'a' ? `+${APPLE_HEAL} HP` : f.type === 'ǵ' ? `ripe: ${LF.maxHp(p)} HP` : spec.power.toLowerCase(), life: 1.1, c: spec.color });
+      W.floaters.push({ x: f.x, y: f.y - 20, t: f.type === 'a' ? `+${APPLE_HEAL} HP` : f.type === 'ǵ' ? `ripe: ${LF.maxHp(p)} HP` : f.type === 'ý' ? `regen +${p.heal} HP/s` : spec.power.toLowerCase(), life: 1.1, c: spec.color });
       W.emit('fruit', { type: f.type });
     }
 
