@@ -43,12 +43,35 @@
     }
     return rows.map(r => r.join(''));
   }
+  // What a level is made of, for its extra sections to carry on with (see gen.js): its kinds
+  // of ground, its hazards, springs and moving platforms, the enemies on it that walk or fly
+  // over ledges, and a lie of the land of its own (from its name).
+  const LEDGE_FOES = 'BKFJSGXRZWAIĸ';
+  // Its three set pieces (gen.js): up to two from what's in it already, the rest from its name.
+  const PIECES = ['stairs', 'pillars', 'tunnel', 'crumble', 'spikepit', 'lavapit', 'conveyor', 'ice', 'spring', 'lift', 'mover'];
+  function piecesOf(all, h) {
+    const own = [['i', 'ice'], ['<', 'conveyor'], ['>', 'conveyor'], ['!', 'lavapit'], ['O', 'spring'], ['C', 'crumble'], ['^', 'spikepit'], ['M', 'mover'], ['V', 'lift']]
+      .filter(([c]) => all.includes(c)).map(([, k]) => k);
+    const out = [...new Set(own)].sort((a, b) => (hash(a) ^ h) % 7 - (hash(b) ^ h) % 7).slice(0, 2);
+    for (let k = 0; out.length < 3 && k < 40; k++) { const p = PIECES[(h + k * 7 + (h >> 5)) % PIECES.length]; if (!out.includes(p)) out.push(p); }
+    return out;
+  }
+  function themeOf(def) {
+    const all = LF.normalize(def.map).join(''), has = c => all.includes(c), h = hash(def.name);
+    return {
+      floors: ['i', 'C', '<', '>', '='].filter(has),
+      spikes: has('^'), lava: has('!'), water: has('~'), springs: has('O'), movers: has('M') || has('V'),
+      enemies: [...new Set([...all].filter(c => LEDGE_FOES.includes(c)))],
+      style: { wave: .05 + (h % 11) * .012, amp: 1 + (h >> 4) % 5, lenAdd: ((h >> 8) % 5) - 2, gapAdd: ((h >> 12) % 3) - 1 },
+      pieces: piecesOf(all, h),
+    };
+  }
   function generated(def, k, world) {
     const rows = LF.normalize(def.map), h = rows.length, w = rows[0].length;
     const up = h > w * 1.2;
     const near = (v, sizes) => Object.entries(sizes).sort((a, b) => Math.abs(a[1] - v) - Math.abs(b[1] - v))[0][0];
     const opts = up ? { shape: 'up', size: near(h, { s: 34, m: 56, l: 84 }) } : { shape: 'right', size: near(w, { s: 48, m: 84, l: 130 }) };
-    const g = LF.generate({ ...opts, seed: hash(def.name) + k * 1013, difficulty: Math.min(5, 1 + Math.floor((world || 0) / 2)) });
+    const g = LF.generate({ ...opts, seed: hash(def.name) + k * 1013, difficulty: Math.min(5, 1 + Math.floor((world || 0) / 2)), theme: themeOf(def) });
     // (In a pure-fruit level the extra sections grow its fruit; elsewhere, apples.)
     return LF.normalize(g.map).map(r => [...r].map(c => (LF.FRUITS[c] ? def.pureFruit || 'a' : c)).join(''));
   }

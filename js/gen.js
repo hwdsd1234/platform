@@ -187,6 +187,12 @@
     const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
     const shape = opts.shape || 'right', size = opts.size || 'm';
     const diff = clamp(opts.difficulty ?? 3, 1, 5);
+    // opts.theme (from lengthen.js: what the level it's lengthening is made of): its kinds of
+    // ground, hazards, springs, moving platforms and enemies, so the new sections carry on
+    // like the level and not like every other; and its own lie of the land (style: how the
+    // ground rolls, how long the ledges, how wide the gaps).
+    const th = opts.theme || null;
+    const st = (th && th.style) || { wave: .09, amp: 3, lenAdd: 0, gapAdd: 0 };
 
     let w, h;
     if (shape === 'right') { w = { s: 48, m: 84, l: 130 }[size] + ri(-6, 6); h = ri(15, 19); }
@@ -236,10 +242,74 @@
 
     const pickKind = floating => {
       const r = R();
+      // (The level's own ground, often: ice, conveyors, crumbling blocks, planks.)
+      if (th && th.floors.length && r < .4) { const k = pick(th.floors); if (k !== 'C' || diff >= 2) return floating || k !== '=' ? k : '#'; }
       if (!floating) return '#';
       if (diff >= 2 && r < .1 + diff * .03) return 'C';
       return r < .6 ? '#' : '=';
     };
+
+    // Set pieces (a level's own few, from opts.theme.pieces: see lengthen.js), each built on
+    // from the ledge you're on (going right), returning the ledge it ends on, or null if
+    // there's no room. They're what makes one level's sections unlike another's.
+    const pieces = (th && th.pieces) || [];
+    const column = (x, y, c = '#') => { set(x, y, c); for (let yy = y + 1; yy < h; yy++) set(x, yy, '#'); };
+    function piece(kind, edge) {
+      const y = cur.y;
+      if (kind === 'stairs') {
+        const n = ri(3, 5), x = edge + ri(1, 2) + 1, top = y - n;
+        if (top < 5 || x + 2 * n + 6 > w - 2 || !free(x, top - 3, x + 2 * n + 5, h - 1)) return null;
+        for (let i = 0; i < n; i++) for (const xx of [x + 2 * i, x + 2 * i + 1]) column(xx, y - 1 - i);
+        reserve(x, top - 3, x + 2 * n, y - 1);
+        return addLedge(x + 2 * n, x + 2 * n + ri(2, 4), top, '#', true);
+      }
+      if (kind === 'pillars') {
+        const n = ri(3, 5); let x = edge + ri(2, 3), py = y;
+        const xs = [];
+        for (let i = 0; i < n; i++) { py = clamp(py + ri(-1, 1), 6, h - 3); xs.push([x, py]); x += ri(3, 4); }
+        const end = x + 6;
+        if (end > w - 2 || !free(edge + 1, Math.min(...xs.map(p => p[1])) - 3, end, h - 1)) return null;
+        for (const [px, pyy] of xs) { column(px, pyy); if (diff <= 2) column(px + 1, pyy); }
+        reserve(edge + 1, Math.min(...xs.map(p => p[1])) - 3, x - 1, h - 1);
+        return addLedge(x, x + ri(3, 5), clamp(py + ri(-1, 0), 6, h - 3), '#', true);
+      }
+      if (kind === 'crumble') {
+        const len = ri(5, 8), x0 = edge + 1, xa = x0 + len;
+        if (xa + 6 > w - 2 || !free(x0, y - 3, xa + 5, h - 1)) return null;
+        for (let x = x0; x < xa; x++) set(x, y, 'C');
+        reserve(x0, y - 3, xa - 1, h - 1);
+        return addLedge(xa, xa + ri(3, 5), y, '#', true);
+      }
+      if (kind === 'spikepit') {
+        const gap = ri(5, 7), xa = edge + gap + 1, fy = Math.min(h - 2, y + 3);
+        if (xa + 6 > w - 2 || !free(edge + 1, y - 4, xa + 5, h - 1)) return null;
+        for (let x = edge + 1; x < xa; x++) { column(x, fy); set(x, fy - 1, '^'); }
+        const mid = edge + 1 + Math.floor((gap - 2) / 2); set(mid, y - 1, '#'); set(mid + 1, y - 1, '#');
+        reserve(edge + 1, y - 4, xa - 1, h - 1);
+        return addLedge(xa, xa + ri(3, 6), y, '#', true);
+      }
+      if (kind === 'lavapit') {
+        const gap = ri(3, 5), xa = edge + gap + 1;
+        if (diff < 2 || xa + 6 > w - 2 || !free(edge + 1, y - 4, xa + 5, h - 1)) return null;
+        for (let x = edge + 1; x < xa; x++) for (let yy = y + 1; yy < h; yy++) set(x, yy, '!');
+        reserve(edge + 1, y - 4, xa - 1, h - 1);
+        return addLedge(xa, xa + ri(3, 6), y, '#', true);
+      }
+      if (kind === 'tunnel') {
+        const len = ri(9, 14), x0 = edge + 1, x1 = x0 + len - 1;
+        if (y - 6 < 1 || x1 + 2 > w - 2 || !free(x0, y - 6, x1, h - 1)) return null;
+        const L = addLedge(x0, x1, y, '#', true);
+        for (let x = x0 + 1; x < x1; x++) { set(x, y - 4, '#'); set(x, y - 5, '#'); }
+        reserve(x0, y - 6, x1, y - 1);
+        return L;
+      }
+      if (kind === 'conveyor' || kind === 'ice') {
+        const len = ri(7, 11), xa = edge + ri(1, 2) + 1, ny = clamp(y + ri(-1, 1), 6, h - 3);
+        if (xa + len > w - 2 || !free(xa - 1, ny - 3, xa + len, h - 1)) return null;
+        return addLedge(xa, xa + len - 1, ny, kind === 'ice' ? 'i' : chance(.5) ? '<' : '>', true);
+      }
+      return null;
+    }
 
     let fails = 0;
     for (let steps = 0; steps < 500; steps++) {
@@ -255,8 +325,13 @@
           else if (dir < 0 && cur.x0 - 9 < 1) dir = 1;
         }
 
-        // Moving platform across a wide gap
-        if (shape !== 'up' && diff >= 2 && roll < .12 && dir > 0) {
+        // One of the level's set pieces, often.
+        if (shape === 'right' && dir > 0 && pieces.length && attempt < 4 && chance(.45)) {
+          const made = piece(pick(pieces), edge);
+          if (made) { cur = made; placed = true; continue; }
+        }
+        // Moving platform across a wide gap (more of them in a level that has them)
+        if (shape !== 'up' && (diff >= 2 || (th && th.movers)) && roll < (th ? (th.movers || pieces.includes('mover') ? .25 : .05) : .12) && dir > 0) {
           const gap = ri(6, 9), up = ri(0, 1), len = ri(3, 6);
           const xa = edge + gap + 1, xb = xa + len - 1, ny = cur.y - up;
           if (xb > w - 2 || ny < 5) continue;
@@ -268,8 +343,8 @@
           placed = true; continue;
         }
 
-        // Vertical lift
-        if (shape !== 'right' && roll > .82) {
+        // Vertical lift (across levels too, in a level whose set pieces have them)
+        if ((shape !== 'right' || pieces.includes('lift')) && roll > .82) {
           const rise = ri(4, 7), len = ri(3, 5), ny = cur.y - rise;
           const col = dir > 0 ? edge + 2 : edge - 3;
           const xa = dir > 0 ? col + 3 : col - 2 - len + 1, xb = xa + len - 1;
@@ -284,8 +359,8 @@
           placed = true; continue;
         }
 
-        // Spring on the ledge end
-        if (shape !== 'right' && roll > .7 && roll <= .82 && cur.kind !== 'C' && cur.x1 - cur.x0 >= 2 && !cur.used.has(edge)) {
+        // Spring on the ledge end (across levels too, in a level that has springs)
+        if ((shape !== 'right' || (th && th.springs) || pieces.includes('spring')) && roll > .7 && roll <= .82 && cur.kind !== 'C' && cur.x1 - cur.x0 >= 2 && !cur.used.has(edge)) {
           const rise = ri(5, 7), gap = ri(0, 2), len = ri(3, 5), ny = cur.y - rise;
           const xa = dir > 0 ? edge + gap + 1 : edge - gap - len, xb = xa + len - 1;
           if (ny < 5 || xa < 1 || xb > w - 2) continue;
@@ -303,7 +378,7 @@
         // Ordinary hop
         let up;
         if (shape === 'right') {
-          const target = Math.round(h * .62 + Math.sin(cur.x1 * .09 + (s % 7)) * 3);
+          const target = Math.round(h * .62 + Math.sin(cur.x1 * st.wave + (s % 7)) * st.amp);
           up = chance(.3) ? ri(-2, 2) : clamp(cur.y - target + ri(-1, 1), -3, 2);
         } else if (shape === 'up') up = ri(2, 3);
         else {
@@ -312,8 +387,8 @@
           up = clamp(cur.y - targetY + ri(-1, 1), -2, 3);
         }
         const maxGap = up >= 3 ? 1 : up >= 1 ? 3 : 4;
-        const gap = ri(1, Math.max(1, Math.min(maxGap, 1 + Math.ceil(diff * .7))));
-        const len = shape === 'up' ? ri(3, 6) : ri(Math.max(2, 5 - diff), 8 - Math.floor(diff / 2));
+        const gap = ri(1, Math.max(1, Math.min(maxGap, 1 + Math.ceil(diff * .7) + st.gapAdd)));
+        const len = shape === 'up' ? ri(3, 6) : clamp(ri(Math.max(2, 5 - diff), 8 - Math.floor(diff / 2)) + st.lenAdd, 2, 12);
         const ny = cur.y - up;
         const xa = dir > 0 ? edge + gap + 1 : edge - gap - len, xb = xa + len - 1;
         if (ny < 5 || ny > h - 2 || xa < 1 || xb > w - 2) continue;
@@ -356,12 +431,13 @@
     let wraiths = 0;
     for (const L of ledges.slice(1, -1)) {
       const len = L.x1 - L.x0 + 1;
-      if (L.kind !== 'C' && len >= 5 && chance(.1 + diff * .06)) {
+      if (L.kind !== 'C' && len >= 5 && chance((.1 + diff * .06) * (th ? (th.spikes ? 1.6 : .5) : 1))) {
         const x = ri(L.x0 + 2, L.x1 - 2);
         if (!L.used.has(x) && g[L.y - 1][x] === '.' && !L.used.has(x - 1) && !L.used.has(x + 1)) { set(x, L.y - 1, '^'); L.used.add(x); }
       }
       if (L.kind !== 'C' && len >= 4 && chance(.18 + diff * .08)) {
-        let type = pick(POOL[diff]);
+        // (The level's own enemies, when it has any that walk or fly over ledges.)
+        let type = th && th.enemies.length ? pick(th.enemies) : pick(POOL[diff]);
         if (type === 'G' && wraiths >= diff - 3) type = 'B';
         const x = ri(L.x0 + 1, L.x1 - 1);
         if (L.used.has(x) || [...L.used].some(u => Math.abs(u - x) <= 1 && g[L.y - 1][u] === '^')) continue;
@@ -382,8 +458,10 @@
       const x = pick(cols); set(x, L.y - 1, pick(['a', 'o', 'b'])); L.used.add(x);
     }
 
-    if (shape === 'right' && chance(.55)) {
-      for (let x = 0; x < w; x++) if (g[h - 1][x] === '.') set(x, h - 1, '~');
+    // Under it all: the level's own (lava, water, or nothing), or water half the time.
+    const under = th ? (th.lava ? '!' : th.water ? '~' : null) : chance(.55) ? '~' : null;
+    if (shape === 'right' && under) {
+      for (let x = 0; x < w; x++) if (g[h - 1][x] === '.') set(x, h - 1, under);
     }
 
     let map = g.map(r => r.join(''));
