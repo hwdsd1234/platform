@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'The 💛 yellow apple’s regeneration now comes in bursts: every second, a burst of 1, 2, 3 or 4 HP (by its level), with a little yellow sparkle',
       'No more health coming back by itself (the 5 HP every 5 seconds is gone): only apples heal you, and a 💛 yellow apple’s regeneration',
       'A 💛 yellow apple in every level now, towers, castles and the Star Road included, always somewhere you can reach',
       'Garden: 🦴 bone meal, 20 ammo a bag (buy 1 or 5 on any bed’s card or in the seed shop’s tools): use it on a plant and it grows on the spot: a growing one is ripe at once, and a multi-harvest one waiting on its next crop has it now',

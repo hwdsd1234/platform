@@ -67,7 +67,7 @@
     'ǫ': { name: 'Kiwi', power: 'Multishot', color: '#8DB33A', note: 'every gun button fires two at once (three with a green apple’s ripeness), for the ammo of one, until you die (not the nuke)' },
     // The green apple isn't a power of its own and takes no power slot: it ripens the rest.
     'ǵ': { name: 'Green apple', power: 'Ripe', color: '#7BC043', note: 'takes no power slot; hold up to two: each lets you take one more of each fruit: 50 more HP (150, then 200, at most: you get the extra 50 straight away), and a second (and third) of any power fruit makes its power stronger (a triple jump, a bigger boost, faster, a slower glide and slide, a wider magnet, brighter eyes, spiked chains harmless, triple ammo, stronger swimming, a half-speed clock, two second chances), until you die' },
-    'ý': { name: 'Yellow apple', power: 'Regeneration', color: '#F2C82E', note: 'takes no power slot: you heal 1 HP every second; eat a second for 2 a second (no ripeness needed), and with a green apple a third (3), with two a fourth (4), until you die' },
+    'ý': { name: 'Yellow apple', power: 'Regeneration', color: '#F2C82E', note: 'takes no power slot: every second you get a burst of 1 HP; eat a second for bursts of 2 (no ripeness needed), and with a green apple a third (3), with two a fourth (4), until you die' },
     'ŧ': { name: 'Tomato', power: 'Second chance', color: '#E8402A', note: 'takes no power slot: a hit that would take your last HP doesn’t kill you: the tomato takes it, then for 5 seconds you run fast, jump high and can’t be hurt, and whatever you touch dies (a boss takes a hit)' },
   };
   // Every fruit but the apple gives a power that's on or off: the player's flag for each.
@@ -3422,8 +3422,14 @@
     // (No health comes back by itself: only from apples, and a yellow apple's regeneration.)
     const maxHp = LF.maxHp(p);
     if (!(p.hp <= maxHp)) p.hp = maxHp;
-    // (A yellow apple: its level in HP every second.)
-    if (p.heal && p.hp < maxHp) p.hp = Math.min(maxHp, p.hp + p.heal * dt);
+    // (A yellow apple: once a second, a burst of its level in HP, while you're under full.)
+    if (p.heal && p.hp < maxHp) {
+      if ((p.healT = (p.healT || 0) + dt) >= 1) {
+        p.healT -= 1; p.hp = Math.min(maxHp, p.hp + p.heal);
+        burst(W, p.x + p.w / 2, p.y + p.h / 2, 4 + p.heal * 2, ['#F2C82E', '#FFF0A0', '#9FF07A'], 70, -40, 2);
+        W.floaters.push({ x: p.x + p.w / 2, y: p.y - 8, t: `+${p.heal}`, life: .6, c: '#F2E06A' });
+      }
+    } else p.healT = 0;
 
     if (dir && p.lock <= 0) p.face = dir;
     // Right after a wall jump, steering is weak so the kick carries you off the wall.
