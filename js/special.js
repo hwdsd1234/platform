@@ -25,7 +25,7 @@
       return best;
     }
     const w = LF.WORLDS[def.starOf];
-    const pool = []; for (let i = w.first; i <= w.last; i++) if (!L[i].boss && L[i].starOf == null) pool.push(L[i]);
+    const pool = []; for (let i = w.first; i <= w.last; i++) if (!L[i].boss && !L[i].ride && L[i].starOf == null) pool.push(L[i]);
     return pool[Math.floor(pool.length / 2)];
   };
   LF.starLevel = def => {

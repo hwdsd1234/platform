@@ -44,12 +44,12 @@
   // Later additions say which save version brought them in (lv.since): the Storm Heights
   // and the Sky Spire came with version 6, the Melon Vault with 7, the High Winds with 8,
   // the Neo Ledges with 9, the world castles with 10, the Pear Cliffs with 11, the sunken
-  // castles with 12, the Star Road (at the very end) with 14, the Shell Hills with 15, the Shell Slopes with 16, the Shell Skies with 17, the Bat Bridges with 18 (the Star of Star Road, at the very end, came then too), Drifting Flock and Bat Tower with 20, the Switch Works with 21. With 13, two castles went (one castle a world): Lighthouse Castle and
+  // castles with 12, the Star Road (at the very end) with 14, the Shell Hills with 15, the Shell Slopes with 16, the Shell Skies with 17, the Bat Bridges with 18 (the Star of Star Road, at the very end, came then too), Drifting Flock and Bat Tower with 20, the Switch Works with 21, the Ferry Line with 22. With 13, two castles went (one castle a world): Lighthouse Castle and
   // Rat Castle, the sunken castles taking their places; Drowned Castle moved to after the
   // Pear Cliffs. So a save's numbering is rebuilt as it was (GONE puts the old castles back
   // where they stood), each level found again by name; a cleared castle that's gone counts
   // as its world's castle cleared.
-  const SAVE_V = 21;
+  const SAVE_V = 22;
   const GONE = [{ name: 'Lighthouse Castle', after: 'Sunken Castle', now: 'Sunken Castle' }, { name: 'Rat Castle', after: 'The Long Glide', now: 'Drowned Castle' }];
   if (levelsV < SAVE_V) {
     let old = LF.LEVELS.map((lv, i) => ({ name: lv.name, since: lv.since || 0, boss: lv.boss, giantFight: lv.giantFight, i }));
@@ -1302,6 +1302,7 @@
         <li><kbd>←</kbd><kbd>→</kbd> walk · <kbd>Space</kbd> jump (hold for height) · <kbd>↓</kbd> drop through planks</li>
         <li>Every level has a clock: 300 seconds, 400 in a castle (a tower’s boss arena adds 100 seconds when you reach it, a castle’s 200); come back at a lantern and the clock gives you the share of the level still ahead of it, plus 30 seconds (never under 150 seconds): at 50 seconds left a hurry-up tune plays and the music speeds up; when it runs out you die (fruit groves have their own short clocks)</li>
         <li>Push into a wall to slide down it · jump off walls to climb</li>
+        <li>Rides (the Ferry Line): step onto the raft at the start and it carries you the whole level along its dotted track to the door, so stay on it; nothing's below · walls stand across the track with a slot for the raft: run into the wall and jump, and you're carried over it with the raft (in the air you keep going with it) · in the spiked tunnels, don't jump · come back at a lantern and the raft's waiting for you there</li>
         <li>Health: you have 100 HP (150 with a 🍏 green apple, 200 with two), shown top left · each enemy hits for its own damage: a beetle, bat, frog or spider 15, an ember pot, archer, wasp, Shellback or water creature 20, a Thornback or Spark 25, a ram, wraith or lava bubble 30, a golem 35, a TNT cart 40, a boss 35, a giant boss 40; spikes 25, pendulums, fire bars and crushers 30, boss shots 15–30 · health doesn't come back by itself (only a 💛 yellow apple regenerates it) · 🍎 apples heal 25: pick them up, or press <kbd>H</kbd> to eat one from your items · lava and falling out of the world still kill outright</li>
         <li>Damage: a bullet does 1, a big (<kbd>Shift</kbd>) shot 2, an explosion 3 (a grenade's two smaller bounce blasts 2), dynamite 4 and a nuke 6; every big shot does twice its damage (a big kill shot is two hits on a boss), and lava doubles a blast again · golems, TNT carts and bosses all feel the difference (a tower or castle boss counts it towards the 10 gun hits that send it into a fury)</li>
         <li>Shellbacks: stomp one into its shell, touch the shell to kick it (it knocks out enemies, hits bosses, picks up coins for you, and comes back off walls) · hold <kbd>S</kbd> and run into a shell lying still to carry it (it can't come out while you hold it), press <kbd>S</kbd> again to let it go, kicked off ahead of you · stomp a Shellback or shell in mid-air for a big bounce: that's the shell jump: throw a shell off a ramp across a gap; it bounces off the wall on the far side and flies back off the lip there, and you jump from the edge and land on it in the air (in mid-air a shell's easy to land on: feet over its middle will do)</li>

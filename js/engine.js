@@ -373,13 +373,14 @@
     W.lavaTop = [];
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (tiles[y][x] === '!' && (y === 0 || tiles[y - 1][x] !== '!')) W.lavaTop.push({ tx: x, ty: y });
     // Every lava pool gets lava bubbles, spread evenly and centered along each stretch of
-    // surface: one per ~7 tiles, only where there's room above to jump.
+    // surface: one per ~7 tiles, only where there's room above to jump. (Not on a ride:
+    // there, only the ones the level places.)
     const runs = [];
     for (const l of W.lavaTop) {
       const last = runs[runs.length - 1];
       if (last && last.ty === l.ty && last.x1 === l.tx - 1) last.x1 = l.tx; else runs.push({ ty: l.ty, x0: l.tx, x1: l.tx });
     }
-    for (const r of runs) {
+    for (const r of def.ride ? [] : runs) {
       const n = r.x1 - r.x0 + 1, count = Math.max(1, Math.round(n / 7));
       for (let k = 0; k < count; k++) {
         const tx = r.x0 + Math.floor((k + .5) * n / count);
@@ -426,6 +427,15 @@
     W.checkpoint = { ...W.start };
     W.blinkT = 0; W.blinkOn = 'T';
     W.player = makePlayer(W.start);
+    // A ride (def.ride: { path: [[tx, ty], …], speed, w }): one raft that carries you the whole
+    // level along its track (each point the raft's top-left, in tiles). It waits till you
+    // step on, then goes, through anything in its way, and stops at the track's end: stay on
+    // it (jumping over what's in your way: a wall knocks you off it).
+    if (def.ride) {
+      const path = def.ride.path.map(([tx, ty]) => [tx * TS, ty * TS]);
+      W.ride = { kind: 'ride', path, seg: 0, v: def.ride.speed || 90, w: TS * (def.ride.w || 3), h: 12, x: path[0][0], y: path[0][1], ox: path[0][0], oy: path[0][1], dx: 0, dy: 0, prevY: path[0][1], state: 'wait' };
+      W.plats.push(W.ride);
+    }
     W.player.ammo = playerTune(def).ammo;
     // Ammo brought from the last level, on top of the level's own.
     if (def.carryAmmo) W.player.ammo += def.carryAmmo;
@@ -480,6 +490,7 @@
       if (W.door && W.lanterns.every(l => l.lit) && !W.enemies.some(isBoss)) W.door.open = true;
       // (The clock is what that checkpoint gives you: see cpClock.)
       if (def.deadline) { W.cpBoss = W.bossClock = !!def.resume.boss; setClock(W, LF.cpClock(W)); }
+      if (W.ride) rideFrom(W, W.player.x);
     }
     // def.noSpawnInv (Hardcore): no invincible second at the start or after respawning.
     if (def.noSpawnInv) W.player.inv = 0;
@@ -783,6 +794,7 @@
     // Practice: back at the latest checkpoint you set, if any.
     const mark = W.marks[W.marks.length - 1];
     if (mark) { W.player.x = mark.x; W.player.y = mark.y; }
+    if (W.ride) rideFrom(W, W.player.x);
     if (W.def.noSpawnInv) W.player.inv = 0;
     // In a boss fight you can't fire until your spawn protection is over (and at least
     // SPAWN_HOLD seconds), so you can't spam shots from safety at a boss beside your spawn.
@@ -965,9 +977,38 @@
     return best;
   }
   LF.spinnerCorners = s => [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([u, v]) => ({ x: s.cx + (u * Math.cos(s.a) - v * Math.sin(s.a)) * s.half, y: s.cy + (u * Math.sin(s.a) + v * Math.cos(s.a)) * s.half }));
+  // Back on the ride after a death: the raft waits on its track level with `x` (your
+  // checkpoint), and you stand on it.
+  function rideFrom(W, x) {
+    const pl = W.ride, P = pl.path, p = W.player, cx = x + p.w / 2 - pl.w / 2;
+    let seg = 0, at = P[0];
+    if (cx > P[0][0]) {
+      at = P[P.length - 1]; seg = P.length - 1;
+      for (let k = 0; k < P.length - 1; k++) {
+        const [x0, y0] = P[k], [x1, y1] = P[k + 1];
+        if (cx >= Math.min(x0, x1) && cx <= Math.max(x0, x1) && x1 !== x0) { const t = (cx - x0) / (x1 - x0); at = [cx, y0 + (y1 - y0) * t]; seg = k; break; }
+      }
+    }
+    Object.assign(pl, { x: at[0], y: at[1], prevY: at[1], seg, state: seg >= P.length - 1 ? 'done' : 'wait', dx: 0, dy: 0 });
+    p.x = pl.x + pl.w / 2 - p.w / 2; p.y = pl.y - p.h; p.vy = 0;
+  }
   function stepPlats(W, dt) {
     for (const pl of W.plats) {
       pl.prevY = pl.y; pl.dx = 0; pl.dy = 0;
+      if (pl.kind === 'ride') {
+        if (pl.state === 'wait' && W.player.onPlat === pl) pl.state = 'go';
+        if (pl.state !== 'go') continue;
+        const ox = pl.x, oy = pl.y;
+        let left = pl.v * dt;
+        while (left > 0 && pl.seg < pl.path.length - 1) {
+          const [tx, ty] = pl.path[pl.seg + 1], dx = tx - pl.x, dy = ty - pl.y, d = Math.hypot(dx, dy);
+          if (d <= left) { pl.x = tx; pl.y = ty; left -= d; pl.seg++; }
+          else { pl.x += dx / d * left; pl.y += dy / d * left; left = 0; }
+        }
+        if (pl.seg >= pl.path.length - 1) pl.state = 'done';
+        pl.dx = pl.x - ox; pl.dy = pl.y - oy;
+        continue;
+      }
       if (pl.kind === 'fall') {
         // A shingle under moving lava is sunk out of sight (and out of reach) till the lava
         // drains down past it.
@@ -3528,6 +3569,8 @@
     if (p.dbl > 0 && Math.random() < .08) W.particles.push({ x: p.x + Math.random() * p.w, y: p.y + p.h * Math.random(), vx: 0, vy: -20, life: .4, max: .4, c: '#FFE066', size: 2, g: 0 });
 
     if (p.onPlat && !dropping) { moveX(W, p, p.onPlat.dx); p.y += p.onPlat.dy; }
+    // (Jump off a ride's raft and you keep going with it, as if still aboard, till you land.)
+    else if (p.lastRide && !p.onGround) moveX(W, p, p.lastRide.dx);
     // Standing on a turn block, you turn with it (about its middle, from where your feet are).
     if (p.spinOn && p.spinOn.da) {
       const s = p.spinOn, fx = p.x + p.w / 2 - s.cx, fy = p.y + p.h - s.cy, c = Math.cos(s.da), sn = Math.sin(s.da);
@@ -3610,7 +3653,7 @@
     const hit = moveY(W, p, p.vy * dt, dropping);
     let bounced = false;
     if (hit && hit.dir === 'down') {
-      p.vy = 0; p.onGround = true;
+      p.vy = 0; p.onGround = true; p.lastRide = null;
       for (const u of hit.under) {
         if (u.c === 'O') bounced = true;
         if (u.c === '<') p.conv = -1; else if (u.c === '>') p.conv = 1;
@@ -3625,7 +3668,7 @@
       for (const pl of W.plats) {
         if (pl.state === 'gone' || pl.sunk) continue;
         if (p.x + p.w > pl.x + 2 && p.x < pl.x + pl.w - 2 && pb <= Math.max(pl.prevY, pl.y) + 1 && p.y + p.h >= pl.y) {
-          p.y = pl.y - p.h; p.vy = 0; p.onGround = true; p.onPlat = pl;
+          p.y = pl.y - p.h; p.vy = 0; p.onGround = true; p.onPlat = pl; p.lastRide = pl.kind === 'ride' ? pl : null;
           if (pl.kind === 'fall' && pl.state === 'idle') { pl.state = 'shake'; pl.t = 0; }
           break;
         }

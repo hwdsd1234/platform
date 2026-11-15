@@ -1415,9 +1415,11 @@
       out.push({ ...tower(voidDef(), 777, false, true), chapter: 'The Neo Ledges', boss: true, sky: true, since: 6 });
       out.push(castleOf(castleAfter['The Neo Ledges']));
     }
-    // The Pear Cliffs (levels-14.js) close the Canal District, before its castle.
+    // The Pear Cliffs (levels-14.js) and the Ferry Line close the Canal District, before its castle.
     if (chapter === 'The Soot Canals' && chapterEnds) {
       out.push(...(LF.PEAR_LEVELS || []));
+      // ...then the Ferry Line (levels-20.js), before the castle.
+      out.push(...(LF.RIDE_LEVELS || []));
       out.push(sunkenOf(sunkenAfter['The Pear Cliffs']));
     }
     // And the Melon Patch (levels-13.js) closes the Garden Market.

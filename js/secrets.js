@@ -188,7 +188,7 @@
   WORLDS.forEach((world, k) => {
     if (k >= LAST) return;
     const to = Math.min(k + 2, LAST);
-    const regular = L.map((lv, i) => i).filter(i => L[i].world === k && !L[i].boss && !L[i].secretTo);
+    const regular = L.map((lv, i) => i).filter(i => L[i].world === k && !L[i].boss && !L[i].ride && !L[i].secretTo);
     // Aim for a third and two thirds of the way through the world, taking the nearest level
     // after that with room for a climb to the door (or, failing that, the aimed-for level, the
     // door in its hardest spot).

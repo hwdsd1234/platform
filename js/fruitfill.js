@@ -38,7 +38,7 @@
   // As played: there, and within reach (by LF.analyze), or moved to where it is.
   const done = new WeakMap();
   function ensure(d) {
-    if (!d || !Array.isArray(d.map) || d.boss) return d;
+    if (!d || !Array.isArray(d.map) || d.boss || d.ride) return d;   // (a ride places its own)
     if (done.has(d)) return done.get(d);
     let out = d;
     try {

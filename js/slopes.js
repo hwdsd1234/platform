@@ -9,7 +9,7 @@
   const cache = new Map();
   const HILL_EVERY = 50, MAX_HILLS = 4;
   LF.addSlopes = def => {
-    if (!def || !Array.isArray(def.map)) return def;
+    if (!def || !Array.isArray(def.map) || def.ride) return def;   // (not a ride: see levels-20.js)
     if (cache.has(def.name)) return cache.get(def.name);
     const map = LF.normalize(def.map), rows = map.map(r => r.split('')), h = rows.length, w = rows[0].length;
     // (Every step is judged on the level as it was, so a staircase becomes a whole ramp.)
