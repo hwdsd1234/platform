@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'The Last Dark’s cutscenes are plain now: you just freeze while the Last Dark swells and breaks out (and later while the castle rises), with the screen as normal: no black bars, no words, no camera sweep, no sparks',
       'Levels are less alike: the extra sections every level runs on into now carry on like the level itself (its own kinds of ground, hazards, springs, lifts and enemies, and a lie of the land of its own), and each level has three set pieces of its own among staircases, pillar hops, crumbling bridges, spike pits, lava pits, low tunnels, conveyor runs, ice runs, springs, lifts and moving platforms',
       'Fixed: Lucky Panels, Panel Pairs and Ammo Panels wouldn’t open (going in did nothing). They’re back, a pair of panels for every fruit now',
       'Level 4 powers: with a third green apple (in a 🍏 Triple Ripe event) every fruit power goes to level 4: a quintuple jump, more speed and boost, the slowest glide, wall slide at a twentieth of the speed, a 16-block magnet, 5× light, fire bars harmless too, 5× ammo, the strongest swimming, the clock at a quarter speed, four second chances, five shots a press, 5-damage stomps',

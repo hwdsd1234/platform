@@ -2027,27 +2027,25 @@
   function startChase(W, e) {
     e.chase = { t: 0, x: e.x + e.w / 2, y: e.y + e.h / 2 }; e.phased = true; e.k = 1;
     e.fury = 0; e.dazed = 0; e.rest = 0; W.chasing = true;
-    // First a cutscene: it swells to a giant, and smashes the hall's far wall open.
-    const gx = (W.chaseGate || [[0, 0]])[0][0] * TS;
+    // First a cutscene (you're frozen, the screen as ever, no words): it swells to a giant, and
+    // smashes the hall's far wall open.
     W.cutscene = {
-      dur: 4.2, focus: () => ({ x: Math.min(e.x + e.w / 2 + 120, gx), y: e.y + e.h / 2 }),
-      lines: [[0, 'The Last Dark staggers…'], [1.3, '…and swells, darker than the night itself'], [2.7, 'RUN!']],
+      dur: 4.2,
       tick: (W, c, dt) => {
         e.k = 1 + 2 * Math.min(1, c.t / 2.6);
         // (It staggers back as it swells, to ten tiles behind you: the chase starts with you ahead.)
         const back = W.player.x + W.player.w / 2 - TS * 10;
         if (e.chase.x > back) e.chase.x += (back - e.chase.x) * Math.min(1, dt * 2.5);
         e.x = e.chase.x - e.w / 2;
-        if (Math.random() < dt * 30) burst(W, e.x + e.w / 2 + (Math.random() - .5) * e.w * e.k, e.y + e.h / 2 + (Math.random() - .5) * e.h * e.k, 2, ['#463C6B', '#0E0C22', '#FF4D3D'], 120, -60, 4);
         if (c.t > 1.2 && c.t - dt <= 1.2) { W.shake = Math.max(W.shake, .6); W.emit('roar'); }
         if (c.t > 2.6 && !c.broke) {
           c.broke = true;
-          for (const [x, y] of W.chaseGate || []) { W.tiles[y][x] = ' '; burst(W, x * TS + 16, y * TS + 16, 6, ['#8F81AB', '#463C6B', '#FF6B3D'], 160, 300, 3); }
+          for (const [x, y] of W.chaseGate || []) W.tiles[y][x] = ' ';
           W.shake = Math.max(W.shake, .9); W.emit('unlock');
         }
       },
       // (Then the chase: you get a moment's start.)
-      done: () => { e.k = 3; e.chase.t = .6; W.floaters.push({ x: W.player.x + W.player.w / 2, y: W.player.y - 30, t: 'RUN →', life: 1.6, c: '#FF4D3D' }); },
+      done: () => { e.k = 3; e.chase.t = .6; },
     };
     W.shake = Math.max(W.shake, .5); W.emit('roar');
   }
@@ -2067,26 +2065,21 @@
   }
   LF.cutsceneLine = W => { const c = W.cutscene; if (!c || !c.lines) return null; let t = null; for (const [at, text] of c.lines) if (c.t >= at) t = text; return t; };
   // The final castle rises (once the Last Dark has fallen): its blocks come up out of the
-  // lava, bottom row first, as the camera sweeps across it; then its gate goes, and its door
-  // appears.
+  // lava, bottom row first, while you're frozen (the screen as ever, no words); then its gate
+  // goes, and its door appears.
   function riseCastle(W) {
-    const list = W.castleHidden || [], x0 = W.def.castleFrom * TS, x1 = W.w * TS;
+    const list = W.castleHidden || [];
     W.cutscene = {
-      dur: 6.5, focus: () => ({ x: x0 + (x1 - x0) * Math.min(1, (W.cutscene ? W.cutscene.t : 6.5) / 5.5), y: (W.h - 14) * TS }),
-      lines: [[.4, 'The ground shakes…'], [2, 'From the lava rises a castle greater than any before it'], [4.8, 'Cross it, and the night is over']],
+      dur: 6.5,
       tick: (W, c) => {
         const n = Math.floor(list.length * Math.min(1, c.t / 5.2));
-        for (let k = c.shown || 0; k < n; k++) {
-          const b = list[k]; W.tiles[b.y][b.x] = b.c;
-          if (k % 7 === 0) burst(W, b.x * TS + 16, b.y * TS + 16, 3, ['#FF6B3D', '#FFB547', '#8F81AB'], 90, 200, 2.5);
-        }
+        for (let k = c.shown || 0; k < n; k++) { const b = list[k]; W.tiles[b.y][b.x] = b.c; }
         c.shown = n; W.shake = Math.max(W.shake, .12);
       },
       done: () => {
         for (const b of list) W.tiles[b.y][b.x] = b.c;
-        for (const [x, y] of W.castleGate || []) { W.tiles[y][x] = ' '; burst(W, x * TS + 16, y * TS + 16, 6, ['#8F81AB', '#463C6B'], 160, 300, 3); }
+        for (const [x, y] of W.castleGate || []) W.tiles[y][x] = ' ';
         W.castleRisen = true; if (W.door) W.door.hidden = false; for (const l of W.lanterns) l.hidden = false; openDoorIfDone(W);
-        W.floaters.push({ x: W.player.x + W.player.w / 2, y: W.player.y - 30, t: 'onward →', life: 1.6, c: '#FFE2A8' });
       },
     };
     W.emit('roar');

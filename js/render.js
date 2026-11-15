@@ -2026,8 +2026,9 @@
           W.nukeFlash = Math.max(0, W.nukeFlash - .03);
         }
       }
-      // A cutscene: black bars top and bottom, sliding in and out, and its line in the bottom one.
-      if (W.cutscene && !opts.edit) {
+      // A cutscene with lines (none now: the Last Dark's are plain): black bars top and bottom,
+      // sliding in and out, and its line in the bottom one.
+      if (W.cutscene && W.cutscene.lines && !opts.edit) {
         const c = W.cutscene, cw = ctx.canvas.width, ch = ctx.canvas.height, t = c.t || 0;
         const k = Math.min(1, t / .4, Math.max(0, (c.dur - t) / .4)), bar = ch * .12 * k;
         ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
