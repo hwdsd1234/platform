@@ -67,7 +67,7 @@
     'ǫ': { name: 'Kiwi', power: 'Multishot', color: '#8DB33A', note: 'every gun button fires two at once (three with a green apple’s ripeness), for the ammo of one, until you die (not the nuke)' },
     // The green apple isn't a power of its own and takes no power slot: it ripens the rest.
     'ǵ': { name: 'Green apple', power: 'Ripe', color: '#7BC043', note: 'takes no power slot; hold up to two: each lets you take one more of each fruit: 50 more HP (150, then 200, at most: you get the extra 50 straight away), and a second (and third) of any power fruit makes its power stronger (a triple jump, a bigger boost, faster, a slower glide and slide, a wider magnet, brighter eyes, spiked chains harmless, triple ammo, stronger swimming, a half-speed clock, two second chances), until you die' },
-    'ý': { name: 'Yellow apple', power: 'Regeneration', color: '#F2C82E', note: 'takes no power slot: you heal 1 HP more every second; eat a second for 2 a second (no ripeness needed), and with a green apple a third (3), with two a fourth (4), until you die' },
+    'ý': { name: 'Yellow apple', power: 'Regeneration', color: '#F2C82E', note: 'takes no power slot: you heal 1 HP every second; eat a second for 2 a second (no ripeness needed), and with a green apple a third (3), with two a fourth (4), until you die' },
     'ŧ': { name: 'Tomato', power: 'Second chance', color: '#E8402A', note: 'takes no power slot: a hit that would take your last HP doesn’t kill you: the tomato takes it, then for 5 seconds you run fast, jump high and can’t be hurt, and whatever you touch dies (a boss takes a hit)' },
   };
   // Every fruit but the apple gives a power that's on or off: the player's flag for each.
@@ -112,9 +112,9 @@
     9: { name: 'The Powder King', boss: true, w: 48, h: 56, stomp: true, drop: 10, hits: 18, note: 'boss: lobs bombs and sends TNT carts' },
   };
   // Health: you have HP (100, and 50 more for each green apple you hold); a hit takes off the
-  // damage of whatever hit you (ENEMY_DMG, or the hazard's own), and at none you die. You get
-  // back REGEN every REGEN_EVERY seconds, and an apple heals APPLE_HEAL.
-  const HP = LF.HP = 100, RIPE_HP = 50, APPLE_HEAL = LF.APPLE_HEAL = 25, REGEN = 5, REGEN_EVERY = 5;
+  // damage of whatever hit you (ENEMY_DMG, or the hazard's own), and at none you die. Health
+  // comes back only from apples (APPLE_HEAL each) and a yellow apple's regeneration.
+  const HP = LF.HP = 100, RIPE_HP = 50, APPLE_HEAL = LF.APPLE_HEAL = 25;
   LF.maxHp = p => HP + RIPE_HP * (p.green || 0);
   // How hard each enemy hits (bosses BOSS_DMG, giant bosses GIANT_DMG).
   const ENEMY_DMG = LF.ENEMY_DMG = { B: 15, K: 25, F: 15, J: 15, S: 20, G: 30, X: 15, R: 30, Z: 25, Y: 20, U: 20, W: 20, A: 20, I: 35, '*': 30, N: 20, 'ĸ': 20, '@': 40 };
@@ -574,7 +574,7 @@
       coyote: 0, buffer: 0, jumping: false, drop: 0, sx: 1, sy: 1, anim: 0, dead: false,
       wall: 0, wallDir: 0, wallCoyote: 0, sliding: false, lock: 0, wet: false,
       // One second of invincibility at the start of a level and after every respawn.
-      hp: HP, regen: 0, boost: 0, dbl: 0, fast: 0, airJumps: 0, inv: 1, conv: 0, cool: 0, flash: 0,
+      hp: HP, boost: 0, dbl: 0, fast: 0, airJumps: 0, inv: 1, conv: 0, cool: 0, flash: 0,
     };
   }
 
@@ -732,7 +732,7 @@
     }
     if (p.hp > dmg) {
       // (Knocked upwards, straight up, out of whatever hit you.)
-      p.hp -= dmg; p.inv = 1; p.vy = -560; p.jumping = false; p.regen = 0; p.hit = .3;
+      p.hp -= dmg; p.inv = 1; p.vy = -560; p.jumping = false; p.hit = .3;
       burst(W, p.x + p.w / 2, p.y + p.h / 2, 14, ['#FF6B6B', '#FFD0D0'], 180, 300);
       W.floaters.push({ x: p.x + p.w / 2, y: p.y - 8, t: `-${dmg}`, life: .9, c: '#FF6B6B' });
       W.shake = .15; W.freeze = .05; ring(W, p.x + p.w / 2, p.y + p.h / 2, 40, '255,107,107', .4); W.emit('shield');
@@ -3419,11 +3419,10 @@
     }
     p.lock -= dt; p.inv -= dt; p.hit = Math.max(0, (p.hit || 0) - dt);
     if (p.rush > 0) p.rush -= dt;
-    // Health comes back: REGEN every REGEN_EVERY seconds while you're under full.
+    // (No health comes back by itself: only from apples, and a yellow apple's regeneration.)
     const maxHp = LF.maxHp(p);
-    if (p.hp < maxHp) { if ((p.regen += dt) >= REGEN_EVERY) { p.regen = 0; p.hp = Math.min(maxHp, p.hp + REGEN); } }
-    else { p.regen = 0; p.hp = maxHp; }
-    // (A yellow apple: its level in HP more every second.)
+    if (!(p.hp <= maxHp)) p.hp = maxHp;
+    // (A yellow apple: its level in HP every second.)
     if (p.heal && p.hp < maxHp) p.hp = Math.min(maxHp, p.hp + p.heal * dt);
 
     if (dir && p.lock <= 0) p.face = dir;
