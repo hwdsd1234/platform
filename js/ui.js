@@ -728,7 +728,7 @@
   const GROVES = {
     grab: { name: 'Fruit Grove', hud: '10 seconds', what: '10 seconds to grab all the fruit you can: it all goes in your inventory. Get every one and it’s over at once' },
     lucky: { name: 'Lucky Panels', hud: 'find two skulls and it’s over', what: 'Bump the panels from below: each hides a fruit (one of every kind is under them) or a skull. Turn up two skulls and it’s over. Get every one and it’s over at once' },
-    pairs: { name: 'Panel Pairs', hud: '45 seconds · match the pairs', what: 'Thirteen pairs of panels, one pair of every fruit: a 6-second look at them all, then bump them two at a time for 45 seconds. Every pair you match is two of that fruit; a miss just turns them back over. Get every one and it’s over at once' },
+    pairs: { name: 'Panel Pairs', hud: '45 seconds · match the pairs', what: 'A pair of panels for every fruit: a 6-second look at them all, then bump them two at a time for 45 seconds. Every pair you match is two of that fruit; a miss just turns them back over. Get every one and it’s over at once' },
     rain: { name: 'Fruit Rain', hud: '20 seconds · catch it as it falls', what: 'Fruit falls from the sky, every kind in turn: 20 seconds to catch all you can before it lands and goes' },
     springs: { name: 'Spring Garden', hud: '15 seconds', what: 'Springs fling you up to fruit hanging high in the air: 15 seconds to bounce for all you can. Get every one and it’s over at once' },
     ice: { name: 'Ice Rink', hud: '15 seconds', what: 'A grove frozen over: 15 seconds to slide about after the fruit. Get every one and it’s over at once' },
@@ -745,6 +745,26 @@
     const same = HOUSE_LEVELS.filter(j => isAmmoHouse(j) === isAmmoHouse(i)), order = isAmmoHouse(i) ? AMMO_ORDER : GROVE_ORDER;
     return order[Math.max(0, same.indexOf(+i)) % order.length];
   };
+  // Panels in a rectangle: rows of them stacked like the floors of a house, each row's floor
+  // on top of the row below's panels, so you stand on one floor and bump the row above it;
+  // plank steps up the left side from floor to floor (they're one-way: jump up through).
+  // Six or seven to a row.
+  const PANEL_T = 5, PANEL_X0 = 8;
+  const panelCols = n => (n > 20 ? 7 : 6), panelRows = n => Math.ceil(n / panelCols(n));
+  const panelSignY = n => panelRows(n) * PANEL_T + 7 - 9.4;
+  function panelHall(n) {
+    const cols = panelCols(n), rows = panelRows(n), w = PANEL_X0 + cols * 3 + 3, h = rows * PANEL_T + 7;
+    return LF.build(w, h, ({ r, s }) => {
+      r(0, 0, w - 1, 0); r(0, 0, 0, h - 1); r(w - 1, 0, w - 1, h - 1);
+      const F0 = h - 3; r(0, F0, w - 1, h - 1); s(2, F0 - 1, 'P');
+      let k = 0;
+      for (let row = 0; row < rows; row++) {
+        const F = F0 - row * PANEL_T, py = F - 4;
+        for (let c = 0; c < cols && k < n; c++, k++) s(PANEL_X0 + c * 3, py, 'ǩ');
+        if (row < rows - 1) { r(PANEL_X0 - 2, py - 1, w - 2, py - 1); r(1, py - 1, PANEL_X0 - 3, py - 1, '='); r(1, F - 3, PANEL_X0 - 3, F - 3, '='); }
+      }
+    });
+  }
   // (Every grove but the rain ones ends the moment you've got every fruit, crate or panel prize
   // in it: def.endWhenAll, see engine.js.)
   function fruitGrove(i) {

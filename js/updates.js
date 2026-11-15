@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Fixed: Lucky Panels, Panel Pairs and Ammo Panels wouldn’t open (going in did nothing). They’re back, a pair of panels for every fruit now',
       'Level 4 powers: with a third green apple (in a 🍏 Triple Ripe event) every fruit power goes to level 4: a quintuple jump, more speed and boost, the slowest glide, wall slide at a twentieth of the speed, a 16-block magnet, 5× light, fire bars harmless too, 5× ammo, the strongest swimming, the clock at a quarter speed, four second chances, five shots a press, 5-damage stomps',
       'New fruit: the 🥥 coconut, heavy boots: your stomps do 2 damage to golems, TNT carts and bosses (3 ripe, 4 ripe twice). It grows in levels, the groves and the garden',
       'New event: 🍏 Triple Ripe: you can hold a third green apple (250 HP, the yellow apple’s regeneration up to 5), and you keep it until you die',
