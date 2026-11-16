@@ -3814,7 +3814,8 @@
 
     const cx = p.x + p.w / 2, cy = p.y + p.h / 2;
     for (const l of W.lanterns) {
-      if (l.lit || l.hidden || Math.abs(cx - l.x) > 22 || Math.abs(cy - l.y) > 26) continue;
+      // (On a ride you light one just by passing under it.)
+      if (l.lit || l.hidden || Math.abs(cx - l.x) > 22 || (Math.abs(cy - l.y) > 26 && !(W.ride && cy > l.y && cy - l.y < TS * 5))) continue;
       l.lit = true; l.pop = 1; W.lanternLit = true;
       // (The coins you've got so far are kept now: come back after a fall and they're still
       // yours for this go. See def.resume.)

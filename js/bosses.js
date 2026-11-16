@@ -1561,7 +1561,7 @@
   // (The green apple isn't one of them: every story level has one of its own, below.)
   const powerFruit = Object.keys(LF.FRUITS).filter(t => t !== 'a' && t !== 'ǵ').flatMap(t => Array(TWICE[t] || 1).fill(t));
   const isFruit = c => !!LF.FRUITS[c];
-  const story = out.filter(d => !d.boss && Array.isArray(d.map));
+  const story = out.filter(d => !d.boss && !d.ride && Array.isArray(d.map));   // (a ride places its own)
   for (const d of story) if (d.melon) d.pureFruit = 'm'; else if (d.pear) d.pureFruit = 'p';
   const pool = story.filter(d => !d.pureFruit);
   [...new Set(powerFruit)].forEach((t, n, kinds) => {
@@ -1592,6 +1592,11 @@
     if (free.length) { const [x, y] = free[Math.floor(free.length * .4)]; rows[y] = rows[y].slice(0, x) + 'ǵ' + rows[y].slice(x + 1); }
     else { const y = rows.findIndex(r => [...r].some(isFruit)); if (y >= 0) { const x = [...rows[y]].findIndex(isFruit); rows[y] = rows[y].slice(0, x) + 'ǵ' + rows[y].slice(x + 1); } }
     d.map = rows;
+  }
+  // Every world's rides (levels-20.js), each pair just before its world's castle.
+  for (const wr of LF.WORLD_RIDES || []) {
+    const at = out.findIndex(lv => lv.name === wr.castle);
+    if (at >= 0) out.splice(at, 0, ...wr.levels);
   }
   // ---- The Star Road ----
   // After the last level, a special world: a level for each world (see special.js, which

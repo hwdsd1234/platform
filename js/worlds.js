@@ -5,15 +5,15 @@
 (() => {
   const LF = window.LF, L = LF.LEVELS;
   const WORLDS = [
-    { name: 'Old Town', chapters: ['The Chandlery', 'The Belfry', 'The Kilns', 'The Hollow Spire', 'The Shell Hills'] },
-    { name: 'The Waterfront', chapters: ['The Orchard', 'The Drowned Quarter', 'The Lighthouse', 'The Shell Slopes'] },
-    { name: 'The Clockwork Quarter', chapters: ['The Clockworks', 'The Frost Roofs', 'The Clock Tower', 'The Vault', 'The Horde', 'The Powder Works', 'The Switch Works'] },
-    { name: 'The Sky Roads', chapters: ['The Cloud Steps', 'The Wind Wheels', 'The Storm Heights', 'The High Winds', 'The Neo Ledges', 'The Shell Skies'] },
+    { name: 'Old Town', chapters: ['The Chandlery', 'The Belfry', 'The Kilns', 'The Hollow Spire', 'The Shell Hills', 'The Rooftop Rails'] },
+    { name: 'The Waterfront', chapters: ['The Orchard', 'The Drowned Quarter', 'The Lighthouse', 'The Shell Slopes', 'The Tide Rafts'] },
+    { name: 'The Clockwork Quarter', chapters: ['The Clockworks', 'The Frost Roofs', 'The Clock Tower', 'The Vault', 'The Horde', 'The Powder Works', 'The Switch Works', 'The Gear Rails'] },
+    { name: 'The Sky Roads', chapters: ['The Cloud Steps', 'The Wind Wheels', 'The Storm Heights', 'The High Winds', 'The Neo Ledges', 'The Shell Skies', 'The Cloud Ferry'] },
     { name: 'The Canal District', chapters: ['The Tallow Docks', 'The Soot Canals', 'The Pear Cliffs', 'The Ferry Line'] },
-    { name: 'The Garden Market', chapters: ['The Wax Market', 'The Ember Gardens', 'The Melon Patch'] },
-    { name: 'The Smokelands', chapters: ['The Smoke Stacks', 'The Ash Barrens', 'The Bell Foundry', 'The Bat Bridges'] },
-    { name: 'The Glass Mines', chapters: ['The Glass Works', 'The Moth Archive', 'The Cinder Mines'] },
-    { name: 'Night’s End', chapters: ['The Wick Bridges', 'The Ember Coast', 'The Chimney Peaks', 'The Last Lamps', 'The Dawn Tower', 'The Last Night'] },
+    { name: 'The Garden Market', chapters: ['The Wax Market', 'The Ember Gardens', 'The Melon Patch', 'The Cart Track'] },
+    { name: 'The Smokelands', chapters: ['The Smoke Stacks', 'The Ash Barrens', 'The Bell Foundry', 'The Bat Bridges', 'The Ash Coaster'] },
+    { name: 'The Glass Mines', chapters: ['The Glass Works', 'The Moth Archive', 'The Cinder Mines', 'The Mine Carts'] },
+    { name: 'Night’s End', chapters: ['The Wick Bridges', 'The Ember Coast', 'The Chimney Peaks', 'The Last Lamps', 'The Dawn Tower', 'The Last Night', 'The Bone Coaster'] },
     // After the Last Dark: the Star Road (special.js).
     { name: 'The Star Road', chapters: ['The Star Road'] },
   ];
