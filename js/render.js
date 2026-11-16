@@ -377,14 +377,13 @@
         ctx.restore();
         spinArrow(s.cx, s.cy, 18, s.dir, -Math.PI / 2 - s.dir * .95);
       }
-      // A ride's track: a dotted line along the way it goes (under the raft's middle), with a
-      // post at each bend.
+      // A ride's track: a dotted line along the way it goes (the top of the car), with a post at
+      // each bend.
       for (const p of W.plats) {
         if (p.kind !== 'ride') continue;
-        const ax = p.w / 2, ay = 6;
         ctx.strokeStyle = 'rgba(255,181,71,.35)'; ctx.lineWidth = 2; ctx.setLineDash([3, 7]);
-        ctx.beginPath(); p.path.forEach(([x, y], k) => (k ? ctx.lineTo(x + ax, y + ay) : ctx.moveTo(x + ax, y + ay))); ctx.stroke(); ctx.setLineDash([]);
-        ctx.fillStyle = 'rgba(255,181,71,.5)'; for (const [x, y] of p.path) { ctx.beginPath(); ctx.arc(x + ax, y + ay, 2.5, 0, TAU); ctx.fill(); }
+        ctx.beginPath(); p.path.forEach(([x, y], k) => (k ? ctx.lineTo(x, y + 6) : ctx.moveTo(x, y + 6))); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(255,181,71,.5)'; for (const [x, y] of p.path) { ctx.beginPath(); ctx.arc(x, y + 6, 2.5, 0, TAU); ctx.fill(); }
       }
       // Wheels: the hub and spokes behind their platforms.
       for (const p of W.plats) {
@@ -415,15 +414,25 @@
           continue;
         }
         if (p.kind === 'ride') {
-          // The raft: planks lashed together, a lamp at the front, glowing while it waits for you.
-          ctx.fillStyle = '#4A3424'; ctx.fillRect(p.x + 3, p.y + 10, p.w - 6, 4);
-          ctx.fillStyle = '#8A5A36'; ctx.fillRect(p.x, p.y, p.w, 11);
-          ctx.fillStyle = '#B98458'; ctx.fillRect(p.x, p.y, p.w, 2.5);
-          ctx.fillStyle = '#5C3C26'; for (let ox = 12; ox < p.w; ox += 12) ctx.fillRect(p.x + ox, p.y + 2, 1.5, 9);
-          ctx.fillStyle = '#E8D2A0'; ctx.fillRect(p.x + 4, p.y + 4, p.w - 8, 1.5);
-          const lx = p.x + p.w - 6, glow = p.state === 'wait' ? .6 + .4 * Math.sin(clock * 5) : 1;
-          ctx.fillStyle = '#3A3350'; ctx.fillRect(lx - 1, p.y - 12, 2, 12);
-          ctx.fillStyle = `rgba(255,181,71,${glow})`; ctx.beginPath(); ctx.arc(lx, p.y - 14, 3.5, 0, TAU); ctx.fill();
+          if (p.state === 'gone') continue;
+          // The car: a string of plank segments, each lying along the track where it is (so it
+          // bends over the hills), lashed at the joints; a lamp on the front, glowing while it
+          // waits for you. Falling off the end, it's straight.
+          const n = Math.max(1, Math.round(p.len / TS)), seg = p.len / n;
+          const pt = u => (p.state === 'fall' ? [p.x + (u - p.s), p.y] : LF.rideAt(p, u));
+          for (let i = 0; i < n; i++) {
+            const [ax, ay] = pt(p.s + i * seg), [bx, by] = pt(p.s + (i + 1) * seg), ang = Math.atan2(by - ay, bx - ax), len = Math.hypot(bx - ax, by - ay);
+            ctx.save(); ctx.translate(ax, ay); ctx.rotate(ang);
+            ctx.fillStyle = '#4A3424'; ctx.fillRect(2, 10, len - 4, 4);
+            ctx.fillStyle = '#8A5A36'; ctx.fillRect(0, 0, len + .5, 11);
+            ctx.fillStyle = '#B98458'; ctx.fillRect(0, 0, len + .5, 2.5);
+            ctx.fillStyle = '#E8D2A0'; ctx.fillRect(3, 4, len - 6, 1.5);
+            ctx.fillStyle = '#3A2516'; ctx.fillRect(len - 1.5, 1, 1.5, 10);
+            ctx.restore();
+          }
+          const [fx, fy] = pt(p.s + p.len), glow = p.state === 'wait' ? .6 + .4 * Math.sin(clock * 5) : 1;
+          ctx.fillStyle = '#3A3350'; ctx.fillRect(fx - 7, fy - 12, 2, 12);
+          ctx.fillStyle = `rgba(255,181,71,${glow})`; ctx.beginPath(); ctx.arc(fx - 6, fy - 14, 3.5, 0, TAU); ctx.fill();
           continue;
         }
         if (p.kind === 'fall') {
@@ -1537,7 +1546,7 @@
       if (W.secret && W.secretSeen) out.push({ x: W.secret.x + 16, y: W.secret.y + 30, r: 90 });
       for (const b of W.projectiles) out.push({ x: b.x + b.w / 2, y: b.y + b.h / 2, r: 60 * Math.max(1, b.w / 10) });
       for (const e of W.enemies) if (e.alive && e.type === 'S') out.push({ x: e.x + 12, y: e.y + 2, r: 34 });
-      for (const pl of W.plats) if (pl.kind === 'ride') out.push({ x: pl.x + pl.w - 6, y: pl.y - 14, r: 150 });
+      for (const pl of W.plats) if (pl.kind === 'ride' && pl.state !== 'gone') out.push({ x: pl.x + pl.w - 6, y: pl.y - 14, r: 150 });
       for (const e of W.enemies) if (e.alive && e.type === 'Z') out.push({ x: e.x + 7, y: e.y + 7, r: 56 });
       for (const e of W.enemies) if (e.alive && e.type === 'U') out.push({ x: e.x + 10, y: e.y + 8, r: 70 });
       for (const e of W.enemies) if (e.alive && e.type === '*' && e.state !== 'idle') out.push({ x: e.x + e.w / 2, y: e.y + 8, r: 80 });

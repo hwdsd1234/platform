@@ -1,6 +1,7 @@
 // Lanternfall: rides, a gimmick in every world. In a ride you step onto a raft at the start
 // and it carries you the whole level along its track (def.ride: see engine.js), fast (like a
-// coaster), over hills and down dips, to the door: stay on it, there's nothing below (or
+// coaster), its long car bending over the hills and down the dips, and at the end of the track
+// it flies off and falls: jump for the door's ledge. Stay on it, there's nothing below (or
 // lava). Walls stand across the track with a slot for the raft to slip through: jump them
 // (in the air you keep going with the raft, so jump in good time); in the tunnels spikes hang
 // low: keep your head down. Fliers along the way, lanterns you light as you pass under them
@@ -14,7 +15,8 @@
   const H = 18, F = 12;     // (the raft starts on row F, level with the start ledge)
   const SPEED = 360;        // (pixels a second: four times the old ferries)
   const W_LEN = 800;        // (tiles: about a minute's ride at that speed)
-  const RW = 7;             // (the raft's length in tiles: a long coaster car, room to move about on)
+  const RW = 7;             // (the car's length in tiles: a long coaster car, room to move about on)
+  const GAP_END = 4;        // (tiles from the track's end to the door's ledge: the car falls, you jump)
 
   function ride(name, seed, { chapter, since, foes = 'F', lava = false, dark = .55, w = W_LEN }) {
     const R = LF.rng(seed), ri = (a, b) => a + Math.floor(R() * (b - a + 1)), pick = a => a[Math.floor(R() * a.length)];
@@ -31,7 +33,7 @@
         x += Math.abs(dy) * ri(2, 3); y += dy; path.push([x, y]);
       }
     }
-    flats.push({ x0: x, x1: w - 6 - RW, y }); path.push([w - 6 - RW, y]);
+    flats.push({ x0: x, x1: w - 6 - GAP_END, y }); path.push([w - 6 - GAP_END, y]);
     const ry = c => {
       for (let k = 0; k < path.length - 1; k++) {
         const [x0, y0] = path[k], [x1, y1] = path[k + 1];
@@ -43,7 +45,8 @@
     const map = B(w, H, ({ r, s, lava: fillLava }) => {
       if (lava) fillLava(H - 2);
       r(0, F, 4, H - 1); s(2, F - 1, 'P');
-      r(w - 6, endRow, w - 1, H - 1); s(w - 3, endRow - 1, 'D');
+      // (The door on a ledge of its own past the end of the track, two below it, open below.)
+      r(w - 6, endRow + 2, w - 1, endRow + 3); s(w - 3, endRow + 1, 'D');
       const busy = new Set();
       const free = (a, b) => { for (let c = a; c <= b; c++) if (busy.has(c)) return false; return true; };
       const take = (a, b) => { for (let c = a; c <= b; c++) busy.add(c); };

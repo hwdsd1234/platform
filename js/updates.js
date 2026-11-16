@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Rides: the long car bends now, its segments each lying along the track, over the hills and down the dips (you stand on whatever part’s under you), and at the end of the track it flies off and falls: jump for the door’s ledge, just below and across the gap, before it goes',
       'Rides: the raft is a long coaster car now (seven blocks, room to move about on), and there are lots more enemies, about five times as many, flying at head height and overhead, over the hills and dips too (never just before a wall), with more ammo along the way to shoot them; lanterns on a ride light as the raft passes under them, even if you’re in the air',
       'The auto-harvester works while the game’s closed: come back and it picks everything that grew while you were away, every crop of every multi-harvest plant (each on its own time, not just one), and any single-harvest plant that ripened',
       'Rides in every world, coaster-style: four times faster and about a minute long each, over hills and down dips, walls to jump in good time and spiked tunnels to duck through, lanterns that light as you pass under them. Two in each world just before its castle (the Rooftop Rails, the Tide Rafts, the Gear Rails, the Cloud Ferry, the Cart Track, the Ash Coaster, the Mine Carts, the Bone Coaster), and the Ferry Line’s four rebuilt the same way',

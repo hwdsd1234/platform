@@ -433,13 +433,16 @@
     W.checkpoint = { ...W.start };
     W.blinkT = 0; W.blinkOn = 'T';
     W.player = makePlayer(W.start);
-    // A ride (def.ride: { path: [[tx, ty], …], speed, w }): one raft that carries you the whole
-    // level along its track (each point the raft's top-left, in tiles). It waits till you
-    // step on, then goes, through anything in its way, and stops at the track's end: stay on
-    // it (jumping over what's in your way: a wall knocks you off it).
+    // A ride (def.ride: { path: [[tx, ty], …], speed, w }): one long car that carries you the
+    // whole level along its track (each point the track's top, in tiles), bending with it over
+    // the hills and dips: it covers `w` tiles of track at a time (pl.s is how far along its
+    // back end is). It waits till you step on, then goes, through anything in its way, and at
+    // the track's end it flies off and falls: jump for the door. Stay on it (jumping over
+    // what's in your way: a wall knocks you off it).
     if (def.ride) {
       const path = def.ride.path.map(([tx, ty]) => [tx * TS, ty * TS]);
-      W.ride = { kind: 'ride', path, seg: 0, v: def.ride.speed || 90, w: TS * (def.ride.w || 3), h: 12, x: path[0][0], y: path[0][1], ox: path[0][0], oy: path[0][1], dx: 0, dy: 0, prevY: path[0][1], state: 'wait' };
+      W.ride = { kind: 'ride', path, s: 0, len: TS * (def.ride.w || 3), v: def.ride.speed || 90, h: 12, dx: 0, dy: 0, state: 'wait' };
+      rideInit(W.ride); rideFrame(W.ride); W.ride.prevY = W.ride.y;
       W.plats.push(W.ride);
     }
     W.player.ammo = playerTune(def).ammo;
@@ -983,35 +986,72 @@
     return best;
   }
   LF.spinnerCorners = s => [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([u, v]) => ({ x: s.cx + (u * Math.cos(s.a) - v * Math.sin(s.a)) * s.half, y: s.cy + (u * Math.sin(s.a) + v * Math.cos(s.a)) * s.half }));
-  // Back on the ride after a death: the raft waits on its track level with `x` (your
-  // checkpoint), and you stand on it.
+  // A ride's track by distance along it: rideAt(pl, u) is the point u along it, rideArc(pl, x)
+  // how far along it is at column x (it only ever goes forward, left to right).
+  function rideInit(pl) {
+    const P = pl.path; pl.cum = [0];
+    for (let k = 1; k < P.length; k++) pl.cum.push(pl.cum[k - 1] + Math.hypot(P[k][0] - P[k - 1][0], P[k][1] - P[k - 1][1]));
+    pl.L = pl.cum[pl.cum.length - 1];
+  }
+  function rideAt(pl, u) {
+    const P = pl.path, C = pl.cum;
+    if (u <= 0) return [P[0][0] + u, P[0][1]];
+    if (u >= pl.L) return [P[P.length - 1][0] + u - pl.L, P[P.length - 1][1]];
+    let k = 0; while (k < C.length - 2 && C[k + 1] < u) k++;
+    const t = (u - C[k]) / (C[k + 1] - C[k] || 1);
+    return [P[k][0] + (P[k + 1][0] - P[k][0]) * t, P[k][1] + (P[k + 1][1] - P[k][1]) * t];
+  }
+  function rideArc(pl, x) {
+    const P = pl.path, C = pl.cum;
+    if (x <= P[0][0]) return x - P[0][0];
+    for (let k = 0; k < P.length - 1; k++) if (x <= P[k + 1][0] && P[k + 1][0] > P[k][0]) return C[k] + (C[k + 1] - C[k]) * (x - P[k][0]) / (P[k + 1][0] - P[k][0]);
+    return pl.L + x - P[P.length - 1][0];
+  }
+  LF.rideAt = rideAt;
+  // Where the car is (pl.x and pl.w its span, pl.y its highest point), for everything that
+  // treats it as a platform; rideTop(pl, x) is the top of the car at column x (null if the car
+  // isn't there).
+  function rideFrame(pl) {
+    const a = rideAt(pl, pl.s), b = rideAt(pl, pl.s + pl.len), m = rideAt(pl, pl.s + pl.len / 2);
+    pl.x = a[0]; pl.w = b[0] - a[0]; pl.y = Math.min(a[1], b[1], m[1]);
+  }
+  function rideTop(pl, x) {
+    if (pl.state === 'gone') return null;
+    if (pl.state === 'fall') return x >= pl.x && x <= pl.x + pl.w ? pl.y : null;
+    const u = rideArc(pl, x);
+    return u < pl.s || u > pl.s + pl.len ? null : rideAt(pl, u)[1];
+  }
+  // How far the ride takes something at column x along in dt (on it, or in the air over it).
+  function rideStep(pl, x, dt) {
+    if (pl.state === 'go') { const u = rideArc(pl, x) + pl.v * dt; return rideAt(pl, u); }
+    if (pl.state === 'fall') return [x + pl.vx * dt, null];
+    return [x, null];
+  }
+  // Back on the ride after a death: the car waits on its track level with `x` (your
+  // checkpoint), and you stand on its middle.
   function rideFrom(W, x) {
-    const pl = W.ride, P = pl.path, p = W.player, cx = x + p.w / 2 - pl.w / 2;
-    let seg = 0, at = P[0];
-    if (cx > P[0][0]) {
-      at = P[P.length - 1]; seg = P.length - 1;
-      for (let k = 0; k < P.length - 1; k++) {
-        const [x0, y0] = P[k], [x1, y1] = P[k + 1];
-        if (cx >= Math.min(x0, x1) && cx <= Math.max(x0, x1) && x1 !== x0) { const t = (cx - x0) / (x1 - x0); at = [cx, y0 + (y1 - y0) * t]; seg = k; break; }
-      }
-    }
-    Object.assign(pl, { x: at[0], y: at[1], prevY: at[1], seg, state: seg >= P.length - 1 ? 'done' : 'wait', dx: 0, dy: 0 });
-    p.x = pl.x + pl.w / 2 - p.w / 2; p.y = pl.y - p.h; p.vy = 0;
+    const pl = W.ride, p = W.player;
+    pl.s = Math.max(0, Math.min(pl.L - pl.len - TS, rideArc(pl, x + p.w / 2) - pl.len / 2));
+    Object.assign(pl, { state: 'wait', dx: 0, dy: 0, vx: 0, vy: 0 });
+    rideFrame(pl); pl.prevY = pl.y;
+    const [mx, my] = rideAt(pl, pl.s + pl.len / 2);
+    p.x = mx - p.w / 2; p.y = my - p.h; p.vy = 0;
   }
   function stepPlats(W, dt) {
     for (const pl of W.plats) {
       pl.prevY = pl.y; pl.dx = 0; pl.dy = 0;
       if (pl.kind === 'ride') {
         if (pl.state === 'wait' && W.player.onPlat === pl) pl.state = 'go';
-        if (pl.state !== 'go') continue;
         const ox = pl.x, oy = pl.y;
-        let left = pl.v * dt;
-        while (left > 0 && pl.seg < pl.path.length - 1) {
-          const [tx, ty] = pl.path[pl.seg + 1], dx = tx - pl.x, dy = ty - pl.y, d = Math.hypot(dx, dy);
-          if (d <= left) { pl.x = tx; pl.y = ty; left -= d; pl.seg++; }
-          else { pl.x += dx / d * left; pl.y += dy / d * left; left = 0; }
+        if (pl.state === 'go') {
+          pl.s += pl.v * dt;
+          // Off the end of the track: it flies on, and falls.
+          if (pl.s + pl.len >= pl.L) { pl.s = pl.L - pl.len; rideFrame(pl); pl.state = 'fall'; pl.vx = pl.v; pl.vy = 0; pl.w = pl.len; }
+          else rideFrame(pl);
+        } else if (pl.state === 'fall') {
+          pl.vy = Math.min(MAXFALL, pl.vy + G * dt); pl.x += pl.vx * dt; pl.y += pl.vy * dt;
+          if (pl.y > W.h * TS + 200) pl.state = 'gone';
         }
-        if (pl.seg >= pl.path.length - 1) pl.state = 'done';
         pl.dx = pl.x - ox; pl.dy = pl.y - oy;
         continue;
       }
@@ -3569,9 +3609,14 @@
     if (p.fast > 0 && p.onGround && Math.abs(p.vx) > RUN && Math.random() < .3) W.particles.push({ x: p.x + p.w / 2 - Math.sign(p.vx) * 8, y: p.y + p.h - 2, vx: -p.vx * .2, vy: -20, life: .3, max: .3, c: '#7FD87A', size: 2, g: 0 });
     if (p.dbl > 0 && Math.random() < .08) W.particles.push({ x: p.x + Math.random() * p.w, y: p.y + p.h * Math.random(), vx: 0, vy: -20, life: .4, max: .4, c: '#FFE066', size: 2, g: 0 });
 
-    if (p.onPlat && !dropping) { moveX(W, p, p.onPlat.dx); p.y += p.onPlat.dy; }
-    // (Jump off a ride's raft and you keep going with it, as if still aboard, till you land.)
-    else if (p.lastRide && !p.onGround) moveX(W, p, p.lastRide.dx);
+    // (On a ride's car you go along the track with it, at the track's height where you are.)
+    if (p.onPlat && p.onPlat.kind === 'ride' && p.onPlat.state !== 'fall' && !dropping) {
+      const cx = p.x + p.w / 2, [nx, ny] = rideStep(p.onPlat, cx, dt);
+      moveX(W, p, nx - cx); if (ny != null) p.y = ny - p.h;
+    }
+    else if (p.onPlat && !dropping) { moveX(W, p, p.onPlat.dx); p.y += p.onPlat.dy; }
+    // (Jump off a ride's car and you keep going with it, as if still aboard, till you land.)
+    else if (p.lastRide && !p.onGround) { const cx = p.x + p.w / 2; moveX(W, p, rideStep(p.lastRide, cx, dt)[0] - cx); }
     // Standing on a turn block, you turn with it (about its middle, from where your feet are).
     if (p.spinOn && p.spinOn.da) {
       const s = p.spinOn, fx = p.x + p.w / 2 - s.cx, fy = p.y + p.h - s.cy, c = Math.cos(s.da), sn = Math.sin(s.da);
@@ -3668,6 +3713,12 @@
     if (!p.onGround && p.vy >= 0 && !dropping) {
       for (const pl of W.plats) {
         if (pl.state === 'gone' || pl.sunk) continue;
+        // (A ride's car: its top under your middle, wherever it bends.)
+        if (pl.kind === 'ride' && pl.state !== 'fall') {
+          const top = rideTop(pl, p.x + p.w / 2);
+          if (top != null && pb <= top + 8 && p.y + p.h >= top) { p.y = top - p.h; p.vy = 0; p.onGround = true; p.onPlat = pl; p.lastRide = pl; break; }
+          continue;
+        }
         if (p.x + p.w > pl.x + 2 && p.x < pl.x + pl.w - 2 && pb <= Math.max(pl.prevY, pl.y) + 1 && p.y + p.h >= pl.y) {
           p.y = pl.y - p.h; p.vy = 0; p.onGround = true; p.onPlat = pl; p.lastRide = pl.kind === 'ride' ? pl : null;
           if (pl.kind === 'fall' && pl.state === 'idle') { pl.state = 'shake'; pl.t = 0; }
