@@ -4,7 +4,7 @@
 // it flies off and falls: jump for the door's ledge. Stay on it, there's nothing below (or
 // lava). Walls stand across the track with a slot for the raft to slip through: jump them
 // (in the air you keep going with the raft, so jump in good time); in the tunnels spikes hang
-// low: keep your head down. Fliers along the way, lanterns you light as you pass under them
+// low: keep your head down; where it dunks into lava, jump. Fliers along the way, lanterns you light as you pass under them
 // (and come back to, the raft waiting), three star coins and a yellow apple over the track to
 // jump for. Each world has its own (LF.WORLD_RIDES, slotted in before its castle by
 // bosses.js); the Ferry Line's (LF.RIDE_LEVELS) close the Canal District's Pear Cliffs. Built
@@ -21,9 +21,15 @@
   function ride(name, seed, { chapter, since, foes = 'F', lava = false, dark = .55, w = W_LEN }) {
     const R = LF.rng(seed), ri = (a, b) => a + Math.floor(R() * (b - a + 1)), pick = a => a[Math.floor(R() * a.length)];
     // The track: flats, rises and drops (gentle enough to ride), between rows 6 and H - 5.
-    const path = [[5, F]], flats = [];
+    const path = [[5, F]], flats = [], dips = [];
     let x = 5, y = F;
     while (x < w - 40) {
+      // A dunk: the track dives into a pool of lava and straight back up (two rows down, three
+      // tiles across): jump just before it and come down on the car as it comes back up.
+      if (x > 40 && y <= H - 6 && R() < .14 && (!dips.length || x - dips[dips.length - 1].x1 > 40)) {
+        path.push([x + 1, y + 2], [x + 2, y + 2], [x + 3, y]); dips.push({ x0: x, x1: x + 3, y }); x += 3;
+        continue;
+      }
       if (R() < .55 || x < 20) {
         const len = ri(16, 34);
         flats.push({ x0: x, x1: x + len, y }); x += len; path.push([x, y]);
@@ -51,25 +57,32 @@
       const free = (a, b) => { for (let c = a; c <= b; c++) if (busy.has(c)) return false; return true; };
       const take = (a, b) => { for (let c = a; c <= b; c++) busy.add(c); };
       take(0, 12); take(w - 8 - RW, w - 1);
+      // The lava the dunks go into (and nothing else just before or after them: the jump's enough).
+      for (const d of dips) { r(d.x0, d.y + 1, d.x1, H - 1, '!'); take(d.x0 - 12, d.x1 + 6); }
       // Along each flat: walls (one or two high), tunnels, fliers, spaced out.
       for (const f of flats) {
-        for (let c = f.x0 + 6; c < f.x1 - 6; c += ri(7, 11)) {
+        for (let c = f.x0 + 6; c < f.x1 - 6; c += ri(5, 8)) {
           const roll = R();
           // (A wall keeps the ten tiles before it clear of fliers: its jump shouldn't take you into one.)
-          if (roll < .3 && free(c - 10, c + 4)) { const tall = R() < .35 ? 2 : 1; r(c, f.y - tall, c, f.y - 1); r(c, f.y + 1, c, H - 1); take(c - 10, c + 4); }
-          else if (roll < .42 && c + 12 < f.x1 && free(c - 3, c + 15)) {
+          if (roll < .25 && free(c - 10, c + 4)) { const tall = R() < .35 ? 2 : 1; r(c, f.y - tall, c, f.y - 1); r(c, f.y + 1, c, H - 1); take(c - 10, c + 4); }
+          else if (roll < .35 && c + 12 < f.x1 && free(c - 8, c + 20)) {
             const len = ri(8, 12);
             for (let t = c; t < c + len; t++) { r(t, 0, t, f.y - 4); s(t, f.y - 3, '^'); r(t, f.y + 1, t, H - 1); }
-            take(c - 3, c + len + 3); c += len;
-          } else if (roll < .9 && free(c - 2, c + 2)) { s(c, f.y - (R() < .5 ? 1 : 2), pick(foes)); take(c - 2, c + 2); }
+            take(c - 8, c + len + 8); c += len;
+          } else if (free(c - 2, c + 2)) {
+            // (Fliers: at head height, overhead, and now and then one high up too.)
+            s(c, f.y - (R() < .5 ? 1 : 2), pick(foes));
+            if (R() < .35) s(c + 1, f.y - 5, pick(foes));
+            take(c - 2, c + 2);
+          }
         }
       }
       // Fliers over the hills and dips too.
       for (let k = 1; k < path.length - 1; k++) {
         const [x0, y0] = path[k - 1], [x1, y1] = path[k];
         if (y0 === y1) continue;
-        const c = Math.round((x0 + x1) / 2);
-        if (R() < .7 && free(c - 2, c + 2)) { s(c, ry(c) - 2, pick(foes)); take(c - 2, c + 2); }
+        for (const c of [Math.round(x0 + (x1 - x0) / 3), Math.round(x0 + (x1 - x0) * 2 / 3)])
+          if (R() < .8 && free(c - 1, c + 1)) { s(c, ry(c) - 2, pick(foes)); take(c - 1, c + 1); }
       }
       // Things to have: three lanterns (lit as you pass under), three star coins and a yellow
       // apple up over the track (jump for them), apples, ammo and a green apple at hand height.
@@ -84,14 +97,14 @@
       for (const fr of [.25, .5, .75]) put(fr, 1, 'L');
       for (const fr of [.18, .55, .9]) put(fr, 3, '¢');
       put(.4, 3, 'ý'); put(.62, 1, 'ǵ');
-      for (const fr of [.12, .33, .7, .85]) put(fr, 1, 'a');
+      for (const fr of [.1, .22, .33, .46, .58, .7, .8, .9]) put(fr, 1, 'a');
       for (const fr of [.06, .2, .37, .52, .66, .8, .93]) put(fr, 1, 'q');
     });
     return { chapter, name, since, dark, map, ride: { path, speed: SPEED, w: RW }, keepLength: true, noCrowd: true };
   }
 
   // The Ferry Line: the Canal District's, after the Pear Cliffs.
-  const FERRY = { chapter: 'The Ferry Line', since: 22, foes: 'FFFW' };
+  const FERRY = { chapter: 'The Ferry Line', since: 22, foes: 'FFFZ' };
   LF.RIDE_LEVELS = [
     ride('All Aboard', 2201, FERRY),
     ride('Ferry Hill', 2202, FERRY),
@@ -101,12 +114,12 @@
   // Every other world's: two each, in a chapter of its own, before its castle.
   LF.WORLD_RIDES = [
     { castle: 'Candle Keep', chapter: 'The Rooftop Rails', names: ['Rooftop Rush', 'Chimney Rails'], foes: 'F' },
-    { castle: 'Sunken Keep', chapter: 'The Tide Rafts', names: ['Tide Rider', 'Gull Run'], foes: 'FFFW' },
+    { castle: 'Sunken Keep', chapter: 'The Tide Rafts', names: ['Tide Rider', 'Gull Run'], foes: 'FFFZ' },
     { castle: 'Clockwork Castle', chapter: 'The Gear Rails', names: ['Cog Coaster', 'Spring Line'], foes: 'FFFZ' },
-    { castle: 'Storm Castle', chapter: 'The Cloud Ferry', names: ['Cloud Skimmer', 'Gale Rails'], foes: 'FFFW' },
-    { castle: 'Pumpkin Castle', chapter: 'The Cart Track', names: ['Market Cart', 'Melon Run'], foes: 'FFFW' },
+    { castle: 'Storm Castle', chapter: 'The Cloud Ferry', names: ['Cloud Skimmer', 'Gale Rails'], foes: 'FFFZ' },
+    { castle: 'Pumpkin Castle', chapter: 'The Cart Track', names: ['Market Cart', 'Melon Run'], foes: 'FFFZ' },
     { castle: 'Smog Castle', chapter: 'The Ash Coaster', names: ['Ash Coaster', 'Cinder Dip'], foes: 'FFFZ', lava: true },
     { castle: 'Crystal Castle', chapter: 'The Mine Carts', names: ['Mine Cart Dash', 'Glass Rails'], foes: 'FFFZ' },
-    { castle: 'Castle of the Last Dark', chapter: 'The Bone Coaster', names: ['Bone Coaster', 'Last Ride'], foes: 'FFWZ', lava: true, dark: .7 },
+    { castle: 'Castle of the Last Dark', chapter: 'The Bone Coaster', names: ['Bone Coaster', 'Last Ride'], foes: 'FFFZ', lava: true, dark: .7 },
   ].map((wr, k) => ({ ...wr, levels: wr.names.map((n, j) => ride(n, 2300 + k * 10 + j, { chapter: wr.chapter, since: 23, foes: wr.foes, lava: wr.lava, dark: wr.dark })) }));
 })();

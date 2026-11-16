@@ -3616,7 +3616,8 @@
     }
     else if (p.onPlat && !dropping) { moveX(W, p, p.onPlat.dx); p.y += p.onPlat.dy; }
     // (Jump off a ride's car and you keep going with it, as if still aboard, till you land.)
-    else if (p.lastRide && !p.onGround) { const cx = p.x + p.w / 2; moveX(W, p, rideStep(p.lastRide, cx, dt)[0] - cx); }
+    // (Straight on at its speed, whatever the track does under you: over a dunk into lava too.)
+    else if (p.lastRide && !p.onGround) { const pl = p.lastRide; moveX(W, p, pl.state === 'go' ? pl.v * dt : pl.state === 'fall' ? pl.vx * dt : 0); }
     // Standing on a turn block, you turn with it (about its middle, from where your feet are).
     if (p.spinOn && p.spinOn.da) {
       const s = p.spinOn, fx = p.x + p.w / 2 - s.cx, fy = p.y + p.h - s.cy, c = Math.cos(s.da), sn = Math.sin(s.da);
