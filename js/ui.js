@@ -927,30 +927,43 @@
     const bank = store.get('ammoBank', 0), fromBank = Math.min(bank, n);
     store.set('ammoBank', bank - fromBank); store.set('ammo', store.get('ammo', 0) - (n - fromBank));
   }
-  function pickBed(f, k) {
+  // (every: the auto-harvester's way, which works even while the game's closed: a multi-harvest
+  // plant gives every crop it has grown since it was last picked, each on its own time, not
+  // just the one hanging now.)
+  function pickBed(f, k, every = false) {
     const st = bedNow(f, k); if (!st || !st.fruit.length) return null;
-    const b = farms[f][k], sd = SEEDS[b.t];
+    const b = farms[f][k], sd = SEEDS[b.t], now = Date.now();
+    let fruit = st.fruit, last = now;
+    if (every && !sd.yield) {
+      const period = sd.every * HANG * 1000, base = b.last || b.at + sd.grow * 1000 - period;
+      const crops = Math.max(1, Math.min(2000, Math.floor((now - base) / period)));
+      fruit = Array.from({ length: crops * HANG }, (_, i) => mutOf(f * BEDS + k, (b.seq || 0) + i));
+      last = base + crops * period;
+    }
     let total = 0; const muts = [];
-    for (const m of st.fruit) { total += m ? m.x : 1; if (m) muts.push(m.name); }
+    for (const m of fruit) { total += m ? m.x : 1; if (m) muts.push(m.name); }
     inventory[b.t] = Math.min(INV_MAX, (inventory[b.t] || 0) + total); store.set('inventory', inventory);
-    if (sd.yield) farms[f][k] = null; else { b.last = Date.now(); b.seq = (b.seq || 0) + st.fruit.length; }
+    if (sd.yield) farms[f][k] = null; else { b.last = last; b.seq = (b.seq || 0) + fruit.length; }
     saveFarms();
     return { t: b.t, total, muts };
   }
   // The auto-harvester (2000 ammo, once): picks every ripe fruit on every farm you own, every
   // ten seconds while you're on the map or in the garden (and when you come to the map, if
-  // ten seconds have gone by since its last go).
+  // ten seconds have gone by since its last go). It works while the game's closed too: its
+  // first go when you're back picks every crop grown while you were away (see pickBed).
   const AUTO_COST = 2000;
   let autoOwned = store.get('autoHarvest', false);
   // (It harvests at most once every AUTO_EVERY: ten seconds between goes.)
   const AUTO_EVERY = 10000;
   let autoLast = 0, autoPaused = store.get('autoPaused', false);
+  let autoRan = false;
   function autoHarvest(quiet) {
     if (!autoOwned || autoPaused || practice || hardcore || Date.now() - autoLast < AUTO_EVERY) return 0;
     autoLast = Date.now();
     let total = 0; const muts = [];
-    for (let f = 0; f < farmsOwned; f++) farms[f].forEach((b, k) => { if (!b) return; const got = pickBed(f, k); if (got) { total += got.total; muts.push(...got.muts); } });
-    if (total && !quiet) flash(`🧺 The auto-harvester picked ${total} fruit for you${muts.length ? ` (${muts.length} mutated!)` : ''}`);
+    const away = !autoRan; autoRan = true;
+    for (let f = 0; f < farmsOwned; f++) farms[f].forEach((b, k) => { if (!b) return; const got = pickBed(f, k, true); if (got) { total += got.total; muts.push(...got.muts); } });
+    if (total && !quiet) flash(`🧺 ${away ? 'While you were away, the' : 'The'} auto-harvester picked ${total} fruit for you${muts.length ? ` (${muts.length} mutated!)` : ''}`);
     return total;
   }
   // (The Garden button wears a 🧺 once the auto-harvester's yours.)
