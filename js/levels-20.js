@@ -14,6 +14,7 @@
   const H = 18, F = 12;     // (the raft starts on row F, level with the start ledge)
   const SPEED = 360;        // (pixels a second: four times the old ferries)
   const W_LEN = 800;        // (tiles: about a minute's ride at that speed)
+  const RW = 7;             // (the raft's length in tiles: a long coaster car, room to move about on)
 
   function ride(name, seed, { chapter, since, foes = 'F', lava = false, dark = .55, w = W_LEN }) {
     const R = LF.rng(seed), ri = (a, b) => a + Math.floor(R() * (b - a + 1)), pick = a => a[Math.floor(R() * a.length)];
@@ -30,7 +31,7 @@
         x += Math.abs(dy) * ri(2, 3); y += dy; path.push([x, y]);
       }
     }
-    flats.push({ x0: x, x1: w - 9, y }); path.push([w - 9, y]);
+    flats.push({ x0: x, x1: w - 6 - RW, y }); path.push([w - 6 - RW, y]);
     const ry = c => {
       for (let k = 0; k < path.length - 1; k++) {
         const [x0, y0] = path[k], [x1, y1] = path[k + 1];
@@ -46,18 +47,26 @@
       const busy = new Set();
       const free = (a, b) => { for (let c = a; c <= b; c++) if (busy.has(c)) return false; return true; };
       const take = (a, b) => { for (let c = a; c <= b; c++) busy.add(c); };
-      take(0, 12); take(w - 14, w - 1);
+      take(0, 12); take(w - 8 - RW, w - 1);
       // Along each flat: walls (one or two high), tunnels, fliers, spaced out.
       for (const f of flats) {
-        for (let c = f.x0 + 6; c < f.x1 - 6; c += ri(9, 15)) {
+        for (let c = f.x0 + 6; c < f.x1 - 6; c += ri(7, 11)) {
           const roll = R();
-          if (roll < .38 && free(c - 4, c + 4)) { const tall = R() < .35 ? 2 : 1; r(c, f.y - tall, c, f.y - 1); r(c, f.y + 1, c, H - 1); take(c - 4, c + 4); }
-          else if (roll < .55 && c + 12 < f.x1 && free(c - 3, c + 15)) {
+          // (A wall keeps the ten tiles before it clear of fliers: its jump shouldn't take you into one.)
+          if (roll < .3 && free(c - 10, c + 4)) { const tall = R() < .35 ? 2 : 1; r(c, f.y - tall, c, f.y - 1); r(c, f.y + 1, c, H - 1); take(c - 10, c + 4); }
+          else if (roll < .42 && c + 12 < f.x1 && free(c - 3, c + 15)) {
             const len = ri(8, 12);
             for (let t = c; t < c + len; t++) { r(t, 0, t, f.y - 4); s(t, f.y - 3, '^'); r(t, f.y + 1, t, H - 1); }
             take(c - 3, c + len + 3); c += len;
-          } else if (roll < .64 && free(c - 2, c + 2)) { s(c, f.y - 2, pick(foes)); take(c - 2, c + 2); }
+          } else if (roll < .9 && free(c - 2, c + 2)) { s(c, f.y - (R() < .5 ? 1 : 2), pick(foes)); take(c - 2, c + 2); }
         }
+      }
+      // Fliers over the hills and dips too.
+      for (let k = 1; k < path.length - 1; k++) {
+        const [x0, y0] = path[k - 1], [x1, y1] = path[k];
+        if (y0 === y1) continue;
+        const c = Math.round((x0 + x1) / 2);
+        if (R() < .7 && free(c - 2, c + 2)) { s(c, ry(c) - 2, pick(foes)); take(c - 2, c + 2); }
       }
       // Things to have: three lanterns (lit as you pass under), three star coins and a yellow
       // apple up over the track (jump for them), apples, ammo and a green apple at hand height.
@@ -73,9 +82,9 @@
       for (const fr of [.18, .55, .9]) put(fr, 3, '¢');
       put(.4, 3, 'ý'); put(.62, 1, 'ǵ');
       for (const fr of [.12, .33, .7, .85]) put(fr, 1, 'a');
-      for (const fr of [.08, .45, .8]) put(fr, 1, 'q');
+      for (const fr of [.06, .2, .37, .52, .66, .8, .93]) put(fr, 1, 'q');
     });
-    return { chapter, name, since, dark, map, ride: { path, speed: SPEED }, keepLength: true, noCrowd: true };
+    return { chapter, name, since, dark, map, ride: { path, speed: SPEED, w: RW }, keepLength: true, noCrowd: true };
   }
 
   // The Ferry Line: the Canal District's, after the Pear Cliffs.

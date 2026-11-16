@@ -3814,8 +3814,10 @@
 
     const cx = p.x + p.w / 2, cy = p.y + p.h / 2;
     for (const l of W.lanterns) {
-      // (On a ride you light one just by passing under it.)
-      if (l.lit || l.hidden || Math.abs(cx - l.x) > 22 || (Math.abs(cy - l.y) > 26 && !(W.ride && cy > l.y && cy - l.y < TS * 5))) continue;
+      // (On a ride it lights as the raft passes under it, whatever you're doing, so long as
+      // you're aboard or in the air over it.)
+      const rideBy = W.ride && !p.dead && (p.onPlat === W.ride || p.lastRide === W.ride) && Math.abs(W.ride.x + W.ride.w / 2 - l.x) < W.ride.w / 2 && l.y < W.ride.y && W.ride.y - l.y < TS * 5;
+      if (l.lit || l.hidden || (!rideBy && (Math.abs(cx - l.x) > 22 || Math.abs(cy - l.y) > 26))) continue;
       l.lit = true; l.pop = 1; W.lanternLit = true;
       // (The coins you've got so far are kept now: come back after a fall and they're still
       // yours for this go. See def.resume.)
