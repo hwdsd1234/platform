@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Every tower lives up to its name now: Frost Tower is icy; Ember, Soot, Fuse, Steam, Powder and Blackened Tower are lava; Bog, Moonwell, Sparkwater, Leviathan and Gar Tower flooded; Bell, Iron, Anvil, Crusher, Colossus and Reborn Tower clockwork; Widow, Shadow, Thunder, Chimney and Gauntlet Tower dark; Thorn, Hollow and Pale Tower haunted; Ram, Charge, Blasting, Keg and Crumbling Tower crumbling; Marksman, Archery, Volley, Wheel and Pendulum Tower full of pendulums and archers; Hive and Melon Tower springy; Matriarch Tower full of shells. (Gauntlet Tower is the gauntlet.) Each tower’s sign says its own name',
       'Every tower and castle is one word and Tower or Castle now: Bell Tower, Bog Tower, Frost Tower, Thorn Tower, Wheel Tower, Keg Tower, Dark Castle and so on',
       'The Last Dark’s cutscenes are plain now: you just freeze while the Last Dark swells and breaks out (and later while the castle rises), with the screen as normal: no black bars, no words, no camera sweep, no sparks',
       'Levels are less alike: the extra sections every level runs on into now carry on like the level itself (its own kinds of ground, hazards, springs, lifts and enemies, and a lie of the land of its own), and each level has three set pieces of its own among staircases, pillar hops, crumbling bridges, spike pits, lava pits, low tunnels, conveyor runs, ice runs, springs, lifts and moving platforms',

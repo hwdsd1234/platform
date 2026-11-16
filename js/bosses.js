@@ -1316,6 +1316,40 @@
   // Put the parts side by side and wire up the arena: its start becomes the last entry,
   // its door and boss gate go, and anything it measured in columns or rows moves with it.
   // (design: which climb and run, for towers added later, so the rest keep theirs.)
+  const ONE_WORD = {
+    'Matriarch’s Tower': 'Matriarch Tower', 'Bell Pit Tower': 'Bell Tower', 'Bog King’s Clocks Tower': 'Bog Tower', 'Soot Nest Tower': 'Soot Tower',
+    'Hive Pit Tower': 'Hive Tower', 'Marksman’s Deck Tower': 'Marksman Tower', 'Widow’s Ruin Tower': 'Widow Tower', 'Colossus Yard Tower': 'Colossus Tower',
+    'Frozen Kiln Tower': 'Frost Tower', 'Powder Throne Tower': 'Powder Tower', 'Haunted Thorns Tower': 'Thorn Tower', 'Ram’s Run Tower': 'Ram Tower',
+    'Ember Roost Tower': 'Ember Tower', 'Sparkwater Run Tower': 'Sparkwater Tower', 'Hollow Range Tower': 'Hollow Tower', 'Iron Quarry Tower': 'Iron Tower',
+    'Melon Vault Tower': 'Melon Tower', 'Fuse Hall Tower': 'Fuse Tower', 'Leviathan’s Pit Tower': 'Leviathan Tower', 'Thunder Fold Tower': 'Thunder Tower',
+    'Crusher’s Gauntlet Tower': 'Crusher Tower', 'Queen’s Chimney Tower': 'Chimney Tower', 'Gar Lord’s Haunt Tower': 'Gar Tower', 'Archery Loft Tower': 'Archery Tower',
+    'Wheel of Embers Tower': 'Wheel Tower', 'Anvil Floor Tower': 'Anvil Tower', 'Steaming Pit Tower': 'Steam Tower', 'Blasting Court Tower': 'Blasting Tower',
+    'Black Gauntlet Tower': 'Gauntlet Tower', 'Last Charge Tower': 'Charge Tower', 'Blackened Sky Tower': 'Blackened Tower', 'Crumbling Heart Tower': 'Crumbling Tower',
+    'Final Volley Tower': 'Volley Tower', 'Colossus Reborn Tower': 'Reborn Tower', 'Last Keg Tower': 'Keg Tower', 'Last Dark Castle': 'Dark Castle',
+  };
+  // A tower's or castle's name as it's known: "… Tower" or "… Castle" (The Bell Pit → Bell Pit
+  // Tower, The Sky Spire → Sky Tower, Candle Keep → Candle Castle, Castle of the Last Dark →
+  // Last Dark Castle), then one word and Tower or Castle: Bell Pit Tower → Bell Tower
+  // (ONE_WORD; any other, its first word).
+  function finalName(name, castle) {
+    const base = name.replace(/^The /, '').replace(/^Castle of the /, '');
+    let n;
+    if (castle) n = /Castle$/.test(base) ? base : base.replace(/ Keep$/, '') + ' Castle';
+    else n = /Spire$/.test(base) ? base.replace(/Spire$/, 'Tower') : /Towers$/.test(base) ? base.replace(/Towers$/, 'Tower') : base + ' Tower';
+    const kind = n.endsWith(' Castle') ? 'Castle' : 'Tower', words = n.replace(/ (Tower|Castle)$/, '').split(' ');
+    return ONE_WORD[n] || (words.length > 1 ? `${words[0].replace(/’s$/, '')} ${kind}` : n);
+  }
+  // Each tower lives up to its name: its theme (THEMES) is the one its name says: Frost Tower
+  // icy, Ember Tower lava, Bog Tower flooded, Iron Tower clockwork, Widow Tower dark… (one
+  // not named here keeps the theme it's dealt).
+  const THEME_OF = {
+    Matriarch: 'shell', Bell: 'clock', Bog: 'water', Soot: 'lava', Hive: 'spring', Marksman: 'swing', Widow: 'dark', Colossus: 'clock',
+    Frost: 'ice', Powder: 'lava', Thorn: 'ghost', Ram: 'crumble', Moonwell: 'water', Ember: 'lava', Sparkwater: 'water', Hollow: 'ghost',
+    Pendulum: 'swing', Iron: 'clock', Melon: 'spring', Pale: 'ghost', Fuse: 'lava', Leviathan: 'water', Thunder: 'dark', Crusher: 'clock',
+    Chimney: 'dark', Gar: 'water', Archery: 'swing', Wheel: 'swing', Anvil: 'clock', Steam: 'lava', Blasting: 'crumble', Gauntlet: 'dark',
+    Charge: 'crumble', Shadow: 'dark', Blackened: 'lava', Crumbling: 'crumble', Volley: 'swing', Reborn: 'clock', Keg: 'crumble',
+  };
+  const usedLooks = new Set();
   function tower(def, seed, castle, sky, design) {
     const R = LF.rng(seed);
     // (No hordes in boss fights: any horde marker in the arena goes.)
@@ -1330,6 +1364,15 @@
     let climbs = null, look = null;
     if (!def.course && !castle && !sky) {
       look = towerLook(t);
+      const word = finalName(def.name, false).split(' ')[0], named = THEME_OF[word];
+      if (named) {
+        // (Still no two towers the same shape on the same theme: a tower whose pair is taken
+        // takes the next shape along. Gauntlet Tower is the gauntlet, whatever comes first.)
+        let k = LAYOUTS.findIndex(l => l.id === (word === 'Gauntlet' ? 'gauntlet' : look.layout.id));
+        for (let n = 0; n < LAYOUTS.length && word !== 'Gauntlet' && (usedLooks.has(`${LAYOUTS[k].id}/${named}`) || `${LAYOUTS[k].id}/${named}` === 'gauntlet/dark'); n++) k = (k + 1) % LAYOUTS.length;
+        usedLooks.add(`${LAYOUTS[k].id}/${named}`);
+        look = { layout: LAYOUTS[k], theme: THEMES.find(th => th.id === named) };
+      }
       climbs = look.layout.parts(R, look.theme, t).map((p, i) => Object.assign(p.map(row => row.map(c => (i === 0 ? (c === 'n' ? 'P' : c) : c === 'P' ? 'n' : c))), { flows: p.flows }));
     }
     const parts = def.course ? [...def.course(R), arenaRows] : climbs ? [...climbs, arenaRows] : [climb, run, arenaRows];
@@ -1375,7 +1418,7 @@
       // fury after each; a stomp is a hit, ten gun hits are one (see GUN_HITS in engine.js).
       ...def, map: g.map(row => row.join('')), noDoor: true, bossEnds: true, arenaX: arena.x, bossFury: true, bossHits: castle ? 4 : 3, castle: !!castle,
       signs: [
-        look ? { x: startAt.x - 1, y: startAt.y - 3.6, t: `${look.theme.sign} · ${look.layout.hint} · stomp it, or ten shots for a hit` }
+        look ? { x: startAt.x - 1, y: startAt.y - 3.6, t: `${finalName(def.name, false).toUpperCase()} · ${look.layout.hint} · stomp it, or ten shots for a hit` }
           : { x: climbAt.x + 2, y: climbAt.y + parts[0].length - 4.6, t: def.course ? `${def.name.toUpperCase()} · onward →` : castle ? 'THE CASTLE · climb, floor after floor' : 'CLIMB THE TOWER ↑' },
         ...(look ? [] : [{ x: runAt.x + 2, y: runAt.y + parts[parts.length - 2].length - 6.6, t: def.course ? 'keep going →' : 'along the battlements →' }]),
         ...(def.signs || []).map(s => ({ ...s, x: s.x + arena.x, y: s.y + arena.y })),
@@ -1560,29 +1603,8 @@
   // every star coin on the rest of the Star Road (see special.js and ui.js). (Its starOf is the
   // Star Road itself, the tenth world.)
   out.push({ chapter: 'The Star Road', name: 'Star of Star Road', starOf: 9, starOfStars: true, since: 18, dark: .96, map: ['P........D', '##########'] });
-  const ONE_WORD = {
-    'Matriarch’s Tower': 'Matriarch Tower', 'Bell Pit Tower': 'Bell Tower', 'Bog King’s Clocks Tower': 'Bog Tower', 'Soot Nest Tower': 'Soot Tower',
-    'Hive Pit Tower': 'Hive Tower', 'Marksman’s Deck Tower': 'Marksman Tower', 'Widow’s Ruin Tower': 'Widow Tower', 'Colossus Yard Tower': 'Colossus Tower',
-    'Frozen Kiln Tower': 'Frost Tower', 'Powder Throne Tower': 'Powder Tower', 'Haunted Thorns Tower': 'Thorn Tower', 'Ram’s Run Tower': 'Ram Tower',
-    'Ember Roost Tower': 'Ember Tower', 'Sparkwater Run Tower': 'Sparkwater Tower', 'Hollow Range Tower': 'Hollow Tower', 'Iron Quarry Tower': 'Iron Tower',
-    'Melon Vault Tower': 'Melon Tower', 'Fuse Hall Tower': 'Fuse Tower', 'Leviathan’s Pit Tower': 'Leviathan Tower', 'Thunder Fold Tower': 'Thunder Tower',
-    'Crusher’s Gauntlet Tower': 'Crusher Tower', 'Queen’s Chimney Tower': 'Chimney Tower', 'Gar Lord’s Haunt Tower': 'Gar Tower', 'Archery Loft Tower': 'Archery Tower',
-    'Wheel of Embers Tower': 'Wheel Tower', 'Anvil Floor Tower': 'Anvil Tower', 'Steaming Pit Tower': 'Steam Tower', 'Blasting Court Tower': 'Blasting Tower',
-    'Black Gauntlet Tower': 'Gauntlet Tower', 'Last Charge Tower': 'Charge Tower', 'Blackened Sky Tower': 'Blackened Tower', 'Crumbling Heart Tower': 'Crumbling Tower',
-    'Final Volley Tower': 'Volley Tower', 'Colossus Reborn Tower': 'Reborn Tower', 'Last Keg Tower': 'Keg Tower', 'Last Dark Castle': 'Dark Castle',
-  };
-  // Every tower is "… Tower" and every castle "… Castle" (The Bell Pit → Bell Pit Tower, The Sky
-  // Spire → Sky Tower, Candle Keep → Candle Castle, Castle of the Last Dark → Last Dark Castle).
-  // (Named last, once everything else that goes by their old names is done.)
-  for (const lv of out) {
-    if (!lv.boss) continue;
-    const base = lv.name.replace(/^The /, '').replace(/^Castle of the /, '');
-    if (lv.castle) lv.name = /Castle$/.test(base) ? base : base.replace(/ Keep$/, '') + ' Castle';
-    else lv.name = /Spire$/.test(base) ? base.replace(/Spire$/, 'Tower') : /Towers$/.test(base) ? base.replace(/Towers$/, 'Tower') : base + ' Tower';
-    // ...then one word and Tower or Castle: Bell Pit Tower → Bell Tower (ONE_WORD; any other,
-    // its first word).
-    const kind = lv.name.endsWith(' Castle') ? 'Castle' : 'Tower', words = lv.name.replace(/ (Tower|Castle)$/, '').split(' ');
-    lv.name = ONE_WORD[lv.name] || (words.length > 1 ? `${words[0].replace(/’s$/, '')} ${kind}` : lv.name);
-  }
+  // Every tower and castle by the name it's known by (finalName). (Named last, once everything
+  // else that goes by their old names is done.)
+  for (const lv of out) if (lv.boss) lv.name = finalName(lv.name, lv.castle);
   L.length = 0; L.push(...out);
 })();
