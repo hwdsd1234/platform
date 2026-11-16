@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Every tower and castle is one word and Tower or Castle now: Bell Tower, Bog Tower, Frost Tower, Thorn Tower, Wheel Tower, Keg Tower, Dark Castle and so on',
       'The Last Dark’s cutscenes are plain now: you just freeze while the Last Dark swells and breaks out (and later while the castle rises), with the screen as normal: no black bars, no words, no camera sweep, no sparks',
       'Levels are less alike: the extra sections every level runs on into now carry on like the level itself (its own kinds of ground, hazards, springs, lifts and enemies, and a lie of the land of its own), and each level has three set pieces of its own among staircases, pillar hops, crumbling bridges, spike pits, lava pits, low tunnels, conveyor runs, ice runs, springs, lifts and moving platforms',
       'Fixed: Lucky Panels, Panel Pairs and Ammo Panels wouldn’t open (going in did nothing). They’re back, a pair of panels for every fruit now',

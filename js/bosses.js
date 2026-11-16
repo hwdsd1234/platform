@@ -1560,6 +1560,17 @@
   // every star coin on the rest of the Star Road (see special.js and ui.js). (Its starOf is the
   // Star Road itself, the tenth world.)
   out.push({ chapter: 'The Star Road', name: 'Star of Star Road', starOf: 9, starOfStars: true, since: 18, dark: .96, map: ['P........D', '##########'] });
+  const ONE_WORD = {
+    'Matriarch’s Tower': 'Matriarch Tower', 'Bell Pit Tower': 'Bell Tower', 'Bog King’s Clocks Tower': 'Bog Tower', 'Soot Nest Tower': 'Soot Tower',
+    'Hive Pit Tower': 'Hive Tower', 'Marksman’s Deck Tower': 'Marksman Tower', 'Widow’s Ruin Tower': 'Widow Tower', 'Colossus Yard Tower': 'Colossus Tower',
+    'Frozen Kiln Tower': 'Frost Tower', 'Powder Throne Tower': 'Powder Tower', 'Haunted Thorns Tower': 'Thorn Tower', 'Ram’s Run Tower': 'Ram Tower',
+    'Ember Roost Tower': 'Ember Tower', 'Sparkwater Run Tower': 'Sparkwater Tower', 'Hollow Range Tower': 'Hollow Tower', 'Iron Quarry Tower': 'Iron Tower',
+    'Melon Vault Tower': 'Melon Tower', 'Fuse Hall Tower': 'Fuse Tower', 'Leviathan’s Pit Tower': 'Leviathan Tower', 'Thunder Fold Tower': 'Thunder Tower',
+    'Crusher’s Gauntlet Tower': 'Crusher Tower', 'Queen’s Chimney Tower': 'Chimney Tower', 'Gar Lord’s Haunt Tower': 'Gar Tower', 'Archery Loft Tower': 'Archery Tower',
+    'Wheel of Embers Tower': 'Wheel Tower', 'Anvil Floor Tower': 'Anvil Tower', 'Steaming Pit Tower': 'Steam Tower', 'Blasting Court Tower': 'Blasting Tower',
+    'Black Gauntlet Tower': 'Gauntlet Tower', 'Last Charge Tower': 'Charge Tower', 'Blackened Sky Tower': 'Blackened Tower', 'Crumbling Heart Tower': 'Crumbling Tower',
+    'Final Volley Tower': 'Volley Tower', 'Colossus Reborn Tower': 'Reborn Tower', 'Last Keg Tower': 'Keg Tower', 'Last Dark Castle': 'Dark Castle',
+  };
   // Every tower is "… Tower" and every castle "… Castle" (The Bell Pit → Bell Pit Tower, The Sky
   // Spire → Sky Tower, Candle Keep → Candle Castle, Castle of the Last Dark → Last Dark Castle).
   // (Named last, once everything else that goes by their old names is done.)
@@ -1568,6 +1579,10 @@
     const base = lv.name.replace(/^The /, '').replace(/^Castle of the /, '');
     if (lv.castle) lv.name = /Castle$/.test(base) ? base : base.replace(/ Keep$/, '') + ' Castle';
     else lv.name = /Spire$/.test(base) ? base.replace(/Spire$/, 'Tower') : /Towers$/.test(base) ? base.replace(/Towers$/, 'Tower') : base + ' Tower';
+    // ...then one word and Tower or Castle: Bell Pit Tower → Bell Tower (ONE_WORD; any other,
+    // its first word).
+    const kind = lv.name.endsWith(' Castle') ? 'Castle' : 'Tower', words = lv.name.replace(/ (Tower|Castle)$/, '').split(' ');
+    lv.name = ONE_WORD[lv.name] || (words.length > 1 ? `${words[0].replace(/’s$/, '')} ${kind}` : lv.name);
   }
   L.length = 0; L.push(...out);
 })();
