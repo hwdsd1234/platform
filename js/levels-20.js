@@ -2,12 +2,12 @@
 // start and it carries you the whole level along its track (def.ride: see engine.js), fast
 // (like a coaster), the track hardly ever straight, the car bending over every hill and dip,
 // and at the end of the track it flies off and falls: jump for the door's ledge. Stay on it,
-// there's nothing below (or lava). On the way:
+// a lava floor below. On the way:
 // - walls across the track with a slot for the car: jump them (in the air you keep going
 //   with the car, so jump in good time);
 // - spiked tunnels: keep your head down;
-// - dunks: the track dives into lava and the car's under for half a second: jump up onto
-//   the plank over the pool, then drop back onto the car as it comes out (lava bubbles leap
+// - dunks: the track dives down into the lava floor and the car's under for half a second:
+//   jump up onto the plank over it, then drop back onto the car as it comes out (lava bubbles leap
 //   out of some);
 // - shot gates: a door right across the track: shoot it open (three hits) before you get there
 //   (there are two ammo crates just before each);
@@ -26,24 +26,30 @@
   const W_LEN = 800;        // (tiles: about a minute's ride at that speed)
   const RW = 7;             // (the car's length in tiles: a long coaster car, room to move about on)
   const GAP_END = 4;        // (tiles from the track's end to the door's ledge: the car falls, you jump)
+  const LAVA_TOP = 13;      // (a lava floor under every ride, from this row down: the track runs above it, and dunks into it)
+  const LOW = LAVA_TOP - 1; // (the lowest the track runs, just over the lava)
 
   function ride(name, seed, { chapter, since, foes = 'F', lava = false, dark = .55, w = W_LEN }) {
     const R = LF.rng(seed), ri = (a, b) => a + Math.floor(R() * (b - a + 1)), pick = a => a[Math.floor(R() * a.length)];
     // The track: a little flat to board on, then up and down all the way (a short flat now and
-    // then), between rows 6 and H - 6, with dunks into lava.
+    // then), between row 6 and LOW (just over the lava floor), with dunks down into the lava.
     const path = [[5, F], [14, F]], dips = [];
     let x = 14, y = F;
     while (x < w - 40) {
-      if (x > 40 && y <= H - 7 && R() < .1 && (!dips.length || x - dips[dips.length - 1].x1 > 45)) {
-        // A dunk: down three rows, under for two tiles, up again (the car's under about half a second).
+      if (x > 40 && R() < .1 && (!dips.length || x - dips[dips.length - 1].x1 > 45)) {
+        // A dunk: down to just over the lava (if it isn't there already), then into it, three rows
+        // down, under for two tiles, and up again (the car's under about half a second).
+        if (y < LOW) { x += (LOW - y) * 2; y = LOW; path.push([x, y]); }
         path.push([x + 2, y + 3], [x + 4, y + 3], [x + 6, y]); dips.push({ x0: x, x1: x + 6, y }); x += 6;
         continue;
       }
       if (R() < .1) { x += ri(3, 6); path.push([x, y]); continue; }
       let dy = R() < .5 ? -ri(1, 3) : ri(1, 3);
-      dy = Math.max(6 - y, Math.min(H - 6 - y, dy)); if (!dy) dy = y > 9 ? -1 : 1;
+      dy = Math.max(6 - y, Math.min(LOW - y, dy)); if (!dy) dy = y > 9 ? -1 : 1;
       x += Math.abs(dy) * ri(2, 3); y += dy; path.push([x, y]);
     }
+    // (Up off the lava for the end, so the door's ledge is clear of it.)
+    if (y > 9) { x += (y - 9) * 2; y = 9; path.push([x, y]); }
     const endRow = y;
     path.push([w - 6 - GAP_END, y]);
     // The track's height at column c (fractional), and the highest and lowest it is across it.
@@ -59,7 +65,7 @@
     const top = c => Math.ceil(Math.min(yAt(c), yAt(c + 1)) - 1e-6);
     const under = c => Math.floor(Math.max(yAt(c), yAt(c + 1)) + .4) + 1; // (rows from this down are under it)
     const map = B(w, H, ({ r, s, lava: fillLava }) => {
-      if (lava) fillLava(H - 2);
+      fillLava(LAVA_TOP);
       r(0, F, 4, H - 1); s(2, F - 1, 'P');
       // (The door on a ledge of its own past the end of the track, two below it, open below.)
       r(w - 6, endRow + 2, w - 1, endRow + 3); s(w - 3, endRow + 1, 'D');

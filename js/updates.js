@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Rides have a lava floor now, every one: the track runs over it, sweeping down to skim just above it, and the dunks dive right down into it (jump for the plank above, then drop back on as the car climbs out)',
       'Rides rebuilt with more to them: the track hardly ever runs straight, so the car’s always bending; dunks where the car goes right under the lava for half a second (jump up onto the plank over the pool, then drop back on as it comes out; lava bubbles leap out of some); shot gates right across the track to shoot open before you get there (two ammo crates just before each); fire bars and pendulums swinging over the track; walls and spiked tunnels on the curves; about 55 fliers a ride and 12 apples; miss a wall and you fall instead of getting stuck under it',
       'Rides: dunks, where the track dives into a pool of lava and straight back up (jump just before and land on the car as it comes up; in the air you keep the car’s speed), and lots more enemies again (60 to 90 a ride: bats at head height, overhead and up high, and sparks), with more apples along the way; no wasps on rides now, and the tunnels further apart',
       'Rides: the long car bends now, its segments each lying along the track, over the hills and down the dips (you stand on whatever part’s under you), and at the end of the track it flies off and falls: jump for the door’s ledge, just below and across the gap, before it goes',
