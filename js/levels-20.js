@@ -1,18 +1,27 @@
-// Lanternfall: rides, a gimmick in every world. In a ride you step onto a raft at the start
-// and it carries you the whole level along its track (def.ride: see engine.js), fast (like a
-// coaster), its long car bending over the hills and down the dips, and at the end of the track
-// it flies off and falls: jump for the door's ledge. Stay on it, there's nothing below (or
-// lava). Walls stand across the track with a slot for the raft to slip through: jump them
-// (in the air you keep going with the raft, so jump in good time); in the tunnels spikes hang
-// low: keep your head down; where it dunks into lava, jump. Fliers along the way, lanterns you light as you pass under them
-// (and come back to, the raft waiting), three star coins and a yellow apple over the track to
-// jump for. Each world has its own (LF.WORLD_RIDES, slotted in before its castle by
-// bosses.js); the Ferry Line's (LF.RIDE_LEVELS) close the Canal District's Pear Cliffs. Built
-// the same every time, from each level's seed. Load after levels-19.js, before bosses.js.
+// Lanternfall: rides, a gimmick in every world. In a ride you step onto a long car at the
+// start and it carries you the whole level along its track (def.ride: see engine.js), fast
+// (like a coaster), the track hardly ever straight, the car bending over every hill and dip,
+// and at the end of the track it flies off and falls: jump for the door's ledge. Stay on it,
+// there's nothing below (or lava). On the way:
+// - walls across the track with a slot for the car: jump them (in the air you keep going
+//   with the car, so jump in good time);
+// - spiked tunnels: keep your head down;
+// - dunks: the track dives into lava and the car's under for half a second: jump up onto
+//   the plank over the pool, then drop back onto the car as it comes out (lava bubbles leap
+//   out of some);
+// - shot gates: a door right across the track: shoot it open (three hits) before you get there
+//   (there are two ammo crates just before each);
+// - fire bars and pendulums swinging over the track;
+// - fliers, lots: at head height, overhead and up high.
+// Lanterns you light as you pass under them (and come back to, the car waiting), three star
+// coins and a yellow apple over the track to jump for. Each world has its own
+// (LF.WORLD_RIDES, slotted in before its castle by bosses.js); the Ferry Line's
+// (LF.RIDE_LEVELS) close the Canal District's Pear Cliffs. Built the same every time, from
+// each level's seed. Load after levels-19.js, before bosses.js.
 (() => {
   const LF = window.LF;
   const B = LF.build;
-  const H = 18, F = 12;     // (the raft starts on row F, level with the start ledge)
+  const H = 18, F = 12;     // (the car starts on row F, level with the start ledge)
   const SPEED = 360;        // (pixels a second: four times the old ferries)
   const W_LEN = 800;        // (tiles: about a minute's ride at that speed)
   const RW = 7;             // (the car's length in tiles: a long coaster car, room to move about on)
@@ -20,34 +29,35 @@
 
   function ride(name, seed, { chapter, since, foes = 'F', lava = false, dark = .55, w = W_LEN }) {
     const R = LF.rng(seed), ri = (a, b) => a + Math.floor(R() * (b - a + 1)), pick = a => a[Math.floor(R() * a.length)];
-    // The track: flats, rises and drops (gentle enough to ride), between rows 6 and H - 5.
-    const path = [[5, F]], flats = [], dips = [];
-    let x = 5, y = F;
+    // The track: a little flat to board on, then up and down all the way (a short flat now and
+    // then), between rows 6 and H - 6, with dunks into lava.
+    const path = [[5, F], [14, F]], dips = [];
+    let x = 14, y = F;
     while (x < w - 40) {
-      // A dunk: the track dives into a pool of lava and straight back up (two rows down, three
-      // tiles across): jump just before it and come down on the car as it comes back up.
-      if (x > 40 && y <= H - 6 && R() < .14 && (!dips.length || x - dips[dips.length - 1].x1 > 40)) {
-        path.push([x + 1, y + 2], [x + 2, y + 2], [x + 3, y]); dips.push({ x0: x, x1: x + 3, y }); x += 3;
+      if (x > 40 && y <= H - 7 && R() < .1 && (!dips.length || x - dips[dips.length - 1].x1 > 45)) {
+        // A dunk: down three rows, under for two tiles, up again (the car's under about half a second).
+        path.push([x + 2, y + 3], [x + 4, y + 3], [x + 6, y]); dips.push({ x0: x, x1: x + 6, y }); x += 6;
         continue;
       }
-      if (R() < .55 || x < 20) {
-        const len = ri(16, 34);
-        flats.push({ x0: x, x1: x + len, y }); x += len; path.push([x, y]);
-      } else {
-        let dy = R() < .5 ? -ri(2, 4) : ri(2, 4);
-        dy = Math.max(6 - y, Math.min(H - 5 - y, dy)); if (!dy) dy = y > 9 ? -2 : 2;
-        x += Math.abs(dy) * ri(2, 3); y += dy; path.push([x, y]);
-      }
+      if (R() < .1) { x += ri(3, 6); path.push([x, y]); continue; }
+      let dy = R() < .5 ? -ri(1, 3) : ri(1, 3);
+      dy = Math.max(6 - y, Math.min(H - 6 - y, dy)); if (!dy) dy = y > 9 ? -1 : 1;
+      x += Math.abs(dy) * ri(2, 3); y += dy; path.push([x, y]);
     }
-    flats.push({ x0: x, x1: w - 6 - GAP_END, y }); path.push([w - 6 - GAP_END, y]);
-    const ry = c => {
+    const endRow = y;
+    path.push([w - 6 - GAP_END, y]);
+    // The track's height at column c (fractional), and the highest and lowest it is across it.
+    const yAt = c => {
       for (let k = 0; k < path.length - 1; k++) {
         const [x0, y0] = path[k], [x1, y1] = path[k + 1];
-        if (c >= x0 && c <= x1) return Math.round(y0 + (y1 - y0) * (c - x0) / Math.max(1, x1 - x0));
+        if (c >= x0 && c <= x1) return y0 + (y1 - y0) * (c - x0) / Math.max(1e-6, x1 - x0);
       }
       return path[path.length - 1][1];
     };
-    const endRow = y;
+    // (Rows above this one are over the car at column c: a wall from the row above it down
+    // meets the car, with no gap to squeeze through, wherever the track's going.)
+    const top = c => Math.ceil(Math.min(yAt(c), yAt(c + 1)) - 1e-6);
+    const under = c => Math.floor(Math.max(yAt(c), yAt(c + 1)) + .4) + 1; // (rows from this down are under it)
     const map = B(w, H, ({ r, s, lava: fillLava }) => {
       if (lava) fillLava(H - 2);
       r(0, F, 4, H - 1); s(2, F - 1, 'P');
@@ -56,40 +66,67 @@
       const busy = new Set();
       const free = (a, b) => { for (let c = a; c <= b; c++) if (busy.has(c)) return false; return true; };
       const take = (a, b) => { for (let c = a; c <= b; c++) busy.add(c); };
-      take(0, 12); take(w - 8 - RW, w - 1);
-      // The lava the dunks go into (and nothing else just before or after them: the jump's enough).
-      for (const d of dips) { r(d.x0, d.y + 1, d.x1, H - 1, '!'); take(d.x0 - 12, d.x1 + 6); }
-      // Along each flat: walls (one or two high), tunnels, fliers, spaced out.
-      for (const f of flats) {
-        for (let c = f.x0 + 6; c < f.x1 - 6; c += ri(5, 8)) {
-          const roll = R();
-          // (A wall keeps the ten tiles before it clear of fliers: its jump shouldn't take you into one.)
-          if (roll < .25 && free(c - 10, c + 4)) { const tall = R() < .35 ? 2 : 1; r(c, f.y - tall, c, f.y - 1); r(c, f.y + 1, c, H - 1); take(c - 10, c + 4); }
-          else if (roll < .35 && c + 12 < f.x1 && free(c - 8, c + 20)) {
-            const len = ri(8, 12);
-            for (let t = c; t < c + len; t++) { r(t, 0, t, f.y - 4); s(t, f.y - 3, '^'); r(t, f.y + 1, t, H - 1); }
-            take(c - 8, c + len + 8); c += len;
-          } else if (free(c - 2, c + 2)) {
-            // (Fliers: at head height, overhead, and now and then one high up too.)
-            s(c, f.y - (R() < .5 ? 1 : 2), pick(foes));
-            if (R() < .35) s(c + 1, f.y - 5, pick(foes));
-            take(c - 2, c + 2);
-          }
-        }
+      // (Where no flier goes: just before a wall, round a dunk, in a tunnel, right at a trap.)
+      const nofoe = new Set(), keepClear = (a, b) => { for (let c = a; c <= b; c++) nofoe.add(c); };
+      take(0, 16); take(w - 8 - RW, w - 1);
+      // (Nothing under the track where a wall or tunnel crosses it: miss your jump and you fall,
+      // never caught in the slot the car goes through.)
+      const below = () => {};
+      // The dunks: the lava, a plank over the pool and just past it (jump up, then drop back on
+      // as the car comes out), now and then a lava bubble; nothing else near.
+      for (const d of dips) {
+        r(d.x0, d.y + 1, d.x1, H - 1, '!');
+        r(d.x0 + 2, d.y - 2, d.x1 + 1, d.y - 2, '=');
+        if (R() < .35) s(d.x0 + 1, d.y + 2, '*');
+        take(d.x0 - 12, d.x1 + 8); keepClear(d.x0 - 12, d.x1 + 8);
       }
-      // Fliers over the hills and dips too.
-      for (let k = 1; k < path.length - 1; k++) {
-        const [x0, y0] = path[k - 1], [x1, y1] = path[k];
-        if (y0 === y1) continue;
-        for (const c of [Math.round(x0 + (x1 - x0) / 3), Math.round(x0 + (x1 - x0) * 2 / 3)])
-          if (R() < .8 && free(c - 1, c + 1)) { s(c, ry(c) - 2, pick(foes)); take(c - 1, c + 1); }
+      // Along the track, first the hazards, every 18 to 30 tiles, each kind in turn (shuffled,
+      // so every ride has all of them, in its own order): walls, tunnels, shot gates, fire bars,
+      // pendulums. Then fliers in the spaces between.
+      const KINDS = ['wall', 'tunnel', 'shot', 'firebar', 'pendulum', 'wall', 'tunnel', 'shot'];
+      for (let k = KINDS.length - 1; k > 0; k--) { const j = Math.floor(R() * (k + 1)); [KINDS[k], KINDS[j]] = [KINDS[j], KINDS[k]]; }
+      let turn = 0;
+      for (let c = 24; c < w - 30; c += ri(18, 30)) {
+        const kind = KINDS[turn % KINDS.length], t = top(c);
+        // (A wall only where the track isn't climbing up to it, or you'd take off too low to clear
+        // it; two high only where it's level or going down.)
+        const climb = yAt(c - 6) - yAt(c + 1);
+        if (kind === 'wall' && climb <= .5 && free(c - 10, c + 4)) {
+          const tall = climb <= 0 && R() < .35 ? 2 : 1; r(c, t - tall, c, t - 1); below(c); take(c - 10, c + 4); keepClear(c - 10, c + 2);
+        } else if (kind === 'tunnel' && free(c - 8, c + 20)) {
+          const len = ri(8, 12);
+          for (let q = c; q < c + len; q++) { const tq = top(q); r(q, 0, q, tq - 4); s(q, tq - 3, '^'); below(q); }
+          take(c - 8, c + len + 8); keepClear(c - 6, c + len + 1); c += len;
+        } else if (kind === 'shot' && free(c - 28, c + 6)) {
+          // A shot gate: a door across the track (three hits), reaching up past wherever the track runs in the twenty tiles before it, so a
+          // straight shot from anywhere on the way hits it; ammo two seconds before it and nothing
+          // in the way between, so your shots go to the door.
+          // (And down past the lowest it runs there too: the car goes through the door's lower
+          // blocks, but your shots from down there hit them.)
+          let hi = t, lo = t - 1; for (let q = c - 20; q <= c; q++) { hi = Math.min(hi, top(q)); lo = Math.max(lo, top(q)); }
+          r(c, 0, c, hi - 6); r(c, hi - 5, c, lo, 'v'); below(c);
+          s(c - 22, top(c - 22) - 1, 'Q'); s(c - 15, top(c - 15) - 1, 'Q'); take(c - 28, c + 6); keepClear(c - 24, c + 2);
+        } else if (kind === 'firebar' && free(c - 6, c + 6)) {
+          s(c, t - 3, 'f'); take(c - 6, c + 6); keepClear(c - 3, c + 3);   // (its arm reaches down to the car)
+        } else if (kind === 'pendulum' && free(c - 6, c + 6)) {
+          r(c, 0, c, t - 5); s(c, t - 4, 'E'); take(c - 6, c + 6); keepClear(c - 4, c + 4);   // (its ball swings through head height)
+        } else continue;
+        turn++;
+      }
+      for (let c = 20; c < w - 30; c += ri(6, 10)) {
+        let ok = true; for (let q = c - 1; q <= c + 1; q++) if (nofoe.has(q)) ok = false;
+        if (!ok) continue;
+        const t = top(c);
+        s(c, t - (R() < .4 ? 1 : 2), pick(foes));
+        if (R() < .25) s(c + 1, t - 5, pick(foes));
+        keepClear(c - 1, c + 1); take(c - 1, c + 1);
       }
       // Things to have: three lanterns (lit as you pass under), three star coins and a yellow
       // apple up over the track (jump for them), apples, ammo and a green apple at hand height.
       const spot = (frac, up) => {
         for (let d = 0; d < 60; d++) for (const sg of [1, -1]) {
           const c = Math.round(w * frac) + sg * d;
-          if (c > 14 && c < w - 14 && free(c - 1, c + 1)) { take(c - 1, c + 1); return [c, ry(c) - up]; }
+          if (c > 16 && c < w - 14 && free(c - 1, c + 1)) { take(c - 1, c + 1); return [c, top(c) - up]; }
         }
         return null;
       };
@@ -97,7 +134,7 @@
       for (const fr of [.25, .5, .75]) put(fr, 1, 'L');
       for (const fr of [.18, .55, .9]) put(fr, 3, '¢');
       put(.4, 3, 'ý'); put(.62, 1, 'ǵ');
-      for (const fr of [.1, .22, .33, .46, .58, .7, .8, .9]) put(fr, 1, 'a');
+      for (const fr of [.07, .15, .23, .31, .39, .47, .55, .63, .71, .79, .87, .95]) put(fr, 1, 'a');
       for (const fr of [.06, .2, .37, .52, .66, .8, .93]) put(fr, 1, 'q');
     });
     return { chapter, name, since, dark, map, ride: { path, speed: SPEED, w: RW }, keepLength: true, noCrowd: true };
