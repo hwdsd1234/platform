@@ -7,8 +7,8 @@
 //   with the car, so jump in good time);
 // - spiked tunnels: keep your head down;
 // - dunks: the track dives down into the lava floor and the car's under for half a second:
-//   jump up onto the plank over it, then drop back onto the car as it comes out (lava bubbles leap
-//   out of some);
+//   jump just before it dives and land on the car as it climbs back out (lava bubbles leap out
+//   of some);
 // - shot gates: a door right across the track: shoot it open (three hits) before you get there
 //   (there are two ammo crates just before each);
 // - fire bars and pendulums swinging over the track;
@@ -78,11 +78,10 @@
       // (Nothing under the track where a wall or tunnel crosses it: miss your jump and you fall,
       // never caught in the slot the car goes through.)
       const below = () => {};
-      // The dunks: the lava, a plank over the pool and just past it (jump up, then drop back on
-      // as the car comes out), now and then a lava bubble; nothing else near.
+      // The dunks: the lava, now and then a lava bubble; nothing else near (jump the dunk, and
+      // land on the car as it comes out).
       for (const d of dips) {
         r(d.x0, d.y + 1, d.x1, H - 1, '!');
-        r(d.x0 + 2, d.y - 2, d.x1 + 1, d.y - 2, '=');
         if (R() < .35) s(d.x0 + 1, d.y + 2, '*');
         take(d.x0 - 12, d.x1 + 8); keepClear(d.x0 - 12, d.x1 + 8);
       }
