@@ -24,7 +24,7 @@
   const H = 18, F = 12;     // (the car starts on row F, level with the start ledge)
   const SPEED = 360;        // (pixels a second: four times the old ferries)
   const W_LEN = 800;        // (tiles: about a minute's ride at that speed)
-  const RW = 7;             // (the car's length in tiles: a long coaster car, room to move about on)
+  const RW = 14;            // (the car's length in tiles: a long coaster car, room to move about on)
   const GAP_END = 4;        // (tiles from the track's end to the door's ledge: the car falls, you jump)
   const LAVA_TOP = 13;      // (a lava floor under every ride, from this row down: the track runs above it, and dunks into it)
   const LOW = LAVA_TOP - 1; // (the lowest the track runs, just over the lava)
