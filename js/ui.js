@@ -722,13 +722,13 @@
   // The fruit houses take turns at seven kinds of grove, and every one has every kind of
   // fruit in it: the Fruit Grove (grab what you can in 10 seconds), Lucky Panels (bump
   // panels over for fruit till you find two skulls), Panel Pairs (a look at them all, then
-  // match them two at a time for 45 seconds), Fruit Rain (catch it as it falls), the Spring
+  // match them two at a time for 90 seconds), Fruit Rain (catch it as it falls), the Spring
   // Garden (springs up to fruit high in the air), the Ice Rink (slide about after it) and
   // the Fruit Climb (up a shaft of ledges).
   const GROVES = {
     grab: { name: 'Fruit Grove', hud: '10 seconds', what: '10 seconds to grab all the fruit you can: it all goes in your inventory. Get every one and it’s over at once' },
     lucky: { name: 'Lucky Panels', hud: 'find two skulls and it’s over', what: 'Bump the panels from below: each hides a fruit (one of every kind is under them) or a skull. Turn up two skulls and it’s over. Get every one and it’s over at once' },
-    pairs: { name: 'Panel Pairs', hud: '45 seconds · match the pairs', what: 'A pair of panels for every fruit: a 6-second look at them all, then bump them two at a time for 45 seconds. Every pair you match is two of that fruit; a miss just turns them back over. Get every one and it’s over at once' },
+    pairs: { name: 'Panel Pairs', hud: '90 seconds · match the pairs', what: 'A pair of panels for every fruit: a 10-second look at them all, then bump them two at a time for 90 seconds. Every pair you match is two of that fruit; a miss just turns them back over. Get every one and it’s over at once' },
     rain: { name: 'Fruit Rain', hud: '20 seconds · catch it as it falls', what: 'Fruit falls from the sky, every kind in turn: 20 seconds to catch all you can before it lands and goes' },
     springs: { name: 'Spring Garden', hud: '15 seconds', what: 'Springs fling you up to fruit hanging high in the air: 15 seconds to bounce for all you can. Get every one and it’s over at once' },
     ice: { name: 'Ice Rink', hud: '15 seconds', what: 'A grove frozen over: 15 seconds to slide about after the fruit. Get every one and it’s over at once' },
@@ -807,7 +807,7 @@
     if (kind === 'lucky' || kind === 'pairs') {
       const syms = shuffle(kind === 'lucky' ? [...kinds, '☠', '☠', '☠'] : [...kinds, ...kinds]);
       return {
-        ...base, timeLimit: kind === 'pairs' ? 45 : 60, panelGame: { mode: kind, syms, peek: kind === 'pairs' ? 6 : 0 },
+        ...base, timeLimit: kind === 'pairs' ? 90 : 60, panelGame: { mode: kind, syms, peek: kind === 'pairs' ? 10 : 0 },
         signs: [{ x: 2, y: panelSignY(syms.length), t: kind === 'lucky' ? 'bump the panels · fruit is yours · two skulls and it’s over' : 'remember where the fruit is! · bump two panels · match the fruit' }],
         map: panelHall(syms.length),
       };

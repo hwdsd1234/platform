@@ -1149,7 +1149,7 @@
     } else {
       // (No match: they just turn back over. Try again till the clock runs out.)
       W.emit('buzz'); say('no match', '#9FC4FF');
-      W.panelWait = 1; W.panelBack = [first, pn];
+      W.panelWait = 1.5; W.panelBack = [first, pn];   // (long enough to take a good look)
     }
   }
   // Fruit Rain (def.fruitRain = { every, kinds }): fruit falling from the sky, one every
