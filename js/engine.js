@@ -441,7 +441,7 @@
     // what's in your way: a wall knocks you off it).
     if (def.ride) {
       const path = def.ride.path.map(([tx, ty]) => [tx * TS, ty * TS]);
-      W.ride = { kind: 'ride', path, s: 0, len: TS * (def.ride.w || 3), v: def.ride.speed || 90, h: 12, dx: 0, dy: 0, state: 'wait' };
+      W.ride = { kind: 'ride', path, s: 0, len: TS * (def.ride.w || 3), v: def.ride.speed || 90, h: 12, dx: 0, dy: 0, state: 'wait', rigid: !!def.ride.rigid, locked: !!def.ride.locked };
       rideInit(W.ride); rideFrame(W.ride); W.ride.prevY = W.ride.y;
       W.plats.push(W.ride);
     }
@@ -688,6 +688,8 @@
       const c = tile(W, tx, ty);
       // (Spikes hurt you, not enemies; the pineapple makes you spike-proof too.)
       if (c === '^' && p === W.player && p.y + p.h > ty * TS + 14 && !p.spiky) return true;
+      // (A floating spike ball, ¤, hurts from any side: touch its round middle.)
+      if (c === '¤' && p === W.player && !p.spiky && circleHits(tx * TS + 16, ty * TS + 16, 11, p)) return true;
       if (c === '~' && !swims && p.y + p.h > ty * TS + 10) return true;
     }
     return p.y > W.h * TS + 60;
@@ -1012,6 +1014,9 @@
   // treats it as a platform; rideTop(pl, x) is the top of the car at column x (null if the car
   // isn't there).
   function rideFrame(pl) {
+    // (A rigid lift, def.ride.rigid, doesn't bend: its top-left rides the track, which can go
+    // straight up and down too.)
+    if (pl.rigid) { const [x, y] = rideAt(pl, pl.s); pl.x = x; pl.y = y; pl.w = pl.len; return; }
     const a = rideAt(pl, pl.s), b = rideAt(pl, pl.s + pl.len), m = rideAt(pl, pl.s + pl.len / 2);
     pl.x = a[0]; pl.w = b[0] - a[0]; pl.y = Math.min(a[1], b[1], m[1]);
   }
@@ -1031,6 +1036,16 @@
   // checkpoint), and you stand on its middle.
   function rideFrom(W, x) {
     const pl = W.ride, p = W.player;
+    if (pl.rigid) {
+      // (The lift waits at the point on its track nearest your checkpoint.)
+      const cy = W.checkpoint ? (W.checkpoint.ty + 1) * TS : pl.path[0][1];
+      let best = 0, bd = Infinity;
+      for (let u = 0; u <= pl.L; u += 8) { const [lx, ly] = rideAt(pl, u), d = Math.hypot(lx + pl.len / 2 - (x + p.w / 2), ly - cy); if (d < bd) { bd = d; best = u; } }
+      pl.s = Math.min(best, Math.max(0, pl.L - 1)); Object.assign(pl, { state: 'wait', dx: 0, dy: 0, boarded: false });
+      rideFrame(pl); pl.prevY = pl.y;
+      p.x = pl.x + pl.w / 2 - p.w / 2; p.y = pl.y - p.h; p.vy = 0;
+      return;
+    }
     pl.s = Math.max(0, Math.min(pl.L - pl.len - TS, rideArc(pl, x + p.w / 2) - pl.len / 2));
     Object.assign(pl, { state: 'wait', dx: 0, dy: 0, vx: 0, vy: 0 });
     rideFrame(pl); pl.prevY = pl.y;
@@ -1043,7 +1058,11 @@
       if (pl.kind === 'ride') {
         if (pl.state === 'wait' && W.player.onPlat === pl) pl.state = 'go';
         const ox = pl.x, oy = pl.y;
-        if (pl.state === 'go') {
+        if (pl.state === 'go' && pl.rigid) {
+          // (A rigid lift stops at the end of its track, by the door.)
+          pl.s = Math.min(pl.L, pl.s + pl.v * dt); rideFrame(pl);
+          if (pl.s >= pl.L) pl.state = 'done';
+        } else if (pl.state === 'go') {
           pl.s += pl.v * dt;
           // Off the end of the track: it flies on, and falls.
           if (pl.s + pl.len >= pl.L) { pl.s = pl.L - pl.len; rideFrame(pl); pl.state = 'fall'; pl.vx = pl.v; pl.vy = 0; pl.w = pl.len; }
@@ -3610,14 +3629,14 @@
     if (p.dbl > 0 && Math.random() < .08) W.particles.push({ x: p.x + Math.random() * p.w, y: p.y + p.h * Math.random(), vx: 0, vy: -20, life: .4, max: .4, c: '#FFE066', size: 2, g: 0 });
 
     // (On a ride's car you go along the track with it, at the track's height where you are.)
-    if (p.onPlat && p.onPlat.kind === 'ride' && p.onPlat.state !== 'fall' && !dropping) {
+    if (p.onPlat && p.onPlat.kind === 'ride' && !p.onPlat.rigid && p.onPlat.state !== 'fall' && !dropping) {
       const cx = p.x + p.w / 2, [nx, ny] = rideStep(p.onPlat, cx, dt);
       moveX(W, p, nx - cx); if (ny != null) p.y = ny - p.h;
     }
     else if (p.onPlat && !dropping) { moveX(W, p, p.onPlat.dx); p.y += p.onPlat.dy; }
     // (Jump off a ride's car and you keep going with it, as if still aboard, till you land.)
     // (Straight on at its speed, whatever the track does under you: over a dunk into lava too.)
-    else if (p.lastRide && !p.onGround) { const pl = p.lastRide; moveX(W, p, pl.state === 'go' ? pl.v * dt : pl.state === 'fall' ? pl.vx * dt : 0); }
+    else if (p.lastRide && !p.onGround) { const pl = p.lastRide; moveX(W, p, pl.rigid ? pl.dx : pl.state === 'go' ? pl.v * dt : pl.state === 'fall' ? pl.vx * dt : 0); }
     // Standing on a turn block, you turn with it (about its middle, from where your feet are).
     if (p.spinOn && p.spinOn.da) {
       const s = p.spinOn, fx = p.x + p.w / 2 - s.cx, fy = p.y + p.h - s.cy, c = Math.cos(s.da), sn = Math.sin(s.da);
@@ -3715,13 +3734,14 @@
       for (const pl of W.plats) {
         if (pl.state === 'gone' || pl.sunk) continue;
         // (A ride's car: its top under your middle, wherever it bends.)
-        if (pl.kind === 'ride' && pl.state !== 'fall') {
+        if (pl.kind === 'ride' && !pl.rigid && pl.state !== 'fall') {
           const top = rideTop(pl, p.x + p.w / 2);
           if (top != null && pb <= top + 8 && p.y + p.h >= top) { p.y = top - p.h; p.vy = 0; p.onGround = true; p.onPlat = pl; p.lastRide = pl; break; }
           continue;
         }
         if (p.x + p.w > pl.x + 2 && p.x < pl.x + pl.w - 2 && pb <= Math.max(pl.prevY, pl.y) + 1 && p.y + p.h >= pl.y) {
           p.y = pl.y - p.h; p.vy = 0; p.onGround = true; p.onPlat = pl; p.lastRide = pl.kind === 'ride' ? pl : null;
+          if (pl.locked) pl.boarded = true;
           if (pl.kind === 'fall' && pl.state === 'idle') { pl.state = 'shake'; pl.t = 0; }
           break;
         }
@@ -3782,6 +3802,14 @@
       if (t.type !== 'crush' || p.onPlat === t || !overlap(p, { x: t.x, y: t.y + 4, w: t.w, h: t.h - 10 })) continue;
       if (p.x + p.w / 2 < t.x + t.w / 2) p.x = t.x - p.w; else p.x = t.x + t.w;
       p.vx = 0;
+    }
+    // A locked lift (def.ride.locked): once you're on, you can't leave it (you're kept within
+    // its ends, in the air too) till it stops by the door.
+    const lk = W.ride;
+    if (lk && lk.locked && lk.boarded && lk.state !== 'done' && !p.dead) {
+      if (p.x < lk.x) { p.x = lk.x; p.vx = Math.max(0, p.vx); }
+      if (p.x + p.w > lk.x + lk.w) { p.x = lk.x + lk.w - p.w; p.vx = Math.min(0, p.vx); }
+      if (p.y + p.h > lk.y + 4 && p.vy >= 0) { p.y = lk.y - p.h; p.vy = 0; p.onGround = true; p.onPlat = lk; }
     }
     if (hordeCaught(W, p)) return;
 

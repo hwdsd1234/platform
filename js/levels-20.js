@@ -145,6 +145,61 @@
     return { chapter, name, since, dark, map, ride: { path, speed: SPEED, w: RW }, keepLength: true, noCrowd: true };
   }
 
+  // Spike lifts: a slow lift you can't get off (def.ride.locked: you're kept on it till it stops
+  // by the door), along a track that runs right, climbs and drops, past floating spike balls (¤)
+  // you dodge from on board: jump the low ones, keep your head down under the high ones, hop
+  // through the gap in a pair, and step across the lift as it rises or sinks past one. A few bats.
+  const LW = 4, LIFT_SPEED = 70, LH = 26;
+  const LIFT_NAMES = ['Spike Lift', 'Barnacle Lift', 'Gear Lift', 'Cloud Lift', 'Market Lift', 'Ash Lift', 'Crystal Lift', 'Last Lift'];
+  function liftLevel(name, seed, { chapter, since, dark = .55, foes = 'F' }) {
+    const R = LF.rng(seed), ri = (a, b) => a + Math.floor(R() * (b - a + 1)), pick = a => a[Math.floor(R() * a.length)];
+    const START = LH - 6, w = 180;
+    const path = [[5, START]], runs = [], climbs = [];
+    let x = 5, y = START;
+    x += 6; path.push([x, y]);
+    while (x < w - 24) {
+      if (R() < .6) { const len = ri(12, 20); runs.push({ x0: x, x1: x + len, y }); x += len; path.push([x, y]); }
+      else {
+        let dy = R() < .55 ? -ri(4, 8) : ri(4, 8);
+        dy = Math.max(6 - y, Math.min(START - y, dy)); if (Math.abs(dy) < 3) dy = y > 12 ? -6 : 6;
+        climbs.push({ x, y0: y, y1: y + dy }); y += dy; path.push([x, y]);
+      }
+    }
+    const endX = w - 5 - LW; path.push([endX, y]); runs.push({ x0: x, x1: endX - 4, y });
+    const map = B(w, LH, ({ r, s }) => {
+      r(0, START, 4, LH - 1); s(2, START - 1, 'P');
+      r(w - 5, y, w - 1, y + 1); s(w - 3, y - 1, 'D');
+      const used = new Set(), key = (c, rr) => c + ',' + rr;
+      const put = (c, rr, ch) => { if (rr > 0 && rr < LH && !used.has(key(c, rr))) { s(c, rr, ch); used.add(key(c, rr)); } };
+      // Along the runs (the lift's top on row ry: you stand in row ry - 1): spike balls at your
+      // height (jump them), over your head (don't jump into them), or one low and one high with
+      // a gap between (a little hop), every 5 to 9 tiles.
+      for (const rn of runs) for (let c = rn.x0 + LW + 3; c < rn.x1; c += ri(5, 9)) {
+        const kind = R();
+        if (kind < .4) put(c, rn.y - 1, '¤');
+        else if (kind < .65) { put(c, rn.y - 2, '¤'); put(c, rn.y - 3, '¤'); }
+        else if (kind < .85) { put(c, rn.y - 1, '¤'); put(c, rn.y - 4, '¤'); }
+        else put(c, rn.y - 3, pick(foes));
+      }
+      // Up and down: as it rises or sinks, a spike ball over one or two of its columns, every few
+      // rows: stand clear of it.
+      for (const cl of climbs) {
+        const dir = Math.sign(cl.y1 - cl.y0);
+        for (let rr = cl.y0 + dir * 2, last = -1; dir > 0 ? rr <= cl.y1 - 1 : rr >= cl.y1 + 1; rr += dir * ri(3, 4)) {
+          let k = ri(0, LW - 1); if (k === last) k = (k + 2) % LW;   // (never the same column twice running)
+          put(cl.x + k, rr - 1, '¤'); last = k;
+        }
+      }
+      // Lanterns, star coins, a yellow apple and apples over the track.
+      const along = frac => { const u = Math.floor((path.length - 1) * frac); return path[Math.max(1, u)]; };
+      const near = (fr, up, ch) => { const [px, py] = along(fr); for (let d = 0; d < 6; d++) { const c = px + 1 + d; if (!used.has(key(c, py - up))) { put(c, py - up, ch); return; } } };
+      for (const fr of [.25, .5, .75]) near(fr, 1, 'L');
+      for (const fr of [.15, .45, .85]) near(fr, 3, '¢');
+      near(.6, 3, 'ý'); for (const fr of [.2, .4, .55, .7, .9]) near(fr, 1, 'a');
+    });
+    return { chapter, name, since, dark, map, ride: { path, speed: LIFT_SPEED, w: LW, rigid: true, locked: true }, keepLength: true, noCrowd: true };
+  }
+
   // The Ferry Line: the Canal District's, after the Pear Cliffs.
   const FERRY = { chapter: 'The Ferry Line', since: 22, foes: 'FFFZ' };
   LF.RIDE_LEVELS = [
@@ -152,6 +207,7 @@
     ride('Ferry Hill', 2202, FERRY),
     ride('Low Bridge', 2203, FERRY),
     ride('Ember Ferry', 2204, { ...FERRY, lava: true }),
+    liftLevel('Ferry Lift', 2405, { chapter: 'The Ferry Line', since: 24 }),
   ];
   // Every other world's: two each, in a chapter of its own, before its castle.
   LF.WORLD_RIDES = [
@@ -163,5 +219,7 @@
     { castle: 'Smog Castle', chapter: 'The Ash Coaster', names: ['Ash Coaster', 'Cinder Dip'], foes: 'FFFZ', lava: true },
     { castle: 'Crystal Castle', chapter: 'The Mine Carts', names: ['Mine Cart Dash', 'Glass Rails'], foes: 'FFFZ' },
     { castle: 'Castle of the Last Dark', chapter: 'The Bone Coaster', names: ['Bone Coaster', 'Last Ride'], foes: 'FFFZ', lava: true, dark: .7 },
-  ].map((wr, k) => ({ ...wr, levels: wr.names.map((n, j) => ride(n, 2300 + k * 10 + j, { chapter: wr.chapter, since: 23, foes: wr.foes, lava: wr.lava, dark: wr.dark })) }));
+  ].map((wr, k) => ({ ...wr, levels: [...wr.names.map((n, j) => ride(n, 2300 + k * 10 + j, { chapter: wr.chapter, since: 23, foes: wr.foes, lava: wr.lava, dark: wr.dark })),
+    // (and a spike lift each)
+    liftLevel(LIFT_NAMES[k], 2400 + k, { chapter: wr.chapter, since: 24, dark: wr.dark })] }));
 })();

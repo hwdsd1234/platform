@@ -6,6 +6,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'New: spike lifts, one in every world’s rides chapter (Spike Lift, Barnacle Lift, Gear Lift, Cloud Lift, Ferry Lift, Market Lift, Ash Lift, Crystal Lift, Last Lift). A slow cage lift you can’t get off till it stops by the door, carrying you right, up and down past floating spike balls: jump the low ones, keep your head down under the high ones, hop through a gap, and step across the lift as it rises or sinks past them. (Spike balls are in the level editor too.)',
       'Rides: the coaster car is twice as long, fourteen blocks, bending over the hills and down into the dunks',
       'Rides: no more planks over the dunks: jump the whole dunk, and land on the car as it climbs back out of the lava',
       'Rides have a lava floor now, every one: the track runs over it, sweeping down to skim just above it, and the dunks dive right down into it (jump for the plank above, then drop back on as the car climbs out)',

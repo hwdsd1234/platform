@@ -13,6 +13,7 @@
     { c: 'C', label: 'Crumble', group: 'Terrain', chip: '#7B6A8C', note: 'breaks after you stand on it' },
     { c: 'O', label: 'Spring', group: 'Terrain', chip: '#FF6B3D', note: 'launches about 8 tiles up' },
     { c: '^', label: 'Spikes', group: 'Terrain', chip: '#CFC6E8' },
+    { c: '¤', label: 'Spike ball', group: 'Terrain', chip: '#8D82B0', note: 'a floating ball of spikes: hurts from every side' },
     { c: '~', label: 'Water', group: 'Terrain', chip: '#2E4E82' },
     { c: '!', label: 'Lava', group: 'Terrain', chip: '#E0561E', note: 'kills on touch, whatever your health' },
     { c: 'T', label: 'Blink A', group: 'Terrain', chip: '#FFB547', note: 'solid, then gone — swaps with Blink B every 2s' },

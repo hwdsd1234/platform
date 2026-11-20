@@ -219,6 +219,13 @@
             ctx.fillStyle = '#8D82B0';
             ctx.beginPath(); ctx.moveTo(sx + 4, y + 13); ctx.lineTo(sx + 8, y + TS - 4); ctx.lineTo(sx + 4, y + TS - 4); ctx.fill();
           }
+        } else if (c === '¤') {
+          // A floating spike ball: a dark core bristling with pale spikes, slowly turning.
+          const cx = x + 16, cy = y + 16, a0 = reduced ? 0 : clock * .8 + (x + y) * .01;
+          ctx.fillStyle = '#CFC6E8';
+          for (let k = 0; k < 8; k++) { const a = a0 + k * Math.PI / 4; ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * 14, cy + Math.sin(a) * 14); ctx.lineTo(cx + Math.cos(a + .35) * 7, cy + Math.sin(a + .35) * 7); ctx.lineTo(cx + Math.cos(a - .35) * 7, cy + Math.sin(a - .35) * 7); ctx.fill(); }
+          ctx.fillStyle = '#3A3350'; ctx.beginPath(); ctx.arc(cx, cy, 8, 0, TAU); ctx.fill();
+          ctx.fillStyle = '#8D82B0'; ctx.beginPath(); ctx.arc(cx - 2, cy - 2, 3, 0, TAU); ctx.fill();
         } else if (c === '!') {
           // Lava itself is drawn in the emissive pass; leave the tile empty here.
         } else if (c === '~') {
@@ -382,8 +389,9 @@
       for (const p of W.plats) {
         if (p.kind !== 'ride') continue;
         ctx.strokeStyle = 'rgba(255,181,71,.35)'; ctx.lineWidth = 2; ctx.setLineDash([3, 7]);
-        ctx.beginPath(); p.path.forEach(([x, y], k) => (k ? ctx.lineTo(x, y + 6) : ctx.moveTo(x, y + 6))); ctx.stroke(); ctx.setLineDash([]);
-        ctx.fillStyle = 'rgba(255,181,71,.5)'; for (const [x, y] of p.path) { ctx.beginPath(); ctx.arc(x, y + 6, 2.5, 0, TAU); ctx.fill(); }
+        const ox = p.rigid ? p.len / 2 : 0;   // (a lift's track runs under its middle)
+        ctx.beginPath(); p.path.forEach(([x, y], k) => (k ? ctx.lineTo(x + ox, y + 6) : ctx.moveTo(x + ox, y + 6))); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(255,181,71,.5)'; for (const [x, y] of p.path) { ctx.beginPath(); ctx.arc(x + ox, y + 6, 2.5, 0, TAU); ctx.fill(); }
       }
       // Wheels: the hub and spokes behind their platforms.
       for (const p of W.plats) {
@@ -415,6 +423,19 @@
         }
         if (p.kind === 'ride') {
           if (p.state === 'gone') continue;
+          if (p.rigid) {
+            // A locked lift: an iron platform with a post at each end and a rail between their
+            // tops (you're kept inside till it stops), a lamp glowing while it waits for you.
+            ctx.fillStyle = '#3A3350'; ctx.fillRect(p.x + 3, p.y + 10, p.w - 6, 4);
+            ctx.fillStyle = '#6E6186'; ctx.fillRect(p.x, p.y, p.w, 11);
+            ctx.fillStyle = '#A99CC8'; ctx.fillRect(p.x, p.y, p.w, 2.5);
+            const open = p.state === 'done', hgt = TS * 2.2;
+            ctx.fillStyle = '#4C4062'; ctx.fillRect(p.x, p.y - hgt, 4, hgt); if (!open) ctx.fillRect(p.x + p.w - 4, p.y - hgt, 4, hgt);
+            ctx.strokeStyle = 'rgba(169,156,200,.55)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(p.x + 2, p.y - hgt); ctx.lineTo(p.x + p.w - 2, p.y - hgt); ctx.stroke();
+            const glow = p.state === 'wait' ? .6 + .4 * Math.sin(clock * 5) : 1;
+            ctx.fillStyle = `rgba(255,181,71,${glow})`; ctx.beginPath(); ctx.arc(p.x + p.w / 2, p.y - hgt - 4, 3.5, 0, TAU); ctx.fill();
+            continue;
+          }
           // The car: a string of plank segments, each lying along the track where it is (so it
           // bends over the hills), lashed at the joints; a lamp on the front, glowing while it
           // waits for you. Falling off the end, it's straight.
