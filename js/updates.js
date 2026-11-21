@@ -1,3 +1,4 @@
+      'Lift levels are gauntlet races now (and hard: about the skill of an elytra mace hit). The locked lift carries you over a lava floor through parkour and spike balls; at each station it lets you go and dives into the lava: step off onto the gauntlet (long gaps to narrow pillars under spike balls, spike runs, towers, crumbling bridges, tiny pillars) and be at its far end when the lift climbs back out, a split second after the fastest possible run, and jump aboard before it goes (it waits under a second). A lantern before every gauntlet',
 // Lanternfall: the update log, every change since the very first version, newest first, a
 // day per entry, as players would put it. It's a history: some things were changed again
 // later, and each day says what changed then. The map's Updates button shows it, with a dot

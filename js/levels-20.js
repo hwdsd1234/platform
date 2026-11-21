@@ -145,72 +145,116 @@
     return { chapter, name, since, dark, map, ride: { path, speed: SPEED, w: RW }, keepLength: true, noCrowd: true };
   }
 
-  // Spike lifts: a big slow lift you can't get off (def.ride.locked: you're kept on it till it
-  // stops by the door), along a track that runs right, climbs and drops: parkour over the blocks
-  // it carries you through (hurdles, staircases, windows) and past floating spike balls (¤)
-  // you dodge from on board: jump the low ones, keep your head down under the high ones, hop
-  // through the gap in a pair, and step across the lift as it rises or sinks past one. A few bats.
-  const LW = 8, LIFT_SPEED = 70, LH = 26;
+  // Lift gauntlets: a big lift you can't get off (def.ride.locked) carries you along over a lava
+  // floor, through parkour (hurdles, staircases, windows to get over, or be crushed against
+  // its back post) and past floating spike balls (¤); then at each station it lets you go
+  // (def.ride.free) and dives into the lava. Step off onto the gauntlet, a run of parkour on
+  // fixed ground over the lava (gaps between pillars, spikes, step-ups, crumbling bridges, spike
+  // balls over the jumps), and be at its far end when the lift climbs back out of the lava, or
+  // it's gone without you. A lantern just before each gauntlet.
+  const LW = 8, LIFT_SPEED = 100, LH = 24, YR = 13, LIFT_LAVA = 16;
+  const GAUNTLET_SPEED = 1.6;   // (how much faster the lift goes under the lava, where a gauntlet doesn't say)
+  // The fastest each gauntlet can be run (seconds, found by a fastest-route search over the
+  // course as built: rebuild this if the courses change). The lift comes out GAUNTLET_SLACK
+  // after that and waits GAUNTLET_WAIT: only a near-perfect run catches it. (A course not in
+  // the table goes by its par, a rough guess from its pieces.)
+  const GAUNTLET_BEST = { 'Spike Lift': [3.7, 3.7, 3.4, 3.4], 'Barnacle Lift': [3.9, 3.8, 3.2, 3.4], 'Gear Lift': [3.9, 3.4, 3.9, 3.2], 'Cloud Lift': [3.9, 3.8, 3.4, 3.1], 'Ferry Lift': [4.0, 3.7, 3.3, 3.6], 'Market Lift': [3.7, 3.9, 3.5, 3.9], 'Ash Lift': [3.5, 3.1, 4.1, 3.7], 'Crystal Lift': [3.3, 3.4, 3.6, 3.4], 'Last Lift': [3.6, 3.2, 3.4, 3.4] };
+  const GAUNTLET_SLACK = .2, GAUNTLET_WAIT = .7;
   const LIFT_NAMES = ['Spike Lift', 'Barnacle Lift', 'Gear Lift', 'Cloud Lift', 'Market Lift', 'Ash Lift', 'Crystal Lift', 'Last Lift'];
   function liftLevel(name, seed, { chapter, since, dark = .55, foes = 'F' }) {
     const R = LF.rng(seed), ri = (a, b) => a + Math.floor(R() * (b - a + 1)), pick = a => a[Math.floor(R() * a.length)];
-    const START = LH - 6, w = 260;
-    const path = [[5, START]], runs = [], climbs = [];
-    let x = 5, y = START;
-    x += 6; path.push([x, y]);
-    const endX = w - 5 - LW;
-    // (Never past where it stops by the door: it only ever goes forward.)
-    while (x < endX - 18) {
-      if (R() < .75 || !runs.length) { const len = Math.min(ri(22, 34), endX - 6 - x); runs.push({ x0: x, x1: x + len, y }); x += len; path.push([x, y]); }
-      else {
-        let dy = R() < .55 ? -ri(3, 6) : ri(3, 6);
-        dy = Math.max(6 - y, Math.min(START - y, dy)); if (Math.abs(dy) < 3) dy = y > 12 ? -6 : 6;
-        climbs.push({ x, y0: y, y1: y + dy }); y += dy; path.push([x, y]);
-      }
+    const w = 300, endX = w - 5 - LW, y = YR;
+    // The track: rides (locked) and gauntlets (free) in turn. In a gauntlet the lift's left end
+    // starts at x (its right end at the course's start, gs), dives five rows into the lava, runs
+    // under the course and climbs back out two tiles past its end (ge).
+    const path = [[5, y]], rides = [], gauntlets = [], free = [], fast = [], stops = [];
+    let x = 5;
+    while (x < endX - 60) {
+      const len = ri(22, 30); rides.push({ x0: x, x1: x + len }); x += len; path.push([x, y]);
+      const gs = x + LW, ge = gs + ri(26, 32);
+      // (It climbs out just past the end platform, two tiles off it: leap for it as it rises.)
+      // (Level for four more tiles once it lets you go, time to walk off its front onto the
+      // course, then the dive; it speeds up only once it's under.)
+      path.push([x + 4, y], [x + 6, y + 5], [ge + 1, y + 5], [ge + 3, y]);
+      gauntlets.push({ x, gs, ge, fastAt: fast.length }); free.push([x, ge + 3]); fast.push([x + 5, ge + 3, 1]); stops.push([ge + 3, GAUNTLET_WAIT]);   // (and it waits there a moment)
+      x = ge + 3;
     }
-    path.push([endX, y]); runs.push({ x0: x, x1: endX - 4, y });
-    const map = B(w, LH, ({ r, s }) => {
-      r(0, START, 4, LH - 1); s(2, START - 1, 'P');
-      r(w - 5, y, w - 1, y + 1); s(w - 3, y - 1, 'D');
+    rides.push({ x0: x, x1: endX - 4 }); path.push([endX, y]);
+    const map = B(w, LH, ({ r, s, lava }) => {
+      lava(LIFT_LAVA);
+      r(0, y, 4, LH - 1); s(2, y - 1, 'P');
+      r(w - 5, y, w - 1, LH - 1); s(w - 3, y - 1, 'D');
       const used = new Set(), key = (c, rr) => c + ',' + rr;
       const put = (c, rr, ch) => { if (rr > 0 && rr < LH && !used.has(key(c, rr))) { s(c, rr, ch); used.add(key(c, rr)); } };
-      // Along the runs (the lift's top on row y: you stand in row y - 1), parkour, every 10 to 14
-      // tiles (so there's one at a time on the lift): the blocks sweep across the lift as it goes,
-      // and if one pins you against its back end you're crushed, so get over them:
-      // - a hurdle, one or two high: vault it;
-      // - a staircase coming at you: climb it and hop off the top;
-      // - a window: a wall with a gap high up: climb onto its low part and through the gap;
-      // - a hurdle with a spike ball low over it: a small hop, not a big jump;
-      // - spike balls: one at your height (jump it), a low-and-high pair (hop through the
-      //   gap), or two over your head (stay down).
       const block = (c, rr) => { if (rr > 0) { s(c, rr, '#'); used.add(key(c, rr)); } };
-      for (const rn of runs) for (let c = rn.x0 + LW + 4; c < rn.x1 - 2; c += ri(10, 14)) {
-        const y = rn.y, kind = R();
-        if (kind < .2) { block(c, y - 1); if (R() < .45) block(c, y - 2); }
-        else if (kind < .35) { block(c, y - 1); block(c + 1, y - 1); block(c + 1, y - 2); block(c + 2, y - 1); block(c + 2, y - 2); block(c + 2, y - 3); c += 2; }
+      // On the rides: parkour and spike balls every 10 to 14 tiles (hurdles, a staircase, a
+      // window, a hurdle under a spike ball, spike balls).
+      for (const rd of rides) for (let c = rd.x0 + LW + 4; c < rd.x1 - 2; c += ri(10, 14)) {
+        const kind = R();
+        if (kind < .22) { block(c, y - 1); if (R() < .45) block(c, y - 2); }
+        else if (kind < .36) { block(c, y - 1); block(c + 1, y - 1); block(c + 1, y - 2); block(c + 2, y - 1); block(c + 2, y - 2); block(c + 2, y - 3); c += 2; }
         else if (kind < .5) { block(c, y - 1); block(c, y - 2); for (let rr = y - 5; rr > 0 && rr >= y - 9; rr--) block(c, rr); }
         else if (kind < .62) { block(c, y - 1); put(c, y - 4, '¤'); }
         else if (kind < .76) put(c, y - 1, '¤');
         else if (kind < .88) { put(c, y - 1, '¤'); put(c, y - 4, '¤'); }
         else { put(c, y - 2, '¤'); put(c, y - 3, '¤'); if (R() < .5) put(c + 3, y - 3, pick(foes)); }
       }
-      // Up and down: as it rises or sinks, a spike ball over one or two of its columns, every few
-      // rows: stand clear of it.
-      for (const cl of climbs) {
-        const dir = Math.sign(cl.y1 - cl.y0);
-        for (let rr = cl.y0 + dir * 2, last = -1; dir > 0 ? rr <= cl.y1 - 1 : rr >= cl.y1 + 1; rr += dir * ri(3, 4)) {
-          let k = ri(0, LW - 1); if (k === last) k = (k + 2) % LW;   // (never the same column twice running)
-          put(cl.x + k, rr - 1, '¤'); last = k;
+      // The gauntlets: a start platform level with the lift, then pieces one after another to
+      // the end platform (level with the lift as it climbs out just past it). Each piece stands
+      // on pillars down into the lava.
+      const pillar = (x0, x1, top) => { for (let c = x0; c <= x1; c++) { r(c, top, c, LH - 1); used.add(key(c, top)); } };
+      for (const g of gauntlets) {
+        // (A lantern on the ride just before it: come back to it and the lift's waiting there.)
+        put(g.x - 4, y - 1, 'L');
+        pillar(g.gs, g.gs + 2, y);
+        // (par: about how long a sharp run of it takes, piece by piece: the lift comes out at par.)
+        let c = g.gs + 3, top = y, par = 0;
+        const lo = y + 1, hi = y - 5;
+        while (c < g.ge - 9) {
+          const kind = R();
+          if (kind < .26) {
+            // a long gap to a narrow pillar, up or down a row, a spike ball over most jumps
+            const gap = ri(3, 4), nt = Math.max(y - 2, Math.min(lo, top + ri(-1, 1))), up = top - nt, len = up > 0 ? 2 : ri(1, 2);
+            pillar(c + gap - (up > 0 && gap > 3 ? 1 : 0), c + gap + len - 1, nt); if (R() < .7) put(c + Math.floor(gap / 2) + 1, Math.min(top, nt) - 3, '¤');
+            c += gap + len; top = nt; par += .32 + (gap + len) * .1;
+          } else if (kind < .42) {
+            // a spike run: one-tile safe spots between the spikes
+            pillar(c, c + 6, top); for (const q of [1, 2, 4, 5]) put(c + q, top - 1, '^'); c += 7; par += 1.1;
+          } else if (kind < .56 && top - 4 >= hi) {
+            // a tower: up two, up two more, then a leap down the far side
+            pillar(c, c + 1, top - 2); pillar(c + 2, c + 3, top - 4); const nt = Math.min(lo, top + ri(0, 1)); pillar(c + 7, c + 8, nt); c += 9; top = nt; par += 1.5;
+          } else if (kind < .68) {
+            // a crumbling bridge: don't stop
+            const len = ri(5, 7); for (let q = 0; q < len; q++) { s(c + q, top, 'C'); used.add(key(c + q, top)); } c += len; par += .15 + len * .1;
+          } else if (kind < .86) {
+            // tiny pillars, a block wide, two or three apart
+            let q = c; for (let k = 0; k < 4; k++) { q += ri(2, 3) + 1; pillar(q, q, top); } c = q + 1; par += 1.7;
+          } else {
+            // a narrow pillar with a flier over it
+            const len = ri(1, 2); pillar(c + 1, c + len, top); put(c + len + 1, top - 2, pick(foes)); c += len + 1; par += .45;
+          }
         }
+        // (Stepping pillars on to the end platform, back to its height: never more than three to jump.)
+        while (g.ge - 3 - c > 3) { const nt = top < y ? top + 1 : top > y ? top - 1 : top; pillar(c + 2, c + 3, nt); c += 4; top = nt; par += .45; }
+        g.par = par + (g.ge - c) * .1 + .6;
+        // (A last hop to the end platform, level with the lift: the lift climbs out just past it.)
+        pillar(g.ge - 3, g.ge, y);
       }
-      // Lanterns, star coins, a yellow apple and apples over the track.
-      const along = frac => { const u = Math.floor((path.length - 1) * frac); return path[Math.max(1, u)]; };
-      const near = (fr, up, ch) => { const [px, py] = along(fr); for (let d = 0; d < 6; d++) { const c = px + 1 + d; if (!used.has(key(c, py - up))) { put(c, py - up, ch); return; } } };
-      for (const fr of [.25, .5, .75]) near(fr, 1, 'L');
-      for (const fr of [.15, .45, .85]) near(fr, 3, '¢');
-      near(.6, 3, 'ý'); for (const fr of [.2, .4, .55, .7, .9]) near(fr, 1, 'a');
+      // Star coins, a yellow apple and apples along the rides.
+      const onRide = (fr, up, ch) => { const rd = rides[Math.min(rides.length - 1, Math.floor(rides.length * fr))]; for (let c = rd.x0 + LW + 1; c < rd.x1; c++) if (!used.has(key(c, y - up)) && !used.has(key(c, y - 1))) { put(c, y - up, ch); return; } };
+      for (const fr of [.2, .5, .85]) onRide(fr, 3, '¢');
+      onRide(.4, 3, 'ý'); for (const fr of [.1, .3, .6, .75, .95]) onRide(fr, 1, 'a');
     });
-    return { chapter, name, since, dark, map, ride: { path, speed: LIFT_SPEED, w: LW, rigid: true, locked: true }, keepLength: true, noCrowd: true };
+    // Each gauntlet's lift: after its four level tiles (you step off), it goes under at whatever
+    // speed brings it out at the end at the course's par: no time to spare.
+    for (const g of gauntlets) {
+      const k0 = path.findIndex(([px, py]) => px === g.x + 4 && py === y), pts = path.slice(k0, k0 + 4);
+      let arc = 0; for (let k = 1; k < pts.length; k++) arc += Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]);
+      const known = (GAUNTLET_BEST[name] || [])[gauntlets.indexOf(g)];
+      const flatT = 4 * 32 / LIFT_SPEED, left = Math.max(.8, (known ? known + GAUNTLET_SLACK : g.par) - flatT);
+      fast[g.fastAt][2] = Math.max(1, arc * 32 / (LIFT_SPEED * left));
+    }
+    return { chapter, name, since, dark, map, ride: { path, speed: LIFT_SPEED, w: LW, rigid: true, locked: true, free, fast, freeSpeed: GAUNTLET_SPEED, stops }, keepLength: true, noCrowd: true, gauntlets };
   }
 
   // The Ferry Line: the Canal District's, after the Pear Cliffs.
@@ -220,7 +264,7 @@
     ride('Ferry Hill', 2202, FERRY),
     ride('Low Bridge', 2203, FERRY),
     ride('Ember Ferry', 2204, { ...FERRY, lava: true }),
-    liftLevel('Ferry Lift', 2405, { chapter: 'The Ferry Line', since: 24 }),
+    liftLevel('Ferry Lift', 2450, { chapter: 'The Ferry Line', since: 24 }),
   ];
   // Every other world's: two each, in a chapter of its own, before its castle.
   LF.WORLD_RIDES = [

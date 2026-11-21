@@ -441,7 +441,7 @@
     // what's in your way: a wall knocks you off it).
     if (def.ride) {
       const path = def.ride.path.map(([tx, ty]) => [tx * TS, ty * TS]);
-      W.ride = { kind: 'ride', path, s: 0, len: TS * (def.ride.w || 3), v: def.ride.speed || 90, h: 12, dx: 0, dy: 0, state: 'wait', rigid: !!def.ride.rigid, locked: !!def.ride.locked };
+      W.ride = { kind: 'ride', path, s: 0, len: TS * (def.ride.w || 3), v: def.ride.speed || 90, h: 12, dx: 0, dy: 0, state: 'wait', rigid: !!def.ride.rigid, locked: !!def.ride.locked, free: def.ride.free || [], freeSpeed: def.ride.freeSpeed || 1, stops: def.ride.stops || [], fast: def.ride.fast || null };
       rideInit(W.ride); rideFrame(W.ride); W.ride.prevY = W.ride.y;
       W.plats.push(W.ride);
     }
@@ -1041,8 +1041,8 @@
       const cy = W.checkpoint ? (W.checkpoint.ty + 1) * TS : pl.path[0][1];
       let best = 0, bd = Infinity;
       for (let u = 0; u <= pl.L; u += 8) { const [lx, ly] = rideAt(pl, u), d = Math.hypot(lx + pl.len / 2 - (x + p.w / 2), ly - cy); if (d < bd) { bd = d; best = u; } }
-      pl.s = Math.min(best, Math.max(0, pl.L - 1)); Object.assign(pl, { state: 'wait', dx: 0, dy: 0, boarded: false });
-      rideFrame(pl); pl.prevY = pl.y;
+      pl.s = Math.min(best, Math.max(0, pl.L - 1)); Object.assign(pl, { state: 'wait', dx: 0, dy: 0, boarded: false, hold: 0 });
+      rideFrame(pl); pl.prevY = pl.y; pl.stopAt = pl.stops.filter(st => st[0] * TS <= pl.x).length;
       p.x = pl.x + pl.w / 2 - p.w / 2; p.y = pl.y - p.h; p.vy = 0;
       return;
     }
@@ -1060,7 +1060,18 @@
         const ox = pl.x, oy = pl.y;
         if (pl.state === 'go' && pl.rigid) {
           // (A rigid lift stops at the end of its track, by the door.)
-          pl.s = Math.min(pl.L, pl.s + pl.v * dt); rideFrame(pl);
+          // (Through a free span, a gauntlet, it goes freeSpeed times as fast: it's racing you. At
+          // a stop, def.ride.stops [[x, seconds]], it waits that long when its left end gets there:
+          // the end of a gauntlet, for you to jump back on.)
+          // (A fast span can give its own speed: [x0, x1, times].)
+          const span = (pl.fast || pl.free).find(([a, b]) => pl.x >= a * TS && pl.x <= b * TS);
+          const fast = span ? span[2] || pl.freeSpeed : 1;
+          if (pl.hold > 0) pl.hold -= dt;
+          else {
+            pl.s = Math.min(pl.L, pl.s + pl.v * fast * dt); rideFrame(pl);
+            const st = pl.stops[pl.stopAt || 0];
+            if (st && pl.x >= st[0] * TS) { pl.hold = st[1]; pl.stopAt = (pl.stopAt || 0) + 1; }
+          }
           if (pl.s >= pl.L) pl.state = 'done';
         } else if (pl.state === 'go') {
           pl.s += pl.v * dt;
@@ -3805,7 +3816,10 @@
     }
     // A locked lift (def.ride.locked): once you're on, you can't leave it (you're kept within
     // its ends, in the air too) till it stops by the door.
+    // (Except where its track has free spans, def.ride.free, [x0, x1] in tiles of the lift's left
+    // end: a gauntlet, where you get off and run it, and catch the lift again at its end.)
     const lk = W.ride;
+    if (lk && lk.locked && lk.free.some(([a, b]) => lk.x >= a * TS && lk.x <= b * TS)) lk.boarded = false;
     if (lk && lk.locked && lk.boarded && lk.state !== 'done' && !p.dead) {
       if (p.x < lk.x) { p.x = lk.x; p.vx = Math.max(0, p.vx); }
       if (p.x + p.w > lk.x + lk.w) { p.x = lk.x + lk.w - p.w; p.vx = Math.min(0, p.vx); }
