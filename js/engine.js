@@ -3810,6 +3810,10 @@
       if (p.x < lk.x) { p.x = lk.x; p.vx = Math.max(0, p.vx); }
       if (p.x + p.w > lk.x + lk.w) { p.x = lk.x + lk.w - p.w; p.vx = Math.min(0, p.vx); }
       if (p.y + p.h > lk.y + 4 && p.vy >= 0) { p.y = lk.y - p.h; p.vy = 0; p.onGround = true; p.onPlat = lk; }
+      // (Pinned against its end by a block it's carrying you past, you're crushed.)
+      const x0 = Math.floor((p.x + 2) / TS), x1 = Math.floor((p.x + p.w - 2) / TS), y0 = Math.floor((p.y + 2) / TS), y1 = Math.floor((p.y + p.h - 2) / TS);
+      for (let ty = y0; ty <= y1 && !p.dead; ty++) for (let tx = x0; tx <= x1; tx++) if (isSolid(tile(W, tx, ty))) { W.floaters.push({ x: p.x + p.w / 2, y: p.y - 10, t: 'crushed!', life: 1, c: '#FF6B6B' }); kill(W); break; }
+      if (p.dead) return;
     }
     if (hordeCaught(W, p)) return;
 

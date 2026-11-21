@@ -145,41 +145,54 @@
     return { chapter, name, since, dark, map, ride: { path, speed: SPEED, w: RW }, keepLength: true, noCrowd: true };
   }
 
-  // Spike lifts: a slow lift you can't get off (def.ride.locked: you're kept on it till it stops
-  // by the door), along a track that runs right, climbs and drops, past floating spike balls (¤)
+  // Spike lifts: a big slow lift you can't get off (def.ride.locked: you're kept on it till it
+  // stops by the door), along a track that runs right, climbs and drops: parkour over the blocks
+  // it carries you through (hurdles, staircases, windows) and past floating spike balls (¤)
   // you dodge from on board: jump the low ones, keep your head down under the high ones, hop
   // through the gap in a pair, and step across the lift as it rises or sinks past one. A few bats.
-  const LW = 4, LIFT_SPEED = 70, LH = 26;
+  const LW = 8, LIFT_SPEED = 70, LH = 26;
   const LIFT_NAMES = ['Spike Lift', 'Barnacle Lift', 'Gear Lift', 'Cloud Lift', 'Market Lift', 'Ash Lift', 'Crystal Lift', 'Last Lift'];
   function liftLevel(name, seed, { chapter, since, dark = .55, foes = 'F' }) {
     const R = LF.rng(seed), ri = (a, b) => a + Math.floor(R() * (b - a + 1)), pick = a => a[Math.floor(R() * a.length)];
-    const START = LH - 6, w = 180;
+    const START = LH - 6, w = 260;
     const path = [[5, START]], runs = [], climbs = [];
     let x = 5, y = START;
     x += 6; path.push([x, y]);
-    while (x < w - 24) {
-      if (R() < .6) { const len = ri(12, 20); runs.push({ x0: x, x1: x + len, y }); x += len; path.push([x, y]); }
+    const endX = w - 5 - LW;
+    // (Never past where it stops by the door: it only ever goes forward.)
+    while (x < endX - 18) {
+      if (R() < .75 || !runs.length) { const len = Math.min(ri(22, 34), endX - 6 - x); runs.push({ x0: x, x1: x + len, y }); x += len; path.push([x, y]); }
       else {
-        let dy = R() < .55 ? -ri(4, 8) : ri(4, 8);
+        let dy = R() < .55 ? -ri(3, 6) : ri(3, 6);
         dy = Math.max(6 - y, Math.min(START - y, dy)); if (Math.abs(dy) < 3) dy = y > 12 ? -6 : 6;
         climbs.push({ x, y0: y, y1: y + dy }); y += dy; path.push([x, y]);
       }
     }
-    const endX = w - 5 - LW; path.push([endX, y]); runs.push({ x0: x, x1: endX - 4, y });
+    path.push([endX, y]); runs.push({ x0: x, x1: endX - 4, y });
     const map = B(w, LH, ({ r, s }) => {
       r(0, START, 4, LH - 1); s(2, START - 1, 'P');
       r(w - 5, y, w - 1, y + 1); s(w - 3, y - 1, 'D');
       const used = new Set(), key = (c, rr) => c + ',' + rr;
       const put = (c, rr, ch) => { if (rr > 0 && rr < LH && !used.has(key(c, rr))) { s(c, rr, ch); used.add(key(c, rr)); } };
-      // Along the runs (the lift's top on row ry: you stand in row ry - 1): spike balls at your
-      // height (jump them), over your head (don't jump into them), or one low and one high with
-      // a gap between (a little hop), every 5 to 9 tiles.
-      for (const rn of runs) for (let c = rn.x0 + LW + 3; c < rn.x1; c += ri(5, 9)) {
-        const kind = R();
-        if (kind < .4) put(c, rn.y - 1, '¤');
-        else if (kind < .65) { put(c, rn.y - 2, '¤'); put(c, rn.y - 3, '¤'); }
-        else if (kind < .85) { put(c, rn.y - 1, '¤'); put(c, rn.y - 4, '¤'); }
-        else put(c, rn.y - 3, pick(foes));
+      // Along the runs (the lift's top on row y: you stand in row y - 1), parkour, every 10 to 14
+      // tiles (so there's one at a time on the lift): the blocks sweep across the lift as it goes,
+      // and if one pins you against its back end you're crushed, so get over them:
+      // - a hurdle, one or two high: vault it;
+      // - a staircase coming at you: climb it and hop off the top;
+      // - a window: a wall with a gap high up: climb onto its low part and through the gap;
+      // - a hurdle with a spike ball low over it: a small hop, not a big jump;
+      // - spike balls: one at your height (jump it), a low-and-high pair (hop through the
+      //   gap), or two over your head (stay down).
+      const block = (c, rr) => { if (rr > 0) { s(c, rr, '#'); used.add(key(c, rr)); } };
+      for (const rn of runs) for (let c = rn.x0 + LW + 4; c < rn.x1 - 2; c += ri(10, 14)) {
+        const y = rn.y, kind = R();
+        if (kind < .2) { block(c, y - 1); if (R() < .45) block(c, y - 2); }
+        else if (kind < .35) { block(c, y - 1); block(c + 1, y - 1); block(c + 1, y - 2); block(c + 2, y - 1); block(c + 2, y - 2); block(c + 2, y - 3); c += 2; }
+        else if (kind < .5) { block(c, y - 1); block(c, y - 2); for (let rr = y - 5; rr > 0 && rr >= y - 9; rr--) block(c, rr); }
+        else if (kind < .62) { block(c, y - 1); put(c, y - 4, '¤'); }
+        else if (kind < .76) put(c, y - 1, '¤');
+        else if (kind < .88) { put(c, y - 1, '¤'); put(c, y - 4, '¤'); }
+        else { put(c, y - 2, '¤'); put(c, y - 3, '¤'); if (R() < .5) put(c + 3, y - 3, pick(foes)); }
       }
       // Up and down: as it rises or sinks, a spike ball over one or two of its columns, every few
       // rows: stand clear of it.
