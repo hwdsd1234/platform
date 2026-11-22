@@ -421,6 +421,13 @@
           ctx.fillStyle = '#FFB547'; ctx.beginPath(); ctx.arc(p.x + p.w / 2, p.y + 6, 2.5, 0, TAU); ctx.fill();
           continue;
         }
+        if (p.kind === 'rideLedge') {
+          // A ledge inside a lift: an iron plank like its floor.
+          ctx.fillStyle = '#3A3350'; ctx.fillRect(p.x + 2, p.y + 8, p.w - 4, 3);
+          ctx.fillStyle = '#6E6186'; ctx.fillRect(p.x, p.y, p.w, 8);
+          ctx.fillStyle = '#A99CC8'; ctx.fillRect(p.x, p.y, p.w, 2);
+          continue;
+        }
         if (p.kind === 'ride') {
           if (p.state === 'gone') continue;
           if (p.rigid) {
@@ -429,7 +436,7 @@
             ctx.fillStyle = '#3A3350'; ctx.fillRect(p.x + 3, p.y + 10, p.w - 6, 4);
             ctx.fillStyle = '#6E6186'; ctx.fillRect(p.x, p.y, p.w, 11);
             ctx.fillStyle = '#A99CC8'; ctx.fillRect(p.x, p.y, p.w, 2.5);
-            const open = p.state === 'done', hgt = TS * 2.2;
+            const open = p.state === 'done', hgt = TS * (p.cage || 2.2);
             ctx.fillStyle = '#4C4062'; ctx.fillRect(p.x, p.y - hgt, 4, hgt); if (!open) ctx.fillRect(p.x + p.w - 4, p.y - hgt, 4, hgt);
             ctx.strokeStyle = 'rgba(169,156,200,.55)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(p.x + 2, p.y - hgt); ctx.lineTo(p.x + p.w - 2, p.y - hgt); ctx.stroke();
             const glow = p.state === 'wait' ? .6 + .4 * Math.sin(clock * 5) : 1;

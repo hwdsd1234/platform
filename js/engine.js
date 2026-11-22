@@ -444,6 +444,11 @@
       W.ride = { kind: 'ride', path, s: 0, len: TS * (def.ride.w || 3), v: def.ride.speed || 90, h: 12, dx: 0, dy: 0, state: 'wait', rigid: !!def.ride.rigid, locked: !!def.ride.locked, free: def.ride.free || [], freeSpeed: def.ride.freeSpeed || 1, stops: def.ride.stops || [], fast: def.ride.fast || null };
       rideInit(W.ride); rideFrame(W.ride); W.ride.prevY = W.ride.y;
       W.plats.push(W.ride);
+      // Ledges inside a lift (def.ride.ledges: [dx, dy, w] in tiles from its top-left, up
+      // negative): planks you can jump up through, riding along with it. def.ride.cage: how many
+      // tiles high its cage is (you're kept inside it, up to its top).
+      W.ride.cage = def.ride.cage || 0;
+      for (const [dx, dy, lw] of def.ride.ledges || []) W.plats.push({ kind: 'rideLedge', ride: W.ride, dx0: dx * TS, dy0: dy * TS, w: lw * TS, h: 10, x: W.ride.x + dx * TS, y: W.ride.y + dy * TS, prevY: W.ride.y + dy * TS, dx: 0, dy: 0 });
     }
     W.player.ammo = playerTune(def).ammo;
     // Ammo brought from the last level, on top of the level's own.
@@ -1055,8 +1060,13 @@
   function stepPlats(W, dt) {
     for (const pl of W.plats) {
       pl.prevY = pl.y; pl.dx = 0; pl.dy = 0;
+      if (pl.kind === 'rideLedge') {
+        const nx = pl.ride.x + pl.dx0, ny = pl.ride.y + pl.dy0;
+        pl.dx = nx - pl.x; pl.dy = ny - pl.y; pl.x = nx; pl.y = ny;
+        continue;
+      }
       if (pl.kind === 'ride') {
-        if (pl.state === 'wait' && W.player.onPlat === pl) pl.state = 'go';
+        if (pl.state === 'wait' && (W.player.onPlat === pl || (W.player.onPlat && W.player.onPlat.ride === pl))) pl.state = 'go';
         const ox = pl.x, oy = pl.y;
         if (pl.state === 'go' && pl.rigid) {
           // (A rigid lift stops at the end of its track, by the door.)
@@ -3727,7 +3737,15 @@
     p.onGround = false; p.onPlat = null; p.spinOn = null; p.conv = 0; p.ice = false;
     if (moveX(W, p, p.vx * dt)) p.vx = 0;
     const pb = p.y + p.h;
+    const headWas = p.y;
     const hit = moveY(W, p, p.vy * dt, dropping);
+    // (A lift's ledges are solid from below: jump up into one and you bonk your head. Get up
+    // onto it from its side.)
+    if (p.vy < 0) for (const pl of W.plats) {
+      if (pl.kind !== 'rideLedge' || p.x + p.w <= pl.x + 2 || p.x >= pl.x + pl.w - 2) continue;
+      const under = pl.y + pl.h;
+      if (headWas >= under - 1 && p.y < under) { p.y = under; p.vy = 0; p.jumping = false; break; }
+    }
     let bounced = false;
     if (hit && hit.dir === 'down') {
       p.vy = 0; p.onGround = true; p.lastRide = null;
@@ -3751,8 +3769,8 @@
           continue;
         }
         if (p.x + p.w > pl.x + 2 && p.x < pl.x + pl.w - 2 && pb <= Math.max(pl.prevY, pl.y) + 1 && p.y + p.h >= pl.y) {
-          p.y = pl.y - p.h; p.vy = 0; p.onGround = true; p.onPlat = pl; p.lastRide = pl.kind === 'ride' ? pl : null;
-          if (pl.locked) pl.boarded = true;
+          p.y = pl.y - p.h; p.vy = 0; p.onGround = true; p.onPlat = pl; p.lastRide = pl.kind === 'ride' ? pl : pl.kind === 'rideLedge' ? pl.ride : null;
+          if (pl.locked || (pl.ride && pl.ride.locked)) (pl.ride || pl).boarded = true;
           if (pl.kind === 'fall' && pl.state === 'idle') { pl.state = 'shake'; pl.t = 0; }
           break;
         }
@@ -3824,6 +3842,7 @@
       if (p.x < lk.x) { p.x = lk.x; p.vx = Math.max(0, p.vx); }
       if (p.x + p.w > lk.x + lk.w) { p.x = lk.x + lk.w - p.w; p.vx = Math.min(0, p.vx); }
       if (p.y + p.h > lk.y + 4 && p.vy >= 0) { p.y = lk.y - p.h; p.vy = 0; p.onGround = true; p.onPlat = lk; }
+      if (lk.cage && p.y < lk.y - lk.cage * TS) { p.y = lk.y - lk.cage * TS; p.vy = Math.max(0, p.vy); }   // (the cage's roof)
       // (Pinned against its end by a block it's carrying you past, you're crushed.)
       const x0 = Math.floor((p.x + 2) / TS), x1 = Math.floor((p.x + p.w - 2) / TS), y0 = Math.floor((p.y + 2) / TS), y1 = Math.floor((p.y + p.h - 2) / TS);
       for (let ty = y0; ty <= y1 && !p.dead; ty++) for (let tx = x0; tx <= x1; tx++) if (isSolid(tile(W, tx, ty))) { W.floaters.push({ x: p.x + p.w / 2, y: p.y - 10, t: 'crushed!', life: 1, c: '#FF6B6B' }); kill(W); break; }
