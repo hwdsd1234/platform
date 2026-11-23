@@ -125,6 +125,15 @@
   // comes back only from apples (APPLE_HEAL each) and a yellow apple's regeneration.
   const HP = LF.HP = 100, RIPE_HP = 50, APPLE_HEAL = LF.APPLE_HEAL = 25;
   const LAVA_DMG = 99, HORDE_DMG = 99;   // (lava and the horde: nearly all you have)
+  // ...and they throw you: LAUNCH_TILES high (or, the horde sometimes, that far sideways).
+  const LAUNCH_TILES = 10;
+  function launch(W, p, side) {
+    const T = playerTune(W.def), g = G * T.gravity;
+    if (side) { p.vx = side * Math.sqrt(2 * 250 * LAUNCH_TILES * TS) * 1.6; p.vy = -420 * Math.sqrt(T.gravity); p.lock = .9; }
+    else { p.vy = -Math.sqrt(2 * g * LAUNCH_TILES * TS); p.vx *= .3; }
+    p.jumping = false; p.onGround = false; p.onPlat = null;
+    W.shake = Math.max(W.shake, .3);
+  }
   LF.maxHp = p => HP + RIPE_HP * (p.green || 0);
   // How hard each enemy hits (bosses BOSS_DMG, giant bosses GIANT_DMG).
   const ENEMY_DMG = LF.ENEMY_DMG = { B: 15, K: 25, F: 15, J: 15, S: 20, G: 30, X: 15, R: 30, Z: 25, Y: 20, U: 20, W: 20, A: 20, I: 35, '*': 30, N: 20, 'ĸ': 20, '@': 40 };
@@ -1619,8 +1628,10 @@
   }
   function hordeCaught(W, p) {
     if (!W.horde || p.inv > 0 || playerAlong(W.horde, p) > W.horde.f) return false;
-    // (Its touch takes HORDE_DMG, and throws you up out of it: get away before it touches again.)
-    hurt(W, HORDE_DMG);
+    // (Its touch takes HORDE_DMG and throws you, up, or now and then sideways, ahead of it (either
+    // way for a rising horde): get away before it touches again.)
+    const h0 = p.hp; hurt(W, HORDE_DMG);
+    if (!p.dead && p.hp < h0) launch(W, p, Math.random() < .5 ? 0 : W.horde.up ? (Math.random() < .5 ? -1 : 1) : 1);
     return p.dead;
   }
 
@@ -3859,7 +3870,7 @@
     if (p.y + p.h > W.h * TS && tile(W, Math.floor((p.x + p.w / 2) / TS), W.h - 1) === '~') { p.y = W.h * TS - p.h; p.vy = Math.min(p.vy, 0); }
     if (p.y > W.h * TS + 60) return kill(W);
     // (Lava, still or moving, takes LAVA_DMG: a second dip, or one with less to spare, and you're done.)
-    if (lavaAt(W, p) || inFlow(W, p)) { hurt(W, LAVA_DMG); if (p.dead) return; }
+    if (lavaAt(W, p) || inFlow(W, p)) { const h0 = p.hp; hurt(W, LAVA_DMG); if (p.dead) return; if (p.hp < h0) launch(W, p, 0); }
     if (hazardHit(W, p, true)) { hurt(W, 25); if (p.dead) return; }
     if (p.inv <= 0 && trapHit(W, p)) { hurt(W, 30); if (p.dead) return; }
     // Crusher sides push you out instead of hurting.

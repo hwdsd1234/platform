@@ -7,6 +7,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Lava and the horde throw you now: a touch of lava launches you ten blocks up out of it; the horde throws you ten blocks up too, or now and then ten blocks sideways, ahead of it. Steer clear before you come down',
       'New: a laser on C (rockets are still on X). 3 ammo a press, and 3 more for every second you hold it on: a beam straight ahead that stops only at a wall, through every enemy on the way, hitting them all four times a second; big (Shift) is twice as strong for twice the ammo',
       'Lava and the horde don’t kill you outright any more: a touch takes 99 HP (and throws you up out of it); a second touch, or less than 100 HP to spare, and you’re done',
       'Lift levels: now the lift carries you through formations of blocks to parkour through as they sweep through the cage, in quick runs of two or three: hurdles to vault, staircases, windows, walls too tall to jump with a step before them, hurdles under spike balls (a small hop), towers of steps; get pinned against the cage’s back post and you’re crushed',
