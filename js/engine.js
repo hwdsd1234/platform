@@ -3717,13 +3717,15 @@
       }
       W.laser = { x0: g.x, x1: x, y: g.y, s: L.s };
       p.flash = .05;
-      if ((L.tick -= dt) <= 0) {
-        L.tick = 1 / LASER_TICKS;
-        const id = gunShot(W), lo = Math.min(g.x, x), hi = Math.max(g.x, x), half = 3 * L.s;
-        for (const e of W.enemies) if (e.alive && !e.phased && e.x + e.w > lo && e.x < hi && e.y < g.y + half && e.y + e.h > g.y - half) shootEnemy(W, e, dir, id, 'zap', L.s);
-        if (door && !door.open) hitShotDoor(W, door, id);
-        for (const q of W.projectiles) if (q.kind !== 'flame' && q.kind !== 'warn' && q.x + q.w > lo && q.x < hi && q.y < g.y + half && q.y + q.h > g.y - half) q.life = 0;
+      // (Every frame, everything the beam's touching, as thick as it looks: each enemy at most
+      // LASER_TICKS times a second, the door too.)
+      const lo = Math.min(g.x, x), hi = Math.max(g.x, x), half = 6 * L.s, now = W.time;
+      for (const e of W.enemies) {
+        if (!e.alive || e.phased || e.x + e.w <= lo || e.x >= hi || e.y >= g.y + half || e.y + e.h <= g.y - half || (e.laserAt || -1) > now) continue;
+        e.laserAt = now + 1 / LASER_TICKS; shootEnemy(W, e, dir, gunShot(W), 'zap', L.s);
       }
+      if (door && !door.open && (door.laserAt || -1) <= now) { door.laserAt = now + 1 / LASER_TICKS; hitShotDoor(W, door, gunShot(W)); }
+      for (const q of W.projectiles) if (q.kind !== 'flame' && q.kind !== 'warn' && q.x + q.w > lo && q.x < hi && q.y < g.y + half && q.y + q.h > g.y - half) q.life = 0;
     }
     if ((input.firePressed || input.fire) && p.cool <= 0) {
       const tapped = input.firePressed;
