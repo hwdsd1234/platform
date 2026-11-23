@@ -3511,8 +3511,9 @@
     const x0 = Math.floor((p.x + 3) / TS), x1 = Math.floor((p.x + p.w - 3) / TS);
     const y0 = Math.floor((p.y + p.h * .4) / TS), y1 = Math.floor((p.y + p.h - 1) / TS);
     for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
-      // (In practice, def.lavaSwim, lava's water too: you swim in it.)
-      const wet = c => c === '~' || (W.def.lavaSwim && c === '!');
+      // (Lava's water too, you swim in it, in practice (def.lavaSwim), and whenever you're
+      // invincible: after a hit, or in a tomato rush.)
+      const wet = c => c === '~' || (c === '!' && p === W.player && (W.def.lavaSwim || p.inv > 0));
       if (!wet(tile(W, tx, ty))) continue;
       if (wet(tile(W, tx, ty - 1)) || p.y + p.h > ty * TS + 10) return true;
     }
