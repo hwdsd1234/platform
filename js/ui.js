@@ -1353,7 +1353,7 @@
         <li>Lanterns are checkpoints (one a level, two in a tower, three in the castle): dying sends you back to the map, but go into the same level again and you start at the lantern you lit; play another level first and it's put out</li>
         <li>Towers: climb, then the battlements, then the boss; beating the boss ends the level</li>
         <li>Star coins: three in every level (★ in the HUD and on the map); they're yours once you finish the level. Beat the Last Dark and Night's End's cannon opens the Star Road, a world of nine very hard levels, one for each world: each opens once you hold every star coin in its world</li>
-        <li>Practice mode (on the map): every level open, and nothing counts: no progress, awards or secret exits, your carried powers and ammo aren't used or changed, Fruit Groves give nothing to keep (and aren't used up), and items can't be used · <kbd>Z</kbd> set a checkpoint · <kbd>X</kbd> remove the latest · <kbd>C</kbd> explosive round</li>
+        <li>Practice mode (on the map): every level open, lava's like water (swim through it, it doesn't hurt), and nothing counts: no progress, awards or secret exits, your carried powers and ammo aren't used or changed, Fruit Groves give nothing to keep (and aren't used up), and items can't be used · <kbd>Z</kbd> set a checkpoint · <kbd>X</kbd> remove the latest · <kbd>C</kbd> explosive round</li>
         <li>Dying loses all your ammo (and your fruit powers) · <kbd>R</kbd> give up: you die (back to the map; lit lanterns are kept) · <kbd>Shift</kbd>+<kbd>R</kbd> restart the whole level from the start, lanterns out (also a death: powers and ammo gone) · <kbd>Esc</kbd> pause · <kbd>M</kbd> sound ${muted ? 'off' : 'on'} · <kbd>N</kbd> music ${store.get('music', true) ? 'on' : 'off'}</li>
       </ul>
       ${hardcore ? '<p class="lede hc-note">Hardcore is on: no lanterns, no ammo, no fruit, no invincibility after respawning. The door is already open, but there are no checkpoints: every fall sends you back to the start, in the dark. Water turns to lava.</p>' : ''}
@@ -1408,6 +1408,8 @@
     if ((ctx.kind === 'story' || ctx.kind === 'practice') && LF.addSlopes) def = LF.addSlopes(def);
     if ((ctx.kind === 'story' || ctx.kind === 'practice') && LF.addCrowd) def = LF.addCrowd(def);
     if ((ctx.kind === 'story' || ctx.kind === 'practice') && LF.addCoins) def = { ...LF.addCoins(def), coinsHave: coins[ctx.index] || [] };
+    // (Practice: lava's like water, swim through it, and it doesn't hurt.)
+    if (ctx.kind === 'practice') def = { ...def, lavaSwim: true };
     playDef = def; playCtx = ctx;
     // (While you're in a story level, the save says so: see leftMidLevel.)
     store.set('inLevel', ctx.kind === 'story' ? { index: ctx.index } : null);

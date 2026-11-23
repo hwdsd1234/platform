@@ -699,7 +699,7 @@
   function hazardHit(W, p, swims = false) {
     // (Moving lava, the tides, waves, floods and drains, is lava like any other: it kills
     // you and any enemy in it, bosses aside.)
-    if (lavaAt(W, p) || ((p === W.player || !isBoss(p)) && inFlow(W, p))) return true;
+    if (!(p === W.player && W.def.lavaSwim) && (lavaAt(W, p) || ((p === W.player || !isBoss(p)) && inFlow(W, p)))) return true;
     const x0 = Math.floor((p.x + 3) / TS), x1 = Math.floor((p.x + p.w - 3) / TS);
     const y0 = Math.floor((p.y + 4) / TS), y1 = Math.floor((p.y + p.h - 1) / TS);
     for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
@@ -3511,8 +3511,10 @@
     const x0 = Math.floor((p.x + 3) / TS), x1 = Math.floor((p.x + p.w - 3) / TS);
     const y0 = Math.floor((p.y + p.h * .4) / TS), y1 = Math.floor((p.y + p.h - 1) / TS);
     for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
-      if (tile(W, tx, ty) !== '~') continue;
-      if (tile(W, tx, ty - 1) === '~' || p.y + p.h > ty * TS + 10) return true;
+      // (In practice, def.lavaSwim, lava's water too: you swim in it.)
+      const wet = c => c === '~' || (W.def.lavaSwim && c === '!');
+      if (!wet(tile(W, tx, ty))) continue;
+      if (wet(tile(W, tx, ty - 1)) || p.y + p.h > ty * TS + 10) return true;
     }
     return false;
   }
@@ -3872,7 +3874,7 @@
     if (p.y + p.h > W.h * TS && tile(W, Math.floor((p.x + p.w / 2) / TS), W.h - 1) === '~') { p.y = W.h * TS - p.h; p.vy = Math.min(p.vy, 0); }
     if (p.y > W.h * TS + 60) return kill(W);
     // (Lava, still or moving, takes LAVA_DMG: a second dip, or one with less to spare, and you're done.)
-    if (lavaAt(W, p) || inFlow(W, p)) { const h0 = p.hp; hurt(W, LAVA_DMG); if (p.dead) return; if (p.hp < h0) launch(W, p, 0); }
+    if (!W.def.lavaSwim && (lavaAt(W, p) || inFlow(W, p))) { const h0 = p.hp; hurt(W, LAVA_DMG); if (p.dead) return; if (p.hp < h0) launch(W, p, 0); }
     if (hazardHit(W, p, true)) { hurt(W, 25); if (p.dead) return; }
     if (p.inv <= 0 && trapHit(W, p)) { hurt(W, 30); if (p.dead) return; }
     // Crusher sides push you out instead of hurting.

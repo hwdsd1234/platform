@@ -7,6 +7,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Practice mode: lava’s like water now: you sink into it and swim through it as you would water, and it doesn’t hurt you (lava bubbles still do)',
       'Fixed: the laser could miss enemies it plainly went through, bats especially, while you jumped (it only checked four times a second, along a thin line). Now it hits whatever the beam touches, as thick as it looks',
       'Lava and the horde throw you now: a touch of lava launches you ten blocks up out of it; the horde throws you ten blocks up too, or now and then ten blocks sideways, ahead of it. Steer clear before you come down',
       'New: a laser on C (rockets are still on X). 3 ammo a press, and 3 more for every second you hold it on: a beam straight ahead that stops only at a wall, through every enemy on the way, hitting them all four times a second; big (Shift) is twice as strong for twice the ammo',
