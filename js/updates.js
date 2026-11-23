@@ -7,6 +7,9 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'New: a laser on C (rockets are still on X). 3 ammo a press, and 3 more for every second you hold it on: a beam straight ahead that stops only at a wall, through every enemy on the way, hitting them all four times a second; big (Shift) is twice as strong for twice the ammo',
+      'Lava and the horde don’t kill you outright any more: a touch takes 99 HP (and throws you up out of it); a second touch, or less than 100 HP to spare, and you’re done',
+      'Lift levels: now the lift carries you through formations of blocks to parkour through as they sweep through the cage, in quick runs of two or three: hurdles to vault, staircases, windows, walls too tall to jump with a step before them, hurdles under spike balls (a small hop), towers of steps; get pinned against the cage’s back post and you’re crushed',
       'Lift levels rebuilt again: the parkour’s inside the lift now. A tall cage with ledges inside it (solid from below, so you climb round them) rides along, and walls sweep through it, each with a gap at just one ledge or the floor: be standing there when it reaches you, or be crushed against the cage’s back post. Each wall’s gap is somewhere else, and each comes only a split second after the fastest possible move gets you there',
       'Spike lifts are parkour now: a lift twice as wide carries you through hurdles to vault, staircases to climb and hop off, windows to dive through (climb onto the wall’s low part, out through the gap), and hurdles with a spike ball low over them (a small hop); spike balls on the climbs and drops; and if a block pins you against the lift’s back post, you’re crushed',
       'Panel Pairs is easier: 90 seconds instead of 45, a 10-second look at them all to start instead of 6, and a miss stays showing a little longer before it turns back',

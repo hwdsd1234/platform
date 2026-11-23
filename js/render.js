@@ -1575,6 +1575,7 @@
       for (const b of W.projectiles) out.push({ x: b.x + b.w / 2, y: b.y + b.h / 2, r: 60 * Math.max(1, b.w / 10) });
       for (const e of W.enemies) if (e.alive && e.type === 'S') out.push({ x: e.x + 12, y: e.y + 2, r: 34 });
       for (const pl of W.plats) if (pl.kind === 'ride' && pl.state !== 'gone') out.push({ x: pl.x + pl.w - 6, y: pl.y - 14, r: 150 });
+      if (W.laser) { const L = W.laser, n = Math.max(1, Math.round(Math.abs(L.x1 - L.x0) / 120)); for (let k = 0; k <= n; k++) out.push({ x: L.x0 + (L.x1 - L.x0) * k / n, y: L.y, r: 70 }); }
       for (const e of W.enemies) if (e.alive && e.type === 'Z') out.push({ x: e.x + 7, y: e.y + 7, r: 56 });
       for (const e of W.enemies) if (e.alive && e.type === 'U') out.push({ x: e.x + 10, y: e.y + 8, r: 70 });
       for (const e of W.enemies) if (e.alive && e.type === '*' && e.state !== 'idle') out.push({ x: e.x + e.w / 2, y: e.y + 8, r: 80 });
@@ -1919,6 +1920,15 @@
         if (b.s > 1) { ctx.save(); ctx.translate(b.x, b.y); ctx.scale(b.s, b.s); ctx.translate(-b.x, -b.y); }
         drawBullet(b);
         if (b.s > 1) ctx.restore();
+      }
+      // The laser: a bright beam from the gun to the wall, a hot core in a wider glow.
+      if (W.laser && !opts.edit) {
+        const L = W.laser, k = .75 + .25 * Math.sin(clock * 40);
+        ctx.save(); ctx.lineCap = 'round';
+        ctx.strokeStyle = `rgba(255,80,90,${.35 * k})`; ctx.lineWidth = 9 * L.s; ctx.beginPath(); ctx.moveTo(L.x0, L.y); ctx.lineTo(L.x1, L.y); ctx.stroke();
+        ctx.strokeStyle = `rgba(255,170,170,${.9 * k})`; ctx.lineWidth = 3 * L.s; ctx.beginPath(); ctx.moveTo(L.x0, L.y); ctx.lineTo(L.x1, L.y); ctx.stroke();
+        ctx.fillStyle = 'rgba(255,240,220,.9)'; ctx.beginPath(); ctx.arc(L.x1, L.y, 4 * L.s * k, 0, TAU); ctx.fill();
+        ctx.restore();
       }
       if (!W.player.dead && W.player.flash > 0) {
         const g = LF.gunPos(W.player);

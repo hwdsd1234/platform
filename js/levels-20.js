@@ -145,78 +145,52 @@
     return { chapter, name, since, dark, map, ride: { path, speed: SPEED, w: RW }, keepLength: true, noCrowd: true };
   }
 
-  // Lift gauntlets: a big cage lift you can't get off (def.ride.locked) with a little parkour
-  // course inside it, ledges at three heights (def.ride.ledges) that ride along with it. As it
-  // goes, walls sweep through the cage, each with a gap at just one of its ledges (or its floor):
-  // get onto that ledge before the wall reaches you, or be crushed against the cage's back post.
-  // Each wall's gap is somewhere else from the last one's, so every wall is a race across the
-  // cage: climb, drop, cross. A lantern now and then, star coins and apples up in the cage.
+  // Lift parkour: a big cage lift you can't get off (def.ride.locked) carries you through
+  // formations of solid blocks that sweep through the cage as it goes, in quick runs of two or
+  // three with a breather between: get over, up, through and down them as they come, or be
+  // pinned against the cage's back post and crushed:
+  // - a hurdle, one or two high: vault it;
+  // - a staircase: up it and off the top;
+  // - a window: a wall with a gap halfway up: onto its low part and through;
+  // - a wall too tall to jump, with a step before it: up the step, onto the wall, over;
+  // - a hurdle under a row of spike balls: a small hop, not a big jump;
+  // - a tower of three steps, each higher, two rows up at a time.
+  // Lanterns, star coins and apples up in the cage between the runs.
   const LW = 12, CAGE = 8, LIFT_SPEED = 80, LH = 26;
-  const WALL_SLACK = .3;    // (seconds to spare, beyond the fastest move, for each wall: hard)
-  // The fastest move (seconds) from each safe spot in a lift's cage to each other (the floor
-  // first, then its ledges in order), found by a fastest-route search in the cage as built:
-  // rebuild this if the cages change. (A cage not here goes by a rough guess.)
-  const LIFT_MOVES = {
-    'Spike Lift': [[0, 0.8, 1.2, 1.6, 1.3, 1.6, 1.6, 2], [0.5, 0, 0.3, 0.7, 0.3, 0.7, 0.6, 1.1], [0.9, 0.3, 0, 0.3, 0.5, 0.3, 0.9, 0.7], [1.2, 0.7, 0.3, 0, 0.9, 0.7, 1.2, 1.2], [0.6, 0.5, 0.5, 0.9, 0, 0.9, 0.3, 0.9], [1.3, 0.7, 0.5, 0.5, 0.9, 0, 0.8, 0.7], [0.8, 0.6, 0.6, 0.7, 0.5, 0.7, 0, 0.7], [1.3, 0.7, 0.6, 0.6, 0.9, 0.5, 0.7, 0]],
-    'Barnacle Lift': [[0, 0.9, 0.6, 0.6, 1, 0.9, 1.2, 1.2], [0.5, 0, 0.3, 0.8, 0.4, 0.7, 0.7, 0.8], [0.5, 0.3, 0, 0.4, 0.3, 0.3, 0.6, 0.7], [0.5, 0.8, 0.4, 0, 0.7, 0.3, 0.6, 0.6], [0.6, 0.5, 0.5, 0.7, 0, 0.4, 0.3, 0.3], [0.9, 0.6, 0.5, 0.5, 0.4, 0, 0.5, 0.4], [0.8, 0.7, 0.8, 0.7, 0.5, 0.6, 0, 0], [0.9, 0.8, 0.9, 0.6, 0.6, 0.5, 0, 0]],
-    'Gear Lift': [[0, 0.5, 0.5, 0.8, 0.9, 1.1, 1.4], [0.5, 0, 0.7, 0.3, 0.7, 0.6, 0.7], [0.5, 0.8, 0, 1.1, 0.7, 1.4, 1], [0.6, 0.5, 1, 0, 0.9, 0.4, 0.7], [0.6, 0.7, 0.5, 0.9, 0, 1.2, 0.3], [0.8, 0.6, 1.1, 0.5, 1.1, 0, 0.9], [0.7, 0.6, 0.9, 0.7, 0.5, 1, 0]],
-    'Cloud Lift': [[0, 0.5, 0.4, 0.8, 0.7, 0.7, 1, 1], [0.5, 0, 0.6, 0.5, 0.4, 0.7, 0.8, 1.2], [0.5, 0.5, 0, 0.7, 0.6, 0.3, 0.6, 0.6], [0.6, 0.6, 0.7, 0, 0, 0.9, 0.3, 0.9], [0.6, 0.5, 0.5, 0, 0, 0.8, 0.3, 0.8], [0.7, 0.8, 0.5, 0.9, 0.8, 0, 0.6, 0.7], [0.7, 0.7, 0.6, 0.5, 0.5, 0.5, 0, 0.6], [0.7, 0.7, 0.6, 1, 0.9, 0.5, 0.6, 0]],
-    'Ferry Lift': [[0, 0.9, 0.6, 0.6, 1.2, 0.9, 1.3, 1.2], [0.5, 0, 0.3, 0.8, 0.3, 0.4, 0.6, 0.7], [0.5, 0.3, 0, 0.4, 0.5, 0.4, 0.7, 0.7], [0.5, 0.8, 0.4, 0, 1.1, 0.3, 0.8, 0.7], [0.8, 0.5, 0.5, 1.1, 0, 0.7, 0.3, 0.9], [0.7, 0.5, 0.5, 0.5, 0.8, 0, 0.4, 0.3], [1.1, 0.6, 0.6, 1, 0.5, 0.5, 0, 0.7], [1, 0.7, 0.7, 0.6, 1, 0.5, 0.7, 0]],
-    'Market Lift': [[0, 0.3, 0.4, 0.6, 0.7, 0.7, 0.9, 1], [0.5, 0, 0.8, 0.3, 0.3, 0.8, 0.6, 0.8], [0.5, 0.8, 0, 0.9, 0.4, 0.4, 0.7, 0.7], [0.8, 0.5, 0.9, 0, 0.4, 1.1, 0.3, 1.1], [0.7, 0.5, 0.5, 0.4, 0, 0.6, 0.3, 0.5], [0.6, 0.9, 0.5, 1.1, 0.8, 0, 0.8, 0.7], [0.8, 0.8, 0.7, 0.5, 0.5, 0.8, 0, 0.8], [0.7, 1, 0.6, 1, 0.5, 0.5, 0.8, 0]],
-    'Ash Lift': [[0, 0.3, 0.3, 0.6, 0.6, 0.9, 0.9], [0.5, 0, 0.6, 0.4, 0.8, 0.8, 0.8], [0.5, 0.6, 0, 0.4, 0.3, 0.7, 0.6], [0.6, 0.5, 0.5, 0, 0.8, 0.3, 0.3], [0.7, 0.8, 0.5, 0.8, 0, 0.9, 0.3], [0.7, 0.7, 0.7, 0.5, 1, 0, 0.6], [0.9, 0.8, 0.7, 0.5, 0.5, 0.6, 0]],
-    'Crystal Lift': [[0, 0.5, 0.4, 0.8, 0.7, 0.7, 1, 1], [0.5, 0, 0.4, 0.3, 0.3, 0.7, 0.6, 0.7], [0.5, 0.4, 0, 0.7, 0.3, 0.3, 0.6, 0.6], [0.6, 0.5, 0.7, 0, 0.4, 0.9, 0.3, 0.9], [0.8, 0.5, 0.5, 0.4, 0, 0.5, 0.3, 0.4], [0.8, 0.7, 0.5, 0.9, 0.4, 0, 0.7, 0.7], [0.8, 0.8, 0.7, 0.5, 0.5, 0.7, 0, 0.7], [0.9, 0.8, 0.6, 0.9, 0.5, 0.5, 0.7, 0]],
-    'Last Lift': [[0, 0.3, 0.5, 0.6, 0.6, 0.9, 0.9], [0.5, 0, 0.8, 0.3, 0.5, 0.6, 0.8], [0.5, 0.8, 0, 1.1, 0.3, 0.7, 0.6], [0.7, 0.5, 1.1, 0, 0.8, 0.3, 1.1], [0.6, 0.6, 0.5, 0.8, 0, 0.4, 0.3], [0.7, 0.7, 1, 0.5, 0.5, 0, 0.7], [0.8, 0.8, 0.8, 1.1, 0.5, 0.7, 0]],
-  };
   const LIFT_NAMES = ['Spike Lift', 'Barnacle Lift', 'Gear Lift', 'Cloud Lift', 'Market Lift', 'Ash Lift', 'Crystal Lift', 'Last Lift'];
+  // Each formation: draw it at column c over the cage's floor row y, and say how wide it is.
+  const FORMS = {
+    hurdle: (a, c, y, R) => { const h = R() < .4 ? 2 : 1; a.r(c, y - h, c, y - 1); return 1; },
+    stairs: (a, c, y) => { for (let k = 0; k < 3; k++) a.r(c + k, y - 1 - k, c + k, y - 1); return 3; },
+    window: (a, c, y) => { a.r(c, y - 2, c, y - 1); a.r(c, y - CAGE, c, y - 5); return 1; },
+    wall: (a, c, y) => { a.r(c, y - 2, c, y - 1); a.r(c + 1, y - 5, c + 1, y - 1); return 2; },
+    spikeHop: (a, c, y) => { a.r(c, y - 1, c, y - 1); for (let k = -1; k <= 1; k++) a.s(c + k, y - 4, '¤'); return 2; },
+    tower: (a, c, y) => { a.r(c, y - 2, c, y - 1); a.r(c + 2, y - 4, c + 2, y - 1); a.r(c + 4, y - 6, c + 4, y - 1); return 5; },
+  };
+  const FORM_NAMES = Object.keys(FORMS);
   function liftLevel(name, seed, { chapter, since, dark = .55 }) {
     const R = LF.rng(seed), ri = (a, b) => a + Math.floor(R() * (b - a + 1)), pick = a => a[Math.floor(R() * a.length)];
     const w = 260, y = LH - 6, endX = w - 5 - LW;
-    // The cage's ledges: three tiers (2, 4 and 6 up), two or three on each, three wide, never
-    // straight over the one below (so it's a jump across, not just up).
-    const ledges = [];
-    let prev = [0, LW];
-    for (const dy of [-2, -4, -6]) {
-      const n = dy === -6 ? 2 : ri(2, 3), row = [];
-      for (let k = 0; k < n; k++) {
-        let dx = Math.round((k + .5) * LW / n - 1.5 + ri(-1, 1));
-        if (prev.some(px => Math.abs(px - dx) < 2)) dx = Math.min(LW - 3, Math.max(0, dx + (R() < .5 ? -2 : 2)));
-        dx = Math.min(LW - 3, Math.max(0, dx)); row.push(dx); ledges.push([dx, dy, 3]);
-      }
-      prev = row;
-    }
-    // Where you can be safe from a wall: on a ledge (its gap two rows over it) or the floor.
-    const spots = [[0, 0, LW], ...ledges];
-    const walls = [];
-    // The walls, one in the cage at a time, each coming just after a sharp player could have got
-    // from the last wall's spot to its own (about: a tier's climb a quarter second, a tile across
-    // a few hundredths, plus WALL_SLACK): its spot mostly a long way from the last (the farther
-    // of two picks).
-    const moves = LIFT_MOVES[name];
-    const est = (a, b) => (moves ? moves[spots.indexOf(a)][spots.indexOf(b)] : .3 + .25 * Math.abs(a[1] - b[1]) / 2 + .045 * Math.abs(a[0] + a[2] / 2 - b[0] - b[2] / 2));
-    let last = spots[0], c = 34;
-    for (;;) {
-      let a = pick(spots), b = pick(spots); if (a === last) a = b; if (b === last) b = a;
-      const next = est(last, a) >= est(last, b) ? a : b;
-      if (next === last || est(last, next) < .25) continue;   // (not the same spot, or one just like it)
-      // (The gap from the last wall: the cage's width, then the move from its spot to this one's.)
-      if (walls.length) c += LW + Math.max(2, Math.ceil((est(last, next) + WALL_SLACK) * LIFT_SPEED / 32));
-      if (c >= endX - 8) break;
-      walls.push({ c, dy: next[1], spot: next }); last = next;
-    }
-    const path = [[5, y], [endX, y]];
-    const map = B(w, LH, ({ r, s }) => {
+    const runs = [];
+    const map = B(w, LH, a => {
+      const { r, s } = a;
       r(0, y, 4, LH - 1); s(2, y - 1, 'P');
       r(w - 5, y, w - 1, LH - 1); s(w - 3, y - 1, 'D');
-      // The walls: from the top down to the cage's floor, a gap two rows high over its spot.
-      for (const wl of walls) { r(wl.c, 0, wl.c, y - 1); s(wl.c, y + wl.dy - 1, '.'); s(wl.c, y + wl.dy - 2, '.'); }
-      // Lanterns, star coins, a yellow apple and apples, up in the cage's way between walls.
-      const between = (k, up, ch) => { const wl = walls[Math.min(walls.length - 1, k)], c = wl.c - 5; if (c > 20 && r) s(c, y - up, ch); };
-      const n = walls.length;
-      for (const f of [.25, .5, .75]) between(Math.floor(n * f), 3, 'L');
-      for (const f of [.15, .55, .9]) between(Math.floor(n * f), 7, '¢');
-      between(Math.floor(n * .4), 5, 'ý'); for (const f of [.1, .35, .65, .8]) between(Math.floor(n * f), 1, 'a');
+      // Runs of two or three formations, a few tiles apart, then a breather (the cage's width).
+      for (let c = 30; c < endX - 30;) {
+        const n = ri(2, 3), c0 = c, kinds = [];
+        for (let k = 0; k < n; k++) { const kind = pick(FORM_NAMES); kinds.push(kind); c += FORMS[kind](a, c, y, R) + ri(3, 5); }
+        runs.push({ c0, c1: c, kinds });
+        c += LW + ri(2, 5);
+      }
+      // Lanterns, star coins, a yellow apple and apples in the breathers.
+      const gapAt = k => { const rn = runs[Math.min(runs.length - 1, k)]; return rn.c1 + 4; };
+      const n = runs.length;
+      for (const f of [.25, .5, .75]) s(gapAt(Math.floor(n * f)), y - 3, 'L');
+      for (const f of [.15, .55, .9]) s(gapAt(Math.floor(n * f)) + 2, y - 6, '¢');
+      s(gapAt(Math.floor(n * .4)) + 3, y - 5, 'ý'); for (const f of [.1, .35, .65, .85]) s(gapAt(Math.floor(n * f)) + 6, y - 1, 'a');
     });
-    return { chapter, name, since, dark, map, ride: { path, speed: LIFT_SPEED, w: LW, rigid: true, locked: true, ledges, cage: CAGE }, keepLength: true, noCrowd: true, walls };
+    return { chapter, name, since, dark, map, ride: { path: [[5, y], [endX, y]], speed: LIFT_SPEED, w: LW, rigid: true, locked: true, cage: CAGE }, keepLength: true, noCrowd: true, runs };
   }
 
   // The Ferry Line: the Canal District's, after the Pear Cliffs.

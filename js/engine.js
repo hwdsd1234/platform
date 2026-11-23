@@ -46,6 +46,9 @@
   // A: the kill shot. 3 ammo, and whatever it hits dies at once: golems, TNT carts, armor
   // and all (a boss just takes it as one hit). It doesn't splash.
   const KILL_COST = LF.KILL_COST = 3;
+  // The laser (C): LASER_COST ammo a press (twice for a big one), and LASER_COST more for every
+  // second you hold it on after the first; it hits everything along it LASER_TICKS times a second.
+  const LASER_COST = LF.LASER_COST = 3, LASER_TICKS = 4, LASER_REACH = 40;
   const BLINK = LF.BLINK = 2, CONVEY = 110, BULLET = 620, AMMO = { q: 3, Q: 10, $: 25 };
   const TAU = Math.PI * 2;
 
@@ -121,6 +124,7 @@
   // damage of whatever hit you (ENEMY_DMG, or the hazard's own), and at none you die. Health
   // comes back only from apples (APPLE_HEAL each) and a yellow apple's regeneration.
   const HP = LF.HP = 100, RIPE_HP = 50, APPLE_HEAL = LF.APPLE_HEAL = 25;
+  const LAVA_DMG = 99, HORDE_DMG = 99;   // (lava and the horde: nearly all you have)
   LF.maxHp = p => HP + RIPE_HP * (p.green || 0);
   // How hard each enemy hits (bosses BOSS_DMG, giant bosses GIANT_DMG).
   const ENEMY_DMG = LF.ENEMY_DMG = { B: 15, K: 25, F: 15, J: 15, S: 20, G: 30, X: 15, R: 30, Z: 25, Y: 20, U: 20, W: 20, A: 20, I: 35, '*': 30, N: 20, 'ĸ': 20, '@': 40 };
@@ -1586,8 +1590,8 @@
 
   // ---------- the horde ----------
   // A wall of shadows that advances at a steady pace (right, or up for a rising horde), so
-  // you can outrun it. It can't be shot or blocked, and a touch kills you even through a
-  // shield. h.f is its front measured along the chase: x for right, -y for up.
+  // you can outrun it. It can't be shot or blocked, and a touch takes HORDE_DMG. h.f is its
+  // front measured along the chase: x for right, -y for up.
   LF.HORDES = {
     '&': { name: 'Horde →', speed: 80, note: 'a wall of shadows that chases you right from this column' },
     '%': { name: 'Horde ↑', speed: 64, note: 'a wall of shadows that rises up after you from this row' },
@@ -1615,8 +1619,9 @@
   }
   function hordeCaught(W, p) {
     if (!W.horde || p.inv > 0 || playerAlong(W.horde, p) > W.horde.f) return false;
-    p.inv = 0; kill(W);
-    return true;
+    // (Its touch takes HORDE_DMG, and throws you up out of it: get away before it touches again.)
+    hurt(W, HORDE_DMG);
+    return p.dead;
   }
 
   // ---------- keys & locked doors ----------
@@ -3671,12 +3676,44 @@
     p.cool -= dt; p.flash -= dt;
     if (p.hold > 0) {
       p.hold -= dt;
-      if (input.firePressed || input.rocketPressed || input.grenadePressed || input.killPressed || input.dynPressed || input.nukePressed) {
-        input.firePressed = input.rocketPressed = input.grenadePressed = input.killPressed = input.dynPressed = input.nukePressed = false;
+      if (input.firePressed || input.rocketPressed || input.grenadePressed || input.killPressed || input.dynPressed || input.nukePressed || input.laserPressed) {
+        input.firePressed = input.rocketPressed = input.grenadePressed = input.killPressed = input.dynPressed = input.nukePressed = input.laserPressed = false;
         if (!W.floaters.some(f => f.t === 'steady…')) W.floaters.push({ x: p.x + p.w / 2, y: p.y - 10, t: 'steady…', life: .8, c: '#D9D0F0' });
       }
     }
     const s = input.big ? 2 : 1;
+    // The laser: a beam from the gun straight ahead to the first wall, through every enemy on
+    // the way, as long as you hold C (and can pay for it).
+    if (input.laserPressed && !p.laserOn) {
+      if (p.ammo >= LASER_COST * s && !W.def.noAmmo) { p.ammo -= LASER_COST * s; p.laserOn = { t: 0, paid: 1, tick: 0, s }; W.emit('laser'); }
+      else { W.emit('empty'); W.floaters.push({ x: p.x + p.w / 2, y: p.y - 10, t: `${s > 1 ? 'big ' : ''}laser needs ${LASER_COST * s} ammo`, life: 1, c: '#D9D0F0' }); }
+    }
+    input.laserPressed = false;
+    if (p.laserOn) {
+      const L = p.laserOn;
+      L.t += dt;
+      if (!input.laser || p.dead || p.inCannon) p.laserOn = null;
+      else if (L.t >= L.paid) { if (p.ammo >= LASER_COST * L.s) { p.ammo -= LASER_COST * L.s; L.paid += 1; } else { p.laserOn = null; W.floaters.push({ x: p.x + p.w / 2, y: p.y - 10, t: 'out of ammo', life: .8, c: '#D9D0F0' }); } }
+    }
+    W.laser = null;
+    if (p.laserOn) {
+      const L = p.laserOn, g = LF.gunPos(p), dir = p.face, row = Math.floor(g.y / TS);
+      let x = g.x, door = null;
+      for (let k = 0; k < LASER_REACH * 4; k++) {
+        const tx = Math.floor((x + dir * 8) / TS), c = tile(W, tx, row);
+        if (isSolid(c) || c === 'l') { door = W.shotDoorAt[row * W.w + tx]; x = dir > 0 ? tx * TS : (tx + 1) * TS; break; }
+        x += dir * 8;
+      }
+      W.laser = { x0: g.x, x1: x, y: g.y, s: L.s };
+      p.flash = .05;
+      if ((L.tick -= dt) <= 0) {
+        L.tick = 1 / LASER_TICKS;
+        const id = gunShot(W), lo = Math.min(g.x, x), hi = Math.max(g.x, x), half = 3 * L.s;
+        for (const e of W.enemies) if (e.alive && !e.phased && e.x + e.w > lo && e.x < hi && e.y < g.y + half && e.y + e.h > g.y - half) shootEnemy(W, e, dir, id, 'zap', L.s);
+        if (door && !door.open) hitShotDoor(W, door, id);
+        for (const q of W.projectiles) if (q.kind !== 'flame' && q.kind !== 'warn' && q.x + q.w > lo && q.x < hi && q.y < g.y + half && q.y + q.h > g.y - half) q.life = 0;
+      }
+    }
     if ((input.firePressed || input.fire) && p.cool <= 0) {
       const tapped = input.firePressed;
       input.firePressed = false;
@@ -3821,9 +3858,8 @@
     // Water at the bottom edge of the map has a floor: you can't sink out of the world.
     if (p.y + p.h > W.h * TS && tile(W, Math.floor((p.x + p.w / 2) / TS), W.h - 1) === '~') { p.y = W.h * TS - p.h; p.vy = Math.min(p.vy, 0); }
     if (p.y > W.h * TS + 60) return kill(W);
-    // Lava kills outright, still or moving: the shield doesn't help, and nor does being
-    // invincible for a moment after a hit (or you could fall into it and walk out).
-    if (lavaAt(W, p) || inFlow(W, p)) return kill(W);
+    // (Lava, still or moving, takes LAVA_DMG: a second dip, or one with less to spare, and you're done.)
+    if (lavaAt(W, p) || inFlow(W, p)) { hurt(W, LAVA_DMG); if (p.dead) return; }
     if (hazardHit(W, p, true)) { hurt(W, 25); if (p.dead) return; }
     if (p.inv <= 0 && trapHit(W, p)) { hurt(W, 30); if (p.dead) return; }
     // Crusher sides push you out instead of hurting.
