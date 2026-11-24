@@ -7,6 +7,7 @@
   const LF = window.LF;
   LF.UPDATES = [
     { date: '2026-10-14', title: 'Pear power-ups, practice mode and this log', items: [
+      'Groves: get everything before the clock’s out (so it finishes early: every fruit, crate, pair or prize) and it all counts double, fruit and ammo alike (in a Double Harvest event, four times over)',
       'Lava’s like water while you’re invincible (just after a hit, at the start, in a tomato rush): you sink in and swim, and it can’t hurt you; once that’s over it’s lava again. (In practice it’s always like water.)',
       'Practice mode: lava’s like water now: you sink into it and swim through it as you would water, and it doesn’t hurt you (lava bubbles still do)',
       'Fixed: the laser could miss enemies it plainly went through, bats especially, while you jumped (it only checked four times a second, along a thin line). Now it hits whatever the beam touches, as thick as it looks',

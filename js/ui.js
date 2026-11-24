@@ -727,17 +727,17 @@
   // Garden (springs up to fruit high in the air), the Ice Rink (slide about after it) and
   // the Fruit Climb (up a shaft of ledges).
   const GROVES = {
-    grab: { name: 'Fruit Grove', hud: '10 seconds', what: '10 seconds to grab all the fruit you can: it all goes in your inventory. Get every one and it’s over at once' },
-    lucky: { name: 'Lucky Panels', hud: 'find two skulls and it’s over', what: 'Bump the panels from below: each hides a fruit (one of every kind is under them) or a skull. Turn up two skulls and it’s over. Get every one and it’s over at once' },
-    pairs: { name: 'Panel Pairs', hud: '90 seconds · match the pairs', what: 'A pair of panels for every fruit: a 10-second look at them all, then bump them two at a time for 90 seconds. Every pair you match is two of that fruit; a miss just turns them back over. Get every one and it’s over at once' },
+    grab: { name: 'Fruit Grove', hud: '10 seconds', what: '10 seconds to grab all the fruit you can: it all goes in your inventory. Get every one and it’s over at once, and it all counts double' },
+    lucky: { name: 'Lucky Panels', hud: 'find two skulls and it’s over', what: 'Bump the panels from below: each hides a fruit (one of every kind is under them) or a skull. Turn up two skulls and it’s over. Get every one and it’s over at once, and it all counts double' },
+    pairs: { name: 'Panel Pairs', hud: '90 seconds · match the pairs', what: 'A pair of panels for every fruit: a 10-second look at them all, then bump them two at a time for 90 seconds. Every pair you match is two of that fruit; a miss just turns them back over. Get every one and it’s over at once, and it all counts double' },
     rain: { name: 'Fruit Rain', hud: '20 seconds · catch it as it falls', what: 'Fruit falls from the sky, every kind in turn: 20 seconds to catch all you can before it lands and goes' },
-    springs: { name: 'Spring Garden', hud: '15 seconds', what: 'Springs fling you up to fruit hanging high in the air: 15 seconds to bounce for all you can. Get every one and it’s over at once' },
-    ice: { name: 'Ice Rink', hud: '15 seconds', what: 'A grove frozen over: 15 seconds to slide about after the fruit. Get every one and it’s over at once' },
-    climb: { name: 'Fruit Climb', hud: '20 seconds', what: 'Fruit on every ledge up a tall shaft: 20 seconds to climb for all you can. Get every one and it’s over at once' },
+    springs: { name: 'Spring Garden', hud: '15 seconds', what: 'Springs fling you up to fruit hanging high in the air: 15 seconds to bounce for all you can. Get every one and it’s over at once, and it all counts double' },
+    ice: { name: 'Ice Rink', hud: '15 seconds', what: 'A grove frozen over: 15 seconds to slide about after the fruit. Get every one and it’s over at once, and it all counts double' },
+    climb: { name: 'Fruit Climb', hud: '20 seconds', what: 'Fruit on every ledge up a tall shaft: 20 seconds to climb for all you can. Get every one and it’s over at once, and it all counts double' },
     // Ammo groves (in the ammo houses): crates to grab, crates falling, panels of ammo.
-    ammoDash: { name: 'Ammo Dash', hud: '10 seconds', what: '10 seconds to grab all the ammo crates you can: the ammo goes into the ammo bank in your items. Get every crate and it’s over at once' },
+    ammoDash: { name: 'Ammo Dash', hud: '10 seconds', what: '10 seconds to grab all the ammo crates you can: the ammo goes into the ammo bank in your items. Get every crate and it’s over at once, and it all counts double' },
     crateRain: { name: 'Crate Rain', hud: '20 seconds · catch them as they fall', what: 'Ammo crates fall from the sky: 20 seconds to catch all you can (the ammo goes into the ammo bank in your items)' },
-    ammoPanels: { name: 'Ammo Panels', hud: 'find two skulls and it’s over', what: 'Bump the panels from below: each hides ammo (3 to 25) or a skull. Turn up two skulls and it’s over; the ammo goes into the ammo bank in your items. Find every prize and it’s over at once' },
+    ammoPanels: { name: 'Ammo Panels', hud: 'find two skulls and it’s over', what: 'Bump the panels from below: each hides ammo (3 to 25) or a skull. Turn up two skulls and it’s over; the ammo goes into the ammo bank in your items. Find every prize and it’s over at once, and it all counts double' },
   };
   const AMMO_ORDER = ['ammoDash', 'crateRain', 'ammoPanels'];
   const GROVE_ORDER = ['grab', 'lucky', 'pairs', 'rain', 'springs', 'ice', 'climb'];
@@ -1492,8 +1492,10 @@
       setVisible({ hud: true, overlay: true });
       houses[playCtx.i] = { at: Date.now() }; store.set('houses', houses);
       LF.awards.grove();
-      // (A Double Harvest event: every fruit counts twice.)
-      const bonus = 1, twice = LF.eventIs('harvest') ? 2 : 1;
+      // (A Double Harvest event: every fruit counts twice. And getting everything there before the
+      // clock's out, so it finishes early, counts twice too: on top of that, four times.)
+      const early = W.clearedBy !== 'time' && !(W.panelBad >= 2);
+      const bonus = 1, twice = (LF.eventIs('harvest') ? 2 : 1) * (early ? 2 : 1);
       const got = Object.entries(W.got).filter(([, n]) => n > 0).map(([t, n]) => [t, n * twice]);
       for (const [t, n] of got) inventory[t] = Math.min(INV_MAX, (inventory[t] || 0) + n);
       store.set('inventory', inventory);
@@ -1503,15 +1505,15 @@
       // (Straight into the ammo bank in your items: see renderInventory. Out by the bonus
       // door, twice as much.)
       if (isAmmoHouse(playCtx.i)) {
-        const banked = ammoGot;
+        const banked = ammoGot * (early ? 2 : 1);
         store.set('ammoBank', store.get('ammoBank', 0) + banked);
-        card(`<p class="eyebrow">${esc(W.def.name)} · ${why}</p><h2>${banked ? `+${banked} ammo` : 'Nothing this time'}</h2>
+        card(`<p class="eyebrow">${esc(W.def.name)} · ${why}</p><h2>${banked ? `+${banked} ammo${early ? ' (doubled: finished early!)' : ''}` : 'Nothing this time'}</h2>
           <p class="lede">${banked ? `Into the ammo bank in your items: ${store.get('ammoBank', 0)} there now. Press <kbd>Tab</kbd> on the map to take some out for your next level.` : 'The crates got away.'}</p>
           <div class="menu"><button class="go" data-act="menu">Back to the map</button></div>`);
         return;
       }
       card(`<p class="eyebrow">${esc(W.def.name)} · ${why}</p><h2>${got.length ? 'A good haul' : 'Nothing this time'}</h2>
-        <p class="lede">${got.length ? 'Into your inventory: ' + got.map(([t, n]) => `${FRUIT_ICON[t]} ×${n}`).join(' · ') + (twice / bonus > 1 ? ' (doubled: 🧺 Double Harvest)' : '') : 'The fruit got away.'} Press <kbd>Tab</kbd> on the map to use it (not in a level).</p>
+        <p class="lede">${got.length ? 'Into your inventory: ' + got.map(([t, n]) => `${FRUIT_ICON[t]} ×${n}`).join(' · ') + (twice > 1 ? ` (${twice === 4 ? 'four times over: finished early in a 🧺 Double Harvest' : early ? 'doubled: finished early!' : 'doubled: 🧺 Double Harvest'})` : '') : 'The fruit got away.'} Press <kbd>Tab</kbd> on the map to use it (not in a level).</p>
         <div class="menu"><button class="go" data-act="menu">Back to the map</button></div>`);
       return;
     }
